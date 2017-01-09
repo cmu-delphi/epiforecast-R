@@ -1,0 +1,17 @@
+# should not modify CXXFLAGS:
+# CXXFLAGS += -std=c++11 -Wall -Wextra -Wconversion -Werror -O3
+# CXXFLAGS += -std=c++11
+
+# CXX_STD only has CXX11 option, not 14 (like SystemRequirements: C++11)
+# CXX_STD = CXX11
+
+# CXX1X{,STD} settings don't seem to take effect
+# CXX1X = `"${R_HOME}/bin/R" CMD config CXX11X`
+# CXX1XSTD = -std=c++14
+
+# This seems to work, but generates a R CMD check WARNING about nonportability:
+PKG_CXXFLAGS = -std=c++1y
+
+# Local Variables:
+# mode: Makefile
+# End:

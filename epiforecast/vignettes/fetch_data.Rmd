@@ -1,0 +1,51 @@
+---
+title: "Fetching / Loading Data"
+author: "Justin"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fetch data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+
+
+First, setup by loading the package and setting working directory
+```{r, eval=TRUE, results='asis'}
+library(devtools)
+outputdir = "."
+path_to_Rpkg_directory = "."
+setwd(path_to_Rpkg_directory)
+load_all()
+```
+
+Here is an example. Let us try to fetch national influenza intensity measurements (called `weighted ILI', or `wILI' for short), from the [link](fluview) interface using the function `fetchEpidataDF()`:
+```{r, eval=TRUE, results='markup'}
+fluview.nat.all.df = fetchEpidataDF(source = "fluview", 
+                                    area   = "nat",
+                                    first.week.of.season=21L)
+## See first few lines
+head(fluview.nat.all.df,3)
+tail(fluview.nat.all.df,3)
+```
+	
+What if we wanted to fetch Google flutrends (GFT) measurements using the same function, under the same date range and settings?
+```{r, eval=TRUE, results='asis'}
+gft.nat.all.df = fetchEpidataDF(source = "gft", 
+                                    area   = "nat",
+                                    first.week.of.season=21L)
+```
+Note, GFT measurements are 1/100'th the scale of wILI measurements.
+
+There are also 10 sub-regions of the united states (see [link](here) for more) whose influenza intensity measurements are available; they can be queried as follows:
+```{r,  eval=TRUE, results='asis'}
+gft.reg.dat = fetchEpidataDF(source = "gft", 
+                             area ="hhs1")
+fluview.reg.dat = fetchEpidataDF(source = "fluview", 
+                             area ="hhs1")
+```
+
+How would you query data from a certain date ranges, but from two or more sources? Use the wrapper `fetchEpidataDF.multiple.sources()`
+```{r, eval=TRUE}
+all.reg.dat = fetchEpidataDF.multiple.sources(source = c("gft, hhs1"), area = "hhs1")
+```
+

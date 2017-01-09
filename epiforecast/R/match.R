@@ -1,0 +1,262 @@
+
+##' Match integer-valued input
+##'
+##' Returns a possibly-named integer-class vector version of the input, or
+##' produces an error if the input seems inappropriate.
+##'
+##' @param inp supposed to be a possibly-named numeric object with integer/NA
+##'   values.
+##'
+##' @return \code{inp} as an integer vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.integer = function(inp) {
+  if (is.numeric(inp) && all(as.integer(inp)==inp)) {
+    storage.mode(inp) <- "integer" # like as.integer, but doesn't strip attrs like names
+    return (inp)
+  } else {
+    stop (sprintf("Argument =%s= must be a possibly-named numeric vector containing integral/NA values.",
+                  paste(deparse(match.call()$inp), collapse="\n")))
+  }
+}
+
+##' Match length-1 non-\code{NA} integer-valued input
+##'
+##' Returns a possibly-named length-1 non-NA integer-class vector version of the
+##' input, or produces an error if the input seems inappropriate.
+##'
+##' @param n supposed to be a possibly-named length-1 non-NA integer-valued
+##'   numeric object
+##'
+##' @return \code{n} as a length-1 integer-class vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.single.nonna.integer = function(n) {
+  if (is.numeric(n) && length(n)==1L && !is.na(n) && as.integer(n)==n) {
+    n <- as.vector(n)
+    storage.mode(n) <- "integer"
+    return (n)
+  } else {
+    stop (sprintf("Argument =%s= must be a length-1 integer-valued numeric object.", paste(deparse(match.call()$n), collapse="\n")))
+  }
+}
+
+##' Match length-1 non-\code{NA} integer-valued input or \code{NULL}
+##'
+##' Returns a possibly-named length-1 non-NA integer-class vector version of the
+##' input if non-\code{NULL}, \code{NULL} if input is \code{NULL}, or produces
+##' an error if the input seems inappropriate.
+##'
+##' @param n supposed to be a possibly-named length-1 non-\code{NA}
+##'   integer-valued numeric object or \code{NULL}
+##'
+##' @return \code{n} as a length-1 integer-class vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.single.nonna.integer.or.null = function(n) {
+  if (is.null(n)) {
+    return (NULL)
+  } else if (is.numeric(n) && length(n)==1L && !is.na(n) && as.integer(n)==n) {
+    n <- as.vector(n)
+    storage.mode(n) <- "integer"
+    return (n)
+  } else {
+    stop (sprintf("Argument =%s= must be a length-1 integer-valued numeric object.", paste(deparse(match.call()$n), collapse="\n")))
+  }
+}
+
+##' Match length-1 numeric input
+##'
+##' Returns a possibly-named length-1 possibly-NA numeric vector version of the
+##' input, or produces an error if the input seems inappropriate.
+##'
+##' @param x supposed to be a possibly-named length-1 numeric object
+##'
+##' @return \code{x} as a length-1 numeric vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.single.na.or.numeric = function(x) {
+  if (is.numeric(x) && length(x)==1L) {
+    return (as.vector(x))
+  } else {
+    stop (sprintf("Argument =%s= must be a length 1 numeric vector representing an integral value.", paste(deparse(match.call()$n), collapse="\n")))
+  }
+}
+
+##' Match dat object input
+##'
+##' Returns a list of possibly-named numeric-class vectors given a list of
+##' possibly-named (is.)numeric vectors as input, or generates an error if the
+##' input seems inappropriate.
+##'
+##' @param dat supposed to be a list of possibly-named numeric vectors
+##'
+##' @return \code{dat} as a list of numeric-class vectors
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.dat = function(dat) {
+  if (is.list(dat)
+      && all(sapply(dat, is.numeric))
+      && all(sapply(dat, is.vector))) {
+    return (lapply(dat, as.numeric))
+  } else {
+    stop (sprintf("Argument =%s= must be a list of numeric vectors.", paste(deparse(match.call()$dat), collapse="\n")))
+  }
+}
+
+##' Convert trajectory, trajectory matrix, or sim to sim; error otherwise
+##'
+##' *.sim methods should eventually all support sim objects as input for new.dat
+##' rather than just single trajectories, but, for the convenience of the user,
+##' allow other types of input as well. Specifically, we should accept:
+##' \itemize{
+##'   \item{Trajectory: }{a numeric vector;}
+##'   \item{Trajectory matrix: }{a numeric matrix with each column a trajectory;
+##'   and}
+##'   \item{Sim: }{a list with \code{$ys} a #times by #trajectories numeric
+##'   matrix with #trajectories >= 1 and each row either all \code{NA} or all
+##'   non-\code{NA}, and \code{$weights} a #trajectories-length numeric matrix
+##'   with entries all >= 0.}
+##' }
+##'
+##' This method checks that it receives such an input and outputs a
+##' corresponding sim object.
+##'
+##' @param new.dat.sim trajectory / trajectory matrix / sim object
+##'
+##' @return sim object
+##'
+##' @examples
+##' match.new.dat.sim(1:5)
+##' match.new.dat.sim(as.matrix(1:5)[,rep(1,10)])
+##' match.new.dat.sim(list(ys=as.matrix(1:5)[,rep(1,10)], weights=0:9))
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.new.dat.sim = function(new.dat.sim) {
+  if (is.numeric(new.dat.sim) && is.vector(new.dat.sim)) {
+    ys = as.matrix(new.dat.sim)
+    weights = 1
+    sim = list(ys=ys, weights=weights)
+    return (sim)
+  } else if (is.numeric(new.dat.sim) && is.matrix(new.dat.sim)) {
+    ys = new.dat.sim
+    weights = rep(1/ncol(ys), ncol(ys)) # normalization isn't necessary though
+    sim = list(ys=ys, weights=weights)
+    return (sim)
+  } else if (is.list(new.dat.sim)
+             && is.numeric(new.dat.sim$ys) && is.matrix(new.dat.sim$ys)
+             && ncol(new.dat.sim$ys) >= 1
+             && all(is.na(new.dat.sim$ys) == is.na(new.dat.sim$ys[,1]))
+             && is.numeric(new.dat.sim$weights) && is.vector(new.dat.sim$weights)
+             && all(new.dat.sim$weights >= 0)
+             && ncol(new.dat.sim$ys) == length(new.dat.sim$weights)) {
+    ## xxx consider requiring sum(new.dat.sim$weights) > 0
+    if (sum(new.dat.sim$weights) < .Machine$double.eps^0.5) {
+      warning("sum(new.dat.sim$weights) < .Machine$double.eps^0.5")
+    }
+    sim = new.dat.sim
+    return (sim)
+  } else {
+    stop (sprintf("Argument =%s= must be (a) a numeric vector (a single trajectory), (b) a numeric matrix (cbound trajectories), or (c) a list with $ys a #times by #trajectories matrix with #trajectories >= 1 and each row either all NA or non-NA, and $weights a #trajectories-length numeric vector with entries all >=0.", paste(deparse(match.call()$new.dat.sim), collapse="\n")))
+  }
+}
+
+##' \code{match.arg} variant replacing unmatched args with \code{choices[[1]]}, allowing non-character choices
+##'
+##' Assumes this usage: parent_fun = function(parent_arg[=parent_choices]) {
+##' ... match.arg.forgiving(parent_arg) ... } (with or without
+##' "=parent_choices").
+##'
+##' If \code{arg} is \code{NULL}, returns \code{choices[[1]]}.
+##'
+##' If \code{choices} is a character vector, this performs partial matches;
+##' otherwise, it checks for \code{arg}'s that are \code{all.equal} with
+##' \code{check.attributes=FALSE}.
+##' 
+##' @param arg the argument to match to a choice; should
+##'
+##' @param choices a positive-length vector; if it contains \code{NULL}, first
+##'   choice should should be \code{NULL} to avoid ambiguity
+##'
+##' @return \code{arg}, the corresponding match in \code{choices}, or
+##'   \code{choices[[1]]} with a warning (when \code{arg} fails to match a
+##'   choice)
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @examples
+##' library(testthat)
+##' @example /tests/testthat/test_match.arg.or.default.R
+##' 
+##' @export
+match.arg.else.default = function(arg, choices) {
+  ## Assume this usage: parent_fun = function(parent_arg[=parent_choices]) {
+  ## ... match.arg.else.default(parent_arg) ... } (with or without
+  ## "=parent_choices").
+  parent_frame = sys.frame(sys.parent())
+  parent_function = sys.function(sys.parent())
+  parent_match_call = match.call(parent_function, sys.call(sys.parent()))
+  this_match_call = match.call() 
+  parent_arg_name = as.character(this_match_call$arg)
+  parent_choices_expr = formals(parent_function)[[parent_arg_name]]
+  if (missing(choices)) {
+    ## Assume parent_choices was specified; fill in choices with parent_choices:
+    parent_choices = eval(parent_choices_expr, parent_frame)
+    choices <- parent_choices
+  }
+  if (!is.vector(choices) || length(choices)==0L) {
+    stop ("Problem with specification of choices (not arg): choices must be a positive-length vector.")
+  } else if (any(is.null(choices)) && !is.null(choices[[1L]])) {
+    stop ("Problem with specification of choices (not arg): if choices contains NULL, the first choice must be NULL, so that passing NULL as an arg is not ambiguous.")
+  } else if (is.null(parent_match_call[[parent_arg_name]])) {
+    ## parent_arg was missing in parent call; return first choice:
+    return (choices[[1L]])
+  } else if (is.null(arg)) {
+    ## parent_arg was NULL; return first choice:
+    return (choices[[1L]])
+  } else {
+    if (is.character(choices)) {
+      if (!is.character(arg) || length(arg) != 1L) {
+        stop (sprintf('%s must be NULL or a length-1 character with a partial match in %s.',
+                      parent_arg_name, deparse(parent_choices_expr)))
+      }
+      ind = pmatch(arg, choices, nomatch=0L, duplicates.ok=TRUE) # last two for speed xxx check this
+      ## fixme if there is a nonunique partial match, an error should be
+      ## generated, not a warning&default
+      if (ind==0L) {
+        ## arg was not a partial match to a choice; return first choice with warning
+        warning (sprintf('%s should have a partial match in %s; defaulting to %s.',
+                         parent_arg_name, deparse(parent_choices_expr), choices[[1L]]))
+        return (choices[[1L]])
+      } else {
+        ## arg was (partial) match to a choice; return that choice
+        return (choices[[ind]])
+      }
+    } else { ## choices is not a character vector
+      ## ind = Position(function(choice) idential(arg, choice), choices, nomatch=0L)
+      ind = Position(function(choice) isTRUE(all.equal(arg, choice, check.attributes=FALSE)), choices, nomatch=0L) # be a bit forgiving
+      if (ind == 0L) {
+        ## arg was not in choices, return first choice with warning
+        warning (sprintf('%s should be all.equal to something in choice vector %s; defaulting to first choice.',
+                         parent_arg_name, deparse(parent_choices_expr)))
+        return (choices[[1L]])
+      } else {
+        ## arg was all.equal to some choice: return that choice
+        return (choices[[ind]])
+      }
+    }
+  }
+}
+## todo testing on match.arg.else.default
