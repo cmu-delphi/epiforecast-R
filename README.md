@@ -1,5 +1,5 @@
 # Summary
-R package for summ
+R package that implements several methods for epidemiological forecasting empirical bayes (EB), basis regression (BR), and time-weighted kernel density estimation (twkde).
 
 # Installation
 ```
