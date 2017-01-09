@@ -11,3 +11,7 @@ or
 ```R
 devtools::install_github("cmu-delphi/epiforecast-R", subdir="epiforecast")
 ```
+
+
+# Tests
+Run code in ```demo/demo.R```
