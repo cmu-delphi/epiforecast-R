@@ -2,11 +2,12 @@
 R package that implements several methods for epidemiological forecasting empirical bayes (EB), basis regression (BR), and time-weighted kernel density estimation (twkde).
 
 # Installation
+On mac or linux command line:
 ```
 R CMD INSTALL epiforecast
 ```
 
-or
+or run the following in R:
 
 ```R
 devtools::install_github("cmu-delphi/epiforecast-R", subdir="epiforecast")
