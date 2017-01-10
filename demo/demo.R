@@ -23,7 +23,7 @@ targets = epiforecast:::forecast.sim(mysim,'pht')
 
 
 ## Try EB with more simulation settings
-control.list = get.eb.control.list(sd.option="prior",max.match.length=5)
+control.list = get_eb_control_list(sd.option="prior",max.match.length=5)
 mysim = eb.sim(full.dat, n.sims=100, control.list=control.list)
 epiforecast:::plot.sim(mysim)
 
