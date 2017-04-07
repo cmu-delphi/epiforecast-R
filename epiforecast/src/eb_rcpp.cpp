@@ -757,8 +757,8 @@ class GaussianObservable {
   const SD &sd() { return sd_; }
   LogLikelihood log_likelihood(const Mean &observation) const {
     auto z = (observation - mean_) / sd_;
-    LogLikelihood phiz = (-z*z - log(2*M_PI))/2;
-    return phiz / sd_;
+    LogLikelihood logphiz = (-z*z - log(2*M_PI))/2;
+    return logphiz - log(sd_);
   }
 
   friend GaussianObservable operator+(const GaussianObservable &obs0,
