@@ -39,7 +39,7 @@ full.dat = read.from.file(filename)
 
 ## Try EB with basic options
 mysim = eb.sim(full.dat, n.sims=1000)
-plot.sim(mysim)
+plot(mysim)
 targets = forecast(mysim,'pht')
 
 

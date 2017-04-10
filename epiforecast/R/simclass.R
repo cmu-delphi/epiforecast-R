@@ -41,6 +41,7 @@ make_sim_ys_colors = function(weights){
 ##' @import hexbin graphics
 ##' @method plot sim
 ##' @export
+##' @export plot.sim
 plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
                     nplot = min(100,ncol(mysim$ys)), type = c("lineplot","density", "hexagonal"), overlay=FALSE, ...){
 
@@ -225,6 +226,7 @@ forecast <- function(fit.model, ...) {
 ##' @import rlist
 ##' @param mysim Output from running an OO.sim() function.
 ##' @export
+##' @export forecast.sim
 forecast.sim = function(mysim,
                         target=c("pwk","pht","ons","dur"),
                         target.fun = NULL,
