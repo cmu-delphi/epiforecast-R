@@ -378,7 +378,7 @@ trendfilter.cv = function(x, y, k=2, cv.rule=c("min","1se"), nfolds=5,
 ##'     \code{\link{eb.createForecasts}}
 ##'
 ##' @examples
-##'   default.control.list  get_eb_control_list()
+##'   default.control.list get_eb_control_list()
 ##'   with.less.sims = get_eb_control_list(n.sims = 10000L)
 ##'   with.less.sims.another.way = get_eb_control_list(default.control.list, n.sims = 10000L)
 ##'   with.less.sims.and.sd.option.scale = get_eb_control_list(with.less.sims, sd.option="scale")
