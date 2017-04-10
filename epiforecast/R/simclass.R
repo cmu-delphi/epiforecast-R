@@ -234,8 +234,6 @@ forecast.sim = function(mysim,
                         sig.digit = 2,
                         ...){
 
-    par(mfrow=c(1,1))
-    
     pwk = function(mysim){
         return( apply(mysim$ys, 2, which.max) )
     }
@@ -270,6 +268,7 @@ forecast.sim = function(mysim,
 
     ## Plot histogram if asked
     if(plot.hist){
+        par(mfrow=c(1,1))
         ## hist(targets, axes=FALSE, main="", xlab = target)
         hist(targets, axes=FALSE, main="", xlab = target, col="skyblue") ## todo: take Ryan's original wtd.hist
         mtext(paste("Forecasts for target:", target),3,cex=2,padj=-.5)
