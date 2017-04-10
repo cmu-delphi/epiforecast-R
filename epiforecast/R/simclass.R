@@ -37,7 +37,9 @@ make_sim_ys_colors = function(weights){
 }
 
 ##' Plotting function for "sim" class
-##' @import hexbin
+##'
+##' @import hexbin graphics
+##' @method plot sim
 ##' @export
 plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
                     nplot = min(100,ncol(mysim$ys)), type = c("lineplot","density", "hexagonal"), overlay=FALSE, ...){
@@ -202,8 +204,22 @@ show.sample.trajectories = function(ys, nshow = 100){
     print(ys)
 }
 
-## Assign forecast to 'sim' class
-forecast <- function(x,...) UseMethod("forecast",x)
+##' Forecast distribution of targets such as peak height from model fits
+##'
+##' This S3 method generates forecasts of various targets (e.g., peak height of
+##' a trajectory) derived from some type of model fit. For example, the fit
+##' model could be a collection of simulations of the trajectory, and this
+##' method will calculate the desired target for each simulation and aggregate
+##' these results into a distributional forecast. Refer to the appropriate S3
+##' implementation for a given model fit for additional details.
+##' @param fit.model the fit model (trajectory forecast, simulations, regression
+##'   fit, etc.), on which to base the target forecasts
+##' @seealso \code{\link{forecast.sim}}
+##' @export
+forecast <- function(fit.model, ...) {
+  UseMethod("forecast", fit.model)
+}
+
 ##' Forecast a target (peak height, etc.) using a \code{sim} object
 ##'
 ##' @import rlist
