@@ -376,6 +376,7 @@ twkde.sim = function(## dat, new.dat.sim
                new.dat = as.numeric(unlist(new.dat.sim[["ys"]])),
                old.season.labels = list(old.season.labels),
                new.season.label = list(new.season.label))
+    class(sim) <- "sim"
     return (sim)
     }
 
