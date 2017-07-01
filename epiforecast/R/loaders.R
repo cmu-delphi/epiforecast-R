@@ -21,11 +21,13 @@
 
 
 
+##' @import tibble
+##' @import httr
+##' @import pipeR
 ##' @include utils.R
 ##' @include match.R
 ##' @include weeks.R
 ##' @include delphi_epidata.R
-##' @import httr
 NULL
 
 ##' Epiweek before which no data should exist
@@ -34,12 +36,13 @@ NULL
 ##' be from times before this.
 firstEpiweekOfUniverse = 123401L
 
-##' Augment df with year/week/season/model.week, make weekly, full seasons
+##' Augment df with epiweek/year/week/season/model.week, make weekly, full seasons
 ##'
-##' Given a df with with either (a) $year and $week, or (b) $date, fills in (if
-##' missing) $year, $week, $date, $season, and $model.week. Fills in missing
-##' weekly data from all seasons so that each season in \code{df$season} has all
-##' of its model weeks in \code{df$model.week}.  Assumes epi week convention.
+##' Given a df with with either (a) $epiweek, (b) $year and $week, or (c) $date,
+##' fills in (if missing) $epiweek, $year, $week, $date, $season, and
+##' $model.week. Fills in missing weekly data from all seasons so that each
+##' season in \code{df$season} has all of its model weeks in
+##' \code{df$model.week}. Assumes epi week convention.
 ##'
 ##' Entries in \code{data.frame} are assumed without any checks to be sorted and
 ##' weekly (potentially with some skipped weeks).
@@ -70,9 +73,14 @@ augmentWeeklyDF = function(df, first.week.of.season=NULL) {
     }
     df$year <- year
     df$week <- week
-  } else if (all(c("year","week") %in% names(df))) {
+  } else if ("epiweek" %in% names(df) || all(c("year","week") %in% names(df))) {
+    if ("epiweek" %in% names(df)) {
+      df$year <- as.integer(substr(df$epiweek, 1L, 4L))
+      df$week <- as.integer(substr(df$epiweek, 5L, 6L))
+    }
     year = as.integer(df$year)
     week = as.integer(df$week)
+    df$epiweek <- 100L*year + week
     df$year <- year
     df$week <- week
     wday = 0L
@@ -104,11 +112,13 @@ augmentWeeklyDF = function(df, first.week.of.season=NULL) {
   season.dates = DatesOfSeason(Seq(utils::head(df$season, 1L), last.season), first.week.of.season, 0L, 3L)
   new.date = do.call(base::c, season.dates) # unlist(season.dates) w/o class change
   inds = match(new.date, date)
-  df <- do.call(base::data.frame, lapply(df, `[`, inds)) # df[inds,] w/ desired NA behavior a/f
+  df <- do.call(tibble::data_frame, lapply(df, `[`, inds)) # df[inds,] w/ desired NA behavior a/f
   new.ywwd = DateToYearWeekWdayDF(new.date, 0L, 3L)
+  new.epiweek = 100L*new.ywwd$year + new.ywwd$week
   new.year = new.ywwd$year
   new.week = new.ywwd$week
   new.season.model.week = yearWeekToSeasonModelWeekDF(new.year, new.week, first.week.of.season, 3L)
+  df$epiweek <- new.epiweek
   df$year <- new.year
   df$week <- new.week
   df$season <- new.season.model.week$season
@@ -144,16 +154,13 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
     signal.ind <- match.single.nonna.integer(signal.ind)
   }
   min.points.in.season <- match.integer(min.points.in.season)
-  has.default.rownames = identical(rownames(df), as.character(seq_len(nrow(df))))
   separate = split(df, df$season) # list of df's, one per season
   separate.prev = utils::head(separate, n=-1L)
   record.counts = sapply(separate.prev, function(season.df) {
     sum(!is.na(season.df[[signal.ind]]))
   })
   included = c(separate.prev[record.counts >= min.points.in.season], utils::tail(separate, n=1L))
-  result = do.call(rbind, included)
-  if (has.default.rownames)
-    rownames(result) <- NULL # reset row names
+  result = dplyr::bind_rows(included)
   return (result)
 }
 
@@ -229,8 +236,9 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
 ##'   \code{TRUE}, then the \code{cache.invalidation.period} and a fetch will
 ##'   always be performed (the cache will not be read)
 ##'
-##' @return \code{data.frame} with \code{$date}, \code{$year}, \code{$week}, and
-##'   corresponding data (fields differ based on \code{source})
+##' @return data frame (\code{tbl_df}) with \code{$date}, \code{$year},
+##'   \code{$week}, and corresponding data (fields differ based on
+##'   \code{source})
 ##'
 ##' @examples
 ##' ## All fluview data at the national level:
@@ -302,9 +310,9 @@ fetchEpidataDF = function(source, area, lag=NULL,
 
   ## make list of lists a data.frame:
   ## df = do.call(rbind, lapply(fetch.response$epidata, as.data.frame)) # slower, doesn't handle NULL's
-  df = as.data.frame(t(sapply(fetch.response$epidata, identity)))
+  df = tibble::as_data_frame(t(sapply(fetch.response$epidata, identity)))
   ## each column remains a list, even though it's a data.frame; fix this:
-  df <- as.data.frame(lapply(df, function(col.as.list) {
+  df <- tibble::as_data_frame(lapply(df, function(col.as.list) {
     ## NULL's will be excluded when unlisted / do.call(c,.)'d; make them NA's first:
     col.as.list[sapply(col.as.list, is.null)] <- NA
     ## unlist(col.as.list) # slower
@@ -312,9 +320,6 @@ fetchEpidataDF = function(source, area, lag=NULL,
   }))
   if ("release_date" %in% names(df))
     df$release_date <- as.Date(df$release_date)
-
-  df$year = as.integer(substr(df$epiweek, 1L, 4L))
-  df$week = as.integer(substr(df$epiweek, 5L, 6L))
 
   df <- augmentWeeklyDF(df, first.week.of.season)
 
@@ -442,6 +447,172 @@ fetchEpidataFullDat = function(source,
   names(full.dat) <- sprintf("S%s", names(full.dat))
   return (full.dat)
 }
+
+##' Combine current and lagged epidata into a data frame
+##'
+##' Take the epidata data frames for the specified lags plus the current
+##' (unlagged) epidata data frame and combine them together into a single data
+##' frame (\code{tbl_df}). Duplicate the "issue" column into a helper column
+##' called "actual.issue" (used by mimicPastEpidataDF).
+##'
+##' @seealso fetchEpidataHistoryDT
+##'
+##' @export
+fetchEpidataHistoryDF = function(source, area, lags,
+                                 first.week.of.season=NULL,
+                                 first.epiweek=NULL, last.epiweek=NULL,
+                                 cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE) {
+  lag.dfs = lapply(lags, function(lag) {
+    fetchEpidataDF(source, area, lag,
+                   first.week.of.season=first.week.of.season,
+                   first.epiweek=first.epiweek, last.epiweek=last.epiweek,
+                   cache.file=paste0(cache.file.prefix,"_lag",lag,".Rdata"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
+  })
+  current.df = fetchEpidataDF(source, area, NULL,
+                   first.week.of.season=first.week.of.season,
+                   first.epiweek=first.epiweek, last.epiweek=last.epiweek,
+                   cache.file=paste0(cache.file.prefix,"_current.Rdata"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
+  history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
+    dplyr::distinct()
+  return (history.df)
+}
+
+##' Combine current and lagged epidata into a \code{data.table}
+##'
+##' Data table form of \code{\link{fetchEpidataHistoryDF}}; sets the key as
+##' \code{epiweek, issue} and adds a column \code{actual.issue} duplicating
+##' \code{issue} to be used in rolling joins used in one possible implementation
+##' of \code{\link{mimicPastEpidataDF}}.
+##'
+##' @export
+fetchEpidataHistoryDT = function(source, area, lags,
+                                 first.week.of.season=NULL,
+                                 first.epiweek=NULL, last.epiweek=NULL,
+                                 cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE) {
+  history.df = fetchEpidataHistoryDF(source, area, lags,
+                                     first.week.of.season=first.week.of.season,
+                                     first.epiweek=first.epiweek, last.epiweek=last.epiweek,
+                                     cache.file.prefix=cache.file.prefix, cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
+  history.dt = data.table::as.data.table(history.df)
+  data.table::setkey(history.dt, epiweek, issue)
+  history.dt[,actual.issue:=issue]
+  return (history.dt)
+}
+
+mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
+  history.df = tibble::as_data_frame(history.dt.or.df)
+  available.and.recorded.issues =
+    history.df %>>%
+    dplyr::select(epiweek, issue) %>>%
+    dplyr::filter(issue <= forecast.epiweek) %>>%
+    dplyr::group_by(epiweek) %>>%
+    dplyr::summarize(issue=max(issue, na.rm=TRUE)) %>>%
+    dplyr::ungroup()
+  future.fillin.for.missing.issues =
+    history.df %>>%
+    dplyr::select(epiweek, issue) %>>%
+    dplyr::filter(epiweek <= forecast.epiweek &
+                  issue > forecast.epiweek) %>>%
+    dplyr::group_by(epiweek) %>>%
+    dplyr::summarize(issue=min(issue, na.rm=TRUE)) %>>%
+    dplyr::ungroup()
+  available.and.recorded.issues %>>%
+    dplyr::bind_rows(future.fillin.for.missing.issues) %>>%
+    dplyr::group_by(epiweek) %>>%
+    dplyr::filter(issue==min(issue, na.rm=TRUE)) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange(epiweek) %>>%
+    dplyr::left_join(history.df, c("epiweek","issue")) %>>%
+    ## remove near-duplicate records (lag=NULL vs not)
+    dplyr::group_by(epiweek) %>>%
+    dplyr::filter(seq_along(epiweek)==1L) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::mutate(forecast.epiweek=forecast.epiweek) %>>%
+    augmentWeeklyDF(history.df[["week"]][1L]) %>>%
+    {.}
+}
+
+mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
+  timing.dt = unique(history.dt[epiweek <= forecast.epiweek, list(epiweek)])
+  timing.dt[,issue:=forecast.epiweek]
+  available.and.recorded = history.dt[timing.dt,,roll=Inf]
+  future.fillin.for.missing = history.dt[timing.dt,,roll=-Inf]
+  dplyr::bind_rows(tibble::as_data_frame(available.and.recorded),
+                   tibble::as_data_frame(future.fillin.for.missing)) %>>%
+    dplyr::rename(forecast.epiweek=issue) %>>%
+    dplyr::rename(issue=actual.issue) %>>%
+    dplyr::arrange(epiweek) %>>%
+    dplyr::group_by(epiweek) %>>%
+    dplyr::filter(issue==min(issue, na.rm=TRUE)) %>>%
+    ## remove near-duplicate records (lag=NULL vs not)
+    dplyr::filter(seq_along(issue)==1L) %>>%
+    dplyr::ungroup() %>>%
+    augmentWeeklyDF(history.dt[1L,week]) %>>%
+    {.}
+}
+
+##' Mimic what fetchEpidataDF would have given in the past
+##'
+##' Attempt to reproduce what fetchEpidataDF would have produced given data
+##' through issue \code{forecast.epiweek} (i.e., data through the time when the
+##' initial report for \code{forecast.epiweek} would have been available).
+##' Historical data is not always complete. Try the following in order for each
+##' observation week: (1) look for data for the report corresponding to the
+##' forecast week, (2) look for data in earlier reports (taking the latest
+##' report with data), (3) look for data in later reports (taking the earliest
+##' report with data). For example, the US National ILINet historical data
+##' (\code{source="fluview", area="nat"}) skips issue 200352; when
+##' \code{{forecast.epiweek}} is chosen as 200352, observations for
+##' \code{epiweek} 200340 through 200351 are provided by the previous issue,
+##' 200351, while the observation for \code{epiweek} 200352 uses data from the
+##' \emph{next} issue, 200353. (Observations for earlier seasons also use
+##' "future" data from issue 201352, because issue 201352 is special, filling in
+##' data for epiweeks missing from all available past issues.) Isolated skipped
+##' weeks are uncommon; usually when backfill data is missing, it is for earlier
+##' seasons, during the off-season, or at the beginning of a season; for
+##' example, in HHS Region 1 (\code{area="hhs1"}), the first recorded issue was
+##' 200949, so mimicing any reports from the 2005/2006 season will use finalized
+##' data from issue 201352 instead, and mimicing report 200940 will fill in
+##' 200940 with data from issue 200949. Similarly, data is missing from the
+##' following off-season through issue 201040, inclusive, so mimicing report
+##' 201040 will fill in off-season data with finalized data from issue 201352,
+##' and the observation for 201040 with data from issue 201041.
+##'
+##' @examples
+##'
+##' ## set up a cache directory:
+##' epidata.cache.dir = "~/.epiforecast-cache"
+##' if (!dir.exists(epidata.cache.dir)) {
+##'   dir.create(epidata.cache.dir)
+##' }
+##' ## fetch HHS Region 1 ILINet version history, assuming no significant
+##' ## revisions past lag 51:
+##' fluview.area = "hhs1"
+##' history.df = fetchEpidataHistoryDF(
+##'   "fluview", fluview.area, 0:51,
+##'   first.week.of.season = 31L,
+##'   cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_",fluview.area))
+##' )
+##' ## Simulate fetchEpidataHistoryDF when issue 201540 (the first ILINet report
+##' ## containing data for epiweek 201540) just came out:
+##' mimicPastEpidataDF(history.df, 201540L)
+##'
+##' @export
+mimicPastEpidataDF = mimicPastEpidataDF1
+
+## ## todo turn into test
+## history.dt = fetchEpidataHistoryDT("fluview", "hhs1", 0:51,
+##                            first.week.of.season = 31L,
+##                            cache.file.prefix="~/.epiforecast-cache/fluview_hhs1")
+## list(mimicPastEpidataDF1, mimicPastEpidataDF2) %>>%
+##   lapply(function(mimicPastEpidataDFn) {
+##     ## mimicPastEpidataDFn(history.dt, 201540L) %>>%
+##     mimicPastEpidataDFn(history.dt, 201040L) %>>%
+##       dplyr::arrange(-epiweek) %>>%
+##       dplyr::select(epiweek, issue, forecast.epiweek, wili)
+##   }) %>>%
+##   do.call(what=identical) %>>%
+##   {.}
 
 fit.to.oldfit = function(fit) {
   f = lapply(fit, `[[`, "f")

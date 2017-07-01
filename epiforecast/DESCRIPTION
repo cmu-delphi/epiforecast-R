@@ -20,7 +20,10 @@ Imports:
     RColorBrewer,
     data.table,
     hexbin,
-    plotrix
+    plotrix,
+    tibble,
+    dplyr,
+    pipeR
 Description: Tools for forecasting semi-regular seasonal epidemic curves and
     similar time series. Includes an empirical Bayes approach that forms a prior
     by transforming historical curves, a basis regression approach that balances
@@ -29,8 +32,8 @@ Description: Tools for forecasting semi-regular seasonal epidemic curves and
     kernel density estimation on backward differences parameterized by both the
     time series measurments and the current time.
 License: GPL-2
-RoxygenNote: 5.0.1.9000
-Collate:
+RoxygenNote: 6.0.1
+Collate: 
     'RcppExports.R'
     'match.R'
     'utils.R'
@@ -44,6 +47,7 @@ Collate:
     'interface.R'
     'eb.R'
     'holidays.R'
+    'iterators.R'
     'read.R'
     'simclass.R'
     'todo-by-file.R'

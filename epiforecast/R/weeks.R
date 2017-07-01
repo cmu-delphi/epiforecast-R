@@ -69,10 +69,10 @@ match.single.wday.w = function(wday) {
 ##'   assigned to a given year if the owning weekday of that week falls in that
 ##'   year; typically \code{first.wday} or \code{first.wday+3}
 ##'
-##' @return a data frame with three columns, \code{$year}, \code{$week}, and
-##'   \code{$wday}, corresponding to the given dates using the convention
-##'   specified by \code{first.wday} and \code{owning.wday}; each wday entry
-##'   will be \code{\%in\% 0:6}.
+##' @return a data frame (\code{tbl_df}) with three columns, \code{$year},
+##'   \code{$week}, and \code{$wday}, corresponding to the given dates using the
+##'   convention specified by \code{first.wday} and \code{owning.wday}; each
+##'   wday entry will be \code{\%in\% 0:6}.
 ##'
 ##' @export
 DateToYearWeekWdayDF = function(date, first.wday, owning.wday) {
@@ -80,7 +80,6 @@ DateToYearWeekWdayDF = function(date, first.wday, owning.wday) {
   date <- as.Date(date)
   first.wday <- match.single.wday.w(first.wday)
   owning.wday <- match.single.wday.w(owning.wday)
-  n = names(date)
 
   if (any(is.na(date))) {
     stop("NA dates are not currently supported (they at least interfere with some bug-detection checks).")
@@ -106,8 +105,7 @@ DateToYearWeekWdayDF = function(date, first.wday, owning.wday) {
   owning.year = as.integer(lubridate::year(owning.date))
   owning.week = (as.integer(lubridate::yday(owning.date))-1L) %/% 7L + 1L
 
-  result = data.frame(year=owning.year, week=owning.week, wday=input.wday)
-  rownames(result) <- n
+  result = tibble::data_frame(year=owning.year, week=owning.week, wday=input.wday)
   return (result)
 }
 
@@ -410,8 +408,8 @@ DatesOfSeason = function(season, first.week, first.wday, owning.wday) {
 ##' @param owning.wday integer-valued vector of weekday numbers: weekday that
 ##'   determines the year to which a week will be assigned
 ##'
-##' @return \code{data.frame} with two columns giving the corresponding
-##'   season-model.week breakdown:
+##' @return a data frame (\code{tbl_df}) with two columns giving the
+##'   corresponding season-model.week breakdown:
 ##'
 ##' \code{$season}: integer-class vector: season numbers
 ##'
@@ -423,7 +421,7 @@ yearWeekToSeasonModelWeekDF = function(year, week, first.week, owning.wday) {
     owning.wday <- as.integer(owning.wday)
     season = seasonOfYearWeek(year, week, first.week)
     model.week = ifelse(week >= first.week, week, lastWeekNumber(year-1L, owning.wday)+week)
-    return (data.frame(season=season, model.week=model.week))
+    return (tibble::data_frame(season=season, model.week=model.week))
 }
 
 ##' Convert year-week in a \code{data.frame} to season-model.week
