@@ -47,7 +47,6 @@ Collate:
     'interface.R'
     'eb.R'
     'holidays.R'
-    'iterators.R'
     'read.R'
     'simclass.R'
     'todo-by-file.R'

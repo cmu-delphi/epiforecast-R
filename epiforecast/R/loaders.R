@@ -452,8 +452,7 @@ fetchEpidataFullDat = function(source,
 ##'
 ##' Take the epidata data frames for the specified lags plus the current
 ##' (unlagged) epidata data frame and combine them together into a single data
-##' frame (\code{tbl_df}). Duplicate the "issue" column into a helper column
-##' called "actual.issue" (used by mimicPastEpidataDF).
+##' frame (\code{tbl_df}).
 ##'
 ##' @seealso fetchEpidataHistoryDT
 ##'
@@ -479,10 +478,10 @@ fetchEpidataHistoryDF = function(source, area, lags,
 
 ##' Combine current and lagged epidata into a \code{data.table}
 ##'
-##' Data table form of \code{\link{fetchEpidataHistoryDF}}; sets the key as
-##' \code{epiweek, issue} and adds a column \code{actual.issue} duplicating
-##' \code{issue} to be used in rolling joins used in one possible implementation
-##' of \code{\link{mimicPastEpidataDF}}.
+##' Data table form of \code{\link{fetchEpidataHistoryDF}}; sets the keys as
+##' \code{epiweek} and \code{issue} and adds a column \code{actual.issue}
+##' duplicating \code{issue}, to be used in rolling joins used in one possible
+##' implementation of \code{\link{mimicPastEpidataDF}}.
 ##'
 ##' @export
 fetchEpidataHistoryDT = function(source, area, lags,
@@ -560,23 +559,23 @@ mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
 ##' observation week: (1) look for data for the report corresponding to the
 ##' forecast week, (2) look for data in earlier reports (taking the latest
 ##' report with data), (3) look for data in later reports (taking the earliest
-##' report with data). For example, the US National ILINet historical data
-##' (\code{source="fluview", area="nat"}) skips issue 200352; when
-##' \code{{forecast.epiweek}} is chosen as 200352, observations for
-##' \code{epiweek} 200340 through 200351 are provided by the previous issue,
-##' 200351, while the observation for \code{epiweek} 200352 uses data from the
-##' \emph{next} issue, 200353. (Observations for earlier seasons also use
-##' "future" data from issue 201352, because issue 201352 is special, filling in
-##' data for epiweeks missing from all available past issues.) Isolated skipped
-##' weeks are uncommon; usually when backfill data is missing, it is for earlier
-##' seasons, during the off-season, or at the beginning of a season; for
-##' example, in HHS Region 1 (\code{area="hhs1"}), the first recorded issue was
-##' 200949, so mimicing any reports from the 2005/2006 season will use finalized
-##' data from issue 201352 instead, and mimicing report 200940 will fill in
-##' 200940 with data from issue 200949. Similarly, data is missing from the
-##' following off-season through issue 201040, inclusive, so mimicing report
-##' 201040 will fill in off-season data with finalized data from issue 201352,
-##' and the observation for 201040 with data from issue 201041.
+##' report with data). For example, the ILINet (\code{source="fluview"}) US
+##' National (\code{area="nat"}) historical data skips issue 200352; when
+##' \code{forecast.epiweek} is chosen as 200352, observations for \code{epiweek}
+##' 200340 through 200351 are provided by the previous issue, 200351, while the
+##' observation for \code{epiweek} 200352 uses data from the \emph{next} issue,
+##' 200353. (Observations for earlier seasons also use "future" data from issue
+##' 201352, because issue 201352 is special, filling in data for epiweeks
+##' missing from all available past issues.) Isolated skipped weeks are
+##' uncommon; usually when backfill data is missing, it is for earlier seasons,
+##' during the off-season, or at the beginning of a season; for example, in HHS
+##' Region 1 (\code{area="hhs1"}), the first recorded issue was 200949, so
+##' mimicing any reports from the 2005/2006 season will use finalized data from
+##' issue 201352 instead, and mimicing report 200940 will fill in 200940 with
+##' data from issue 200949. Similarly, data is missing from the following
+##' off-season through issue 201040, inclusive, so mimicing report 201040 will
+##' fill in off-season data with finalized data from issue 201352, and the
+##' observation for 201040 with data from issue 201041.
 ##'
 ##' @examples
 ##'
