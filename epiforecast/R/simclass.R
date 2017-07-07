@@ -228,42 +228,35 @@ forecast <- function(fit.model, ...) {
 ##' @export
 ##' @export forecast.sim
 forecast.sim = function(mysim,
-                        target=c("pwk","pht","ons","dur"),
-                        target.fun = NULL,
+                        target = c("pwk","pht","ons","dur"),
+                        target.name = target,
+                        target.fun = target,
+                        target.calculation.digits = Inf,
                         hist.bins = NULL,
                         plot.hist = FALSE,
                         add.to.plot = FALSE,
-                        sig.digit = 2,
+                        sig.digit = 2L,
                         ...){
 
-    pwk = function(mysim){
-        return( apply(mysim$ys, 2, which.max) )
+    if (missing(target) && (missing(target.name) || missing(target.fun))) {
+      stop("Must supply either (a) =target= (consider 'pwk', 'pht', 'ons', and 'dur'), or (b) =target.name= AND =target.fun=.")
     }
 
-    pht = function(mysim){
-        return( apply(mysim$ys, 2, max) )
-    }
-
-    if(length(target)>1) stop("must supply a target quantity! pwk, pht, ons, dur.")
-
-    if(target == "pwk") targets = pwk(mysim)
-    if(target == "pht") targets = pht(mysim)
-    if(target == "ons") stop("onset not written yet") 
-    if(target == "dur") stop("duration not written yet")
-
+    target.fun <- match.fun(target.fun)
+    targets = apply(round(mysim[["ys"]], target.calculation.digits), 2L, target.fun, ...)
 
     ## Compute mean, median, two-sided 90% quantiles
-    estimates = list(quantile = quantile(targets,c(0.05,0.95)),
-                     quartile = quantile(targets,c(0.25,0.5,0.75)),
-                     decile   = quantile(targets,1:9/10),
+    estimates = list(quantile = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], c(0.05,0.95)),
+                     quartile = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], c(0.25,0.5,0.75)),
+                     decile   = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], 1:9/10),
                      mean = mean(targets),
                      median = median(targets))
 
     ## Print a bunch of things
-    cat("Summary for", target, ":",fill=TRUE)
+    cat("Summary for", target.name, ":",fill=TRUE)
     cat("====================", fill=TRUE)
-    cat("The mean of", target, "is", round(estimates$mean,sig.digit), fill=TRUE)
-    cat("The median of", target, "is", round(estimates$median,sig.digit), fill=TRUE)
+    cat("The mean of", target.name, "is", round(estimates$mean,sig.digit), fill=TRUE)
+    cat("The median of", target.name, "is", round(estimates$median,sig.digit), fill=TRUE)
     cat("And the 0.05, 0.95 quantiles are", round(estimates$quantile,sig.digit), fill=TRUE)
     cat("And the quartiles are", round(estimates$quartile,sig.digit), fill=TRUE)
     cat("And the deciles are", round(estimates$decile,sig.digit), fill=TRUE)
@@ -272,7 +265,7 @@ forecast.sim = function(mysim,
     if(plot.hist){
         par(mfrow=c(1,1))
         ## hist(targets, axes=FALSE, main="", xlab = target)
-        hist(targets, axes=FALSE, main="", xlab = target, col="skyblue") ## todo: take Ryan's original wtd.hist
+        weights::wtd.hist(targets, axes=FALSE, main="", xlab = target, col="skyblue") ## todo: take Ryan's original wtd.hist
         mtext(paste("Forecasts for target:", target),3,cex=2,padj=-.5)
         axis(1); axis(2);
         abline(v=estimates$mean, col = 'red', lwd=3)
@@ -286,10 +279,78 @@ forecast.sim = function(mysim,
 
 
     ## Return a list of things
-    settings = list.remove(unclass(mysim),c("ys","weights"))
+    settings = list.remove(unclass(mysim), c("ys","weights"))
     return(list(settings = settings,
-                target=list(pwk = targets),
+                target=stats::setNames(list(targets), target.name),
                 estimates=estimates))
+}
+
+##' Calculate the (first) peak week in a vector of weekly observations
+##'
+##' @param trajectory a vector of weekly observations
+##' @param ... ignored
+##' @return a single integer containing the index of the first non-\code{NA} element \code{>=} all non-\code{NA} elements
+##'
+##' @export
+pwk = function(trajectory, ...){
+  return (which.max(trajectory))
+}
+
+##' Calculate the peak height of a trajectory
+##'
+##' @param trajectory a vector
+##' @param ... ignored
+##' @return a scalar --- the maximum value of the vector
+##'
+##' @export
+pht = function(trajectory, ...){
+  return (max(trajectory))
+}
+
+##' Calculate the onset of a trajectory
+##'
+##' @param trajectory a vector
+##' @param baseline the onset threshold
+##' @param is.inseason logical vector length-compatible with \code{trajectory},
+##'   acting as a mask on possible output values
+##' @param ... ignored
+##' @return the first index which is part of the in-season and is part of a run
+##'   of consecutive observations above the onset threshold that lasts at least
+##'   for two additional indices
+##'
+##' @export
+ons = function(trajectory, baseline, is.inseason, ...) {
+  above.baseline = trajectory >= baseline
+  next.three.above.baseline =
+      above.baseline &
+      dplyr::lead(above.baseline, 1L) &
+      dplyr::lead(above.baseline, 2L)
+  return (which(is.inseason & next.three.above.baseline)[1L])
+}
+
+##' Calculate the onset of a trajectory
+##'
+##' @param trajectory a vector
+##' @param baseline the onset threshold
+##' @param is.inseason logical vector length-compatible with \code{trajectory},
+##'   acting as a mask on possible output values
+##' @param ... ignored
+##' @return a single non-\code{NA} integer: the number of indices which are part
+##'   of the in-season and part of a run of at least three consecutive
+##'   observations above the onset threshold
+##'
+##' @export
+dur = function(trajectory, baseline, is.inseason, ...) {
+  above.baseline = trajectory >= baseline
+  next.three.above.baseline =
+    above.baseline &
+    dplyr::lead(above.baseline, 1L) &
+    dplyr::lead(above.baseline, 2L)
+  part.of.run =
+    (next.three.above.baseline |
+     dplyr::lag(next.three.above.baseline, 1L) |
+     dplyr::lag(next.three.above.baseline, 2L))
+  return (sum(is.inseason & part.of.run, na.rm=TRUE))
 }
 
 ## ##' constructor should take in the bare minimum to create forecasts
