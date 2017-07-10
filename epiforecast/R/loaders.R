@@ -164,6 +164,63 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
   return (result)
 }
 
+##' Fetch or read cache of a resource that potentially updates over time
+##'
+##' @param fetch.thunk.fun a function that takes no arguments that, when called,
+##'   attempts to fetch the desired resource and returns the response
+##' @param check.response.fun a function that takes a fetch response as input
+##'   and either (a) stops if the response indicates an unsuccessful fetch or
+##'   (b) returns nothing; this prevents invalid fetch responses from being
+##'   saved to the cache.
+##' @param cache.file \code{NULL} to disable caching or a length-1
+##'   \code{character} containing the path to a \code{.rds} file (existing or to
+##'   be created) to use to cache the response
+##' @param cache.invalidation.period length-1 \code{difftime}; the minimum
+##'   amount of time that must pass between the last cache update and a call to
+##'   this function for \code{fetch.thunk.fun} to be called again rather than
+##'   using the cache result (unless \code{force.cache.invalidation=TRUE})
+##' @param force.cache.invalidation \code{TRUE} to force a cache update, even if
+##'   the cache invalidation period has not passed; otherwise \code{FALSE}
+##'
+##' @export
+fetchUpdatingResource = function(fetch.thunk.fun,
+                                 check.response.fun,
+                                 cache.file=NULL,
+                                 cache.invalidation.period=as.difftime(1L, units="days"),
+                                 force.cache.invalidation=FALSE) {
+  should.fetch.now =
+    if (is.null(cache.file)) { TRUE
+    } else if (force.cache.invalidation) { TRUE
+    } else if (!file.exists(cache.file)) { TRUE
+    } else {
+      fetch.info = readRDS(cache.file) # ==> fetch.info
+      should.refetch = difftime(Sys.time(), fetch.info$fetch.time) > cache.invalidation.period
+      should.refetch
+    }
+
+  if (should.fetch.now) {
+    message("No cache, empty cache, expired cache, or forced cache invalidation; fetching data from server.")
+    ## todo prompt for confirmation on fetch/refetch
+    ## todo option to read from cache without considering refetch
+    fetch.response <- fetch.thunk.fun()
+    fetch.time <- Sys.time()
+  } else {
+    message("Cached version of data used.")
+    fetch.response = fetch.info$fetch.response
+    fetch.time = fetch.info$fetch.time
+  }
+
+  check.response.fun(fetch.response)
+
+  if (!is.null(cache.file) && should.fetch.now) {
+    ## Update cache:
+    fetch.info = list(fetch.response=fetch.response, fetch.time=fetch.time)
+    saveRDS(fetch.info, cache.file)
+  }
+
+  return (fetch.response)
+}
+
 ##' Fetch & cache \href{https://github.com/undefx/delphi-epidata}{delphi-epidata} data, convert it to a \code{data.frame}
 ##'
 ##' @param source length-1 character vector; name of data source; one of
@@ -267,52 +324,28 @@ fetchEpidataDF = function(source, area, lag=NULL,
   if (is.null(first.epiweek)) first.epiweek <- firstEpiweekOfUniverse
   if (is.null(last.epiweek)) last.epiweek <- as.integer(format(Sys.Date(),"%Y53"))
 
-  should.fetch.now =
-    if (is.null(cache.file)) { TRUE
-    } else if (force.cache.invalidation) { TRUE
-    } else if (!file.exists(cache.file)) { TRUE
-    } else {
-      fetch.info = readRDS(cache.file) # ==> fetch.info
-      should.refetch =
-        difftime(Sys.time(), fetch.info$fetch.time) > cache.invalidation.period ||
-        ## !(fetch.info$fetch.response$result==1 && fetch.info$fetch.response$message=="success") ||
-        first.epiweek != fetch.info$first.epiweek || last.epiweek != fetch.info$last.epiweek
-      ## print(difftime(Sys.time(), file.info(cache.file)$mtime))
-      ## should.refetch = difftime(Sys.time(), file.info(cache.file)$mtime) > cache.invalidation.period
-      should.refetch
-    }
+  fetch.response = fetchUpdatingResource(
+    function() {
+      if (is.null(lag)) {
+        fetch.response = Epidata[[source]](area, Epidata$range(first.epiweek, last.epiweek))
+      } else {
+        fetch.response = Epidata[[source]](area, Epidata$range(first.epiweek, last.epiweek), lag=lag)
+      }
+    },
+    function(fetch.response) {
+      if (!(fetch.response$result==1L && fetch.response$message=="success")) {
+        stop(sprintf('Failed to read data; result=%d, message="%s".', fetch.response$result, fetch.response$message))
+      }
+    },
+    cache.file=cache.file,
+    cache.invalidation.period=cache.invalidation.period
+  )
 
-  if (should.fetch.now) {
-    message("No cache, empty cache, expired cache, or forced cache invalidation; fetching data from server.")
-    ## todo prompt for confirmation on fetch/refetch
-    ## todo option to read from cache without considering refetch
-    if (is.null(lag)) {
-      fetch.response = Epidata[[source]](area, Epidata$range(first.epiweek, last.epiweek))
-    } else {
-      fetch.response = Epidata[[source]](area, Epidata$range(first.epiweek, last.epiweek), lag=lag)
-    }
-    fetch.time = Sys.time()
-  } else {
-    message("Cached version of data used.")
-    fetch.response = fetch.info$fetch.response
-    fetch.time = fetch.info$fetch.response
-  }
-
-  if (!(fetch.response$result==1 && fetch.response$message=="success"))
-    stop(sprintf('Failed to read data; result=%d, message="%s".', fetch.response$result, fetch.response$message))
-
-  if (!is.null(cache.file) && should.fetch.now) {
-    ## Update cache:
-    fetch.info = list(fetch.time=fetch.time, fetch.response=fetch.response,
-                      first.epiweek=first.epiweek, last.epiweek=last.epiweek)
-    saveRDS(fetch.info, cache.file)
-  }
-
-  ## make list of lists a data.frame:
+  ## Convert list of lists to a tibble:
   ## df = do.call(rbind, lapply(fetch.response$epidata, as.data.frame)) # slower, doesn't handle NULL's
-  df = tibble::as_data_frame(t(sapply(fetch.response$epidata, identity)))
+  df = tibble::as_tibble(t(sapply(fetch.response$epidata, identity)))
   ## each column remains a list, even though it's a data.frame; fix this:
-  df <- tibble::as_data_frame(lapply(df, function(col.as.list) {
+  df <- tibble::as_tibble(lapply(df, function(col.as.list) {
     ## NULL's will be excluded when unlisted / do.call(c,.)'d; make them NA's first:
     col.as.list[sapply(col.as.list, is.null)] <- NA
     ## unlist(col.as.list) # slower
