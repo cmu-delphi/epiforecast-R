@@ -564,7 +564,7 @@ mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
     dplyr::arrange(epiweek) %>>%
     dplyr::left_join(history.df, c("epiweek","issue")) %>>%
     augmentWeeklyDF(history.df[["week"]][1L]) %>>%
-    {.}
+    return()
 }
 
 mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
@@ -584,7 +584,7 @@ mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
     dplyr::ungroup() %>>%
     augmentWeeklyDF(history.dt[1L,week]) %>>%
     dplyr::select(-forecast.epiweek) %>>%
-    {.}
+    return()
 }
 
 ##' Mimic what \code{\link{fetchEpidataDF}} would have given in the past
