@@ -344,7 +344,8 @@ fetchEpidataDF = function(source, area, lag=NULL,
       }
     },
     cache.file.prefix=cache.file.prefix,
-    cache.invalidation.period=cache.invalidation.period
+    cache.invalidation.period=cache.invalidation.period,
+    force.cache.invalidation=force.cache.invalidation
   )
 
   ## Convert list of lists to a tibble:
