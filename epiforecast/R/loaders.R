@@ -587,7 +587,7 @@ mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
     {.}
 }
 
-##' Mimic what fetchEpidataDF would have given in the past
+##' Mimic what \code{\link{fetchEpidataDF}} would have given in the past
 ##'
 ##' Attempt to reproduce what fetchEpidataDF would have produced given data
 ##' through issue \code{forecast.epiweek} (i.e., data through the time when the
