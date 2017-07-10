@@ -552,21 +552,17 @@ mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
     history.df %>>%
     dplyr::select(epiweek, issue) %>>%
     dplyr::filter(epiweek <= forecast.epiweek &
-                  issue > forecast.epiweek) %>>%
+                  (issue > forecast.epiweek | is.na(issue))) %>>%
     dplyr::group_by(epiweek) %>>%
     dplyr::summarize(issue=min(issue, na.rm=TRUE)) %>>%
     dplyr::ungroup()
   available.and.recorded.issues %>>%
     dplyr::bind_rows(future.fillin.for.missing.issues) %>>%
     dplyr::group_by(epiweek) %>>%
-    dplyr::filter(issue==min(issue, na.rm=TRUE)) %>>%
+    dplyr::summarize(issue=min(issue, na.rm=TRUE)) %>>%
     dplyr::ungroup() %>>%
     dplyr::arrange(epiweek) %>>%
     dplyr::left_join(history.df, c("epiweek","issue")) %>>%
-    ## remove near-duplicate records (lag=NULL vs not)
-    dplyr::group_by(epiweek) %>>%
-    dplyr::filter(seq_along(epiweek)==1L) %>>%
-    dplyr::ungroup() %>>%
     dplyr::mutate(forecast.epiweek=forecast.epiweek) %>>%
     augmentWeeklyDF(history.df[["week"]][1L]) %>>%
     {.}
