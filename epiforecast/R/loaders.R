@@ -227,8 +227,9 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
 ##' @param last.epiweek year-epiweek as string in form \code{"YYYYww"}
 ##'   specifying an upper limit on times for which data will be fetched, or
 ##'   \code{NULL} to not impose an upper limit
-##' @param cache.file single string; file path of Rdata file to create to cache
-##'   the data from the delphi-epidata server, or \code{NULL} to not cache
+##' @param cache.prefix length-1 \code{character}; file path of \code{.rds} file to
+##'   create to cache the data from the delphi-epidata server, or \code{NULL} to
+##'   not cache
 ##' @param cache.invalidation.period single \code{difftime}: time duration that
 ##'   must pass from last fetch for a new fetch to be performed instead of
 ##'   reading from the cache; default is one day
@@ -245,7 +246,7 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
 ##' fluview.nat.all.df =
 ##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
 ##'                           first.week.of.season=21L,
-##'                           cache.file="fluview_nat_allfetch.Rdata"),
+##'                           cache.file="fluview_nat_allfetch.rds"),
 ##'            "wili", min.points.in.season=33L)
 ##' ## Fluview data at the national level for more recent seasons for which data
 ##' ## was reported for all weeks (not just those in the influenza season), plus
@@ -253,7 +254,7 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
 ##' fluview.nat.recent.df =
 ##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
 ##'                           first.week.of.season=21L,
-##'                           cache.file="fluview_nat_allfetch.Rdata"),
+##'                           cache.file="fluview_nat_allfetch.rds"),
 ##'            "wili", min.points.in.season=52L)
 ##' @export
 fetchEpidataDF = function(source, area, lag=NULL,
@@ -271,7 +272,7 @@ fetchEpidataDF = function(source, area, lag=NULL,
     } else if (force.cache.invalidation) { TRUE
     } else if (!file.exists(cache.file)) { TRUE
     } else {
-      load(cache.file) # ==> fetch.info
+      fetch.info = readRDS(cache.file) # ==> fetch.info
       should.refetch =
         difftime(Sys.time(), fetch.info$fetch.time) > cache.invalidation.period ||
         ## !(fetch.info$fetch.response$result==1 && fetch.info$fetch.response$message=="success") ||
@@ -293,19 +294,18 @@ fetchEpidataDF = function(source, area, lag=NULL,
     fetch.time = Sys.time()
   } else {
     message("Cached version of data used.")
-    ## load(cache.file) # ==> fetch.info
     fetch.response = fetch.info$fetch.response
     fetch.time = fetch.info$fetch.response
   }
 
   if (!(fetch.response$result==1 && fetch.response$message=="success"))
-    stop(sprintf('Failed to load data; result=%d, message="%s".', fetch.response$result, fetch.response$message))
+    stop(sprintf('Failed to read data; result=%d, message="%s".', fetch.response$result, fetch.response$message))
 
   if (!is.null(cache.file) && should.fetch.now) {
     ## Update cache:
     fetch.info = list(fetch.time=fetch.time, fetch.response=fetch.response,
                       first.epiweek=first.epiweek, last.epiweek=last.epiweek)
-    save(fetch.info, file=cache.file)
+    saveRDS(fetch.info, cache.file)
   }
 
   ## make list of lists a data.frame:
@@ -398,8 +398,8 @@ fetchEpidataDF = function(source, area, lag=NULL,
 ##' @param last.epiweek year-epiweek as string in form \code{"YYYYww"}
 ##'   specifying an upper limit on times for which data will be fetched, or
 ##'   \code{NULL} to not impose an upper limit
-##' @param cache.file single string; file path of Rdata file to create to cache
-##'   the data from the delphi-epidata server, or \code{NULL} to not cache
+##' @param cache.file single string; file path of \code{.rds} file to create to
+##'   cache the data from the delphi-epidata server, or \code{NULL} to not cache
 ##' @param cache.invalidation.period single \code{difftime}: time duration that
 ##'   must pass from last fetch for a new fetch to be performed instead of
 ##'   reading from the cache; default is one day
@@ -417,13 +417,13 @@ fetchEpidataDF = function(source, area, lag=NULL,
 ##' ## All fluview data at the national level:
 ##' fluview.nat.all.full.dat =
 ##'   fetchEpidataFullDat("fluview", "nat", "wili", 33L, first.week.of.season=21L,
-##'                       cache.file="fluview_nat_allfetch.Rdata")
+##'                       cache.file="fluview_nat_allfetch.rds")
 ##' ## Fluview data at the national level for more recent seasons for which data was
 ##' ## reported for all weeks (not just those in the influenza season), plus the
 ##' ## current season:
 ##' fluview.nat.recent.full.dat =
 ##'   fetchEpidataFullDat("fluview", "nat", "wili", 52L, first.week.of.season=21L,
-##'                       cache.file="fluview_nat_allfetch.Rdata")
+##'                       cache.file="fluview_nat_allfetch.rds")
 ##'
 ##' @export
 fetchEpidataFullDat = function(source,
@@ -465,12 +465,12 @@ fetchEpidataHistoryDF = function(source, area, lags,
     fetchEpidataDF(source, area, lag,
                    first.week.of.season=first.week.of.season,
                    first.epiweek=first.epiweek, last.epiweek=last.epiweek,
-                   cache.file=paste0(cache.file.prefix,"_lag",lag,".Rdata"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
+                   cache.file=paste0(cache.file.prefix,"_lag",lag,".rds"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
   })
   current.df = fetchEpidataDF(source, area, NULL,
                    first.week.of.season=first.week.of.season,
                    first.epiweek=first.epiweek, last.epiweek=last.epiweek,
-                   cache.file=paste0(cache.file.prefix,"_current.Rdata"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
+                   cache.file=paste0(cache.file.prefix,"_current.rds"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
   history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
     dplyr::distinct()
   return (history.df)

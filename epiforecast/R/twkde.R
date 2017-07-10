@@ -80,7 +80,7 @@ bw.SJnrd0 = function(x) {
 ##' fluview.nat.recent.df =
 ##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
 ##'                           first.week.of.season=21L,
-##'                           cache.file="fluview_nat_allfetch.Rdata"),
+##'                           cache.file="fluview_nat_allfetch.rds"),
 ##'            "wili", min.points.in.season=52L)
 ##' ## Recent historical seasons + current season, minus 2009 (nonseasonal
 ##' ## pandemic) season:
@@ -212,7 +212,7 @@ twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, n.sims=2000)
 ##' fluview.nat.recent.df =
 ##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
 ##'                           first.week.of.season=21L,
-##'                           cache.file="fluview_nat_allfetch.Rdata"),
+##'                           cache.file="fluview_nat_allfetch.rds"),
 ##'            "wili", min.points.in.season=52L)
 ##' ## Recent historical seasons + current season, minus 2009 (nonseasonal
 ##' ## pandemic) season:

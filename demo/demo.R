@@ -26,7 +26,7 @@ area.name = "hhs1"
 hhs1.dat = fetchEpidataFullDat("fluview", area.name, "wili",
                                min.points.in.season=52L,
                                first.week.of.season = 21L,
-                               cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
+                               cache.file=sprintf("fluview_%s_fetch.rds", area.name))
 
 ## Create a csv in the correct, desirable format
 filename="./correct.csv"
