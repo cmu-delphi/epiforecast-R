@@ -206,7 +206,7 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' fluview.nat.recent.df =
 ##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
 ##'                           first.week.of.season=21L,
-##'                           cache.file="fluview_nat_allfetch.rds"),
+##'                           cache.file.prefix="fluview_nat_allfetch"),
 ##'            "wili", min.points.in.season=52L)
 ##' ## Recent historical seasons + current season, minus 2009 (nonseasonal
 ##' ## pandemic) season:
