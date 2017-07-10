@@ -30,7 +30,7 @@ Description: Tools for forecasting semi-regular seasonal epidemic curves and
     matching observations from the current season and matching historical
     seasons' measurements for future weeks, and timestep-by-timestep weighted
     kernel density estimation on backward differences parameterized by both the
-    time series measurments and the current time.
+    time series measurements and the current time.
 License: GPL-2
 RoxygenNote: 6.0.1
 Collate: 
