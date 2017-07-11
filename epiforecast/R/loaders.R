@@ -615,7 +615,7 @@ mimicPastEpidataDF1 = function(epidata.history.dt.or.df, forecast.epiweek) {
   mimicPastDF1(epidata.history.dt.or.df,
                "issue", forecast.epiweek,
                "epiweek", forecast.epiweek) %>>%
-    augmentWeeklyDF(epidata.history.dt.or.df[["week"]][1L]) %>>%
+    augmentWeeklyDF(epidata.history.dt.or.df[["week"]][[1L]]) %>>%
     return()
 }
 
@@ -634,7 +634,7 @@ mimicPastEpidataDF2 = function(epidata.history.dt, forecast.epiweek) {
     ## remove near-duplicate records (lag=NULL vs not)
     dplyr::filter(seq_along(issue)==1L) %>>%
     dplyr::ungroup() %>>%
-    augmentWeeklyDF(epidata.history.dt[1L,week]) %>>%
+    augmentWeeklyDF(epidata.history.dt[,week][[1L]]) %>>%
     dplyr::select(-forecast.epiweek) %>>%
     return()
 }

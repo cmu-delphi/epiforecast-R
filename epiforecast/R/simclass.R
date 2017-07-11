@@ -325,7 +325,7 @@ ons = function(trajectory, baseline, is.inseason, ...) {
       above.baseline &
       dplyr::lead(above.baseline, 1L) &
       dplyr::lead(above.baseline, 2L)
-  return (which(is.inseason & next.three.above.baseline)[1L])
+  return (which(is.inseason & next.three.above.baseline)[1L][[1L]])
 }
 
 ##' Calculate the onset of a trajectory
