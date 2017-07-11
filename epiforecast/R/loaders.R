@@ -539,6 +539,17 @@ fetchEpidataHistoryDT = function(source, area, lags,
   return (history.dt)
 }
 
+min_NA_highest = function(x) {
+  if (all(is.na(x))) {
+    ## length-0: x[1L] should give NA of appropriate type
+    ## otherwise: x[1L] should still give NA of appropriate type
+    x[1L]
+  } else {
+    ## try to avoid dplyr replacement min (changes type sometimes)
+    base::min(x, na.rm=TRUE)
+  }
+}
+
 mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
   history.df = tibble::as_data_frame(history.dt.or.df)
   available.and.recorded.issues =
@@ -546,7 +557,8 @@ mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
     dplyr::select(epiweek, issue) %>>%
     dplyr::filter(issue <= forecast.epiweek) %>>%
     dplyr::group_by(epiweek) %>>%
-    dplyr::summarize(issue=max(issue, na.rm=TRUE)) %>>%
+    ## try to avoid dplyr replacement max (changes type sometimes)
+    dplyr::summarize(issue=base::max(issue)) %>>%
     dplyr::ungroup()
   future.fillin.for.missing.issues =
     history.df %>>%
@@ -554,12 +566,12 @@ mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
     dplyr::filter(epiweek <= forecast.epiweek &
                   (issue > forecast.epiweek | is.na(issue))) %>>%
     dplyr::group_by(epiweek) %>>%
-    dplyr::summarize(issue=min(issue, na.rm=TRUE)) %>>%
+    dplyr::summarize(issue=min_NA_highest(issue)) %>>%
     dplyr::ungroup()
   available.and.recorded.issues %>>%
     dplyr::bind_rows(future.fillin.for.missing.issues) %>>%
     dplyr::group_by(epiweek) %>>%
-    dplyr::summarize(issue=min(issue, na.rm=TRUE)) %>>%
+    dplyr::summarize(issue=min_NA_highest(issue)) %>>%
     dplyr::ungroup() %>>%
     dplyr::arrange(epiweek) %>>%
     dplyr::left_join(history.df, c("epiweek","issue")) %>>%
