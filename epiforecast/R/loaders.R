@@ -543,47 +543,87 @@ min_NA_highest = function(x) {
   if (all(is.na(x))) {
     ## length-0: x[1L] should give NA of appropriate type
     ## otherwise: x[1L] should still give NA of appropriate type
-    x[1L]
+    ## [[1L]]: express intent of taking a single element
+    x[1L][[1L]]
   } else {
     ## try to avoid dplyr replacement min (changes type sometimes)
     base::min(x, na.rm=TRUE)
   }
 }
 
-mimicPastEpidataDF1 = function(history.dt.or.df, forecast.epiweek) {
+mimicPastDF1 = function(history.dt.or.df,
+                        issue.colname, mimicked.issue,
+                        time.index.colnames=character(0), time.index.limits=list(),
+                        nontime.index.colnames=character(0)) {
   history.df = tibble::as_data_frame(history.dt.or.df)
-  available.and.recorded.issues =
+  for (time.index.i in seq_along(time.index.colnames)) {
+    time.index.colname.i = time.index.colnames[[time.index.i]]
+    time.index.limit.i = time.index.limits[[time.index.i]]
+    history.df <- history.df %>>%
+      dplyr::filter(.[[time.index.colname.i]] <= time.index.limit.i)
+  }
+  group.colnames = c(nontime.index.colnames, time.index.colnames)
+  available.issues =
     history.df %>>%
-    dplyr::select(epiweek, issue) %>>%
-    dplyr::filter(issue <= forecast.epiweek) %>>%
-    dplyr::group_by(epiweek) %>>%
+    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
+    dplyr::filter(.[[issue.colname]] <= mimicked.issue) %>>%
+    dplyr::group_by_(.dots=group.colnames) %>>%
     ## try to avoid dplyr replacement max (changes type sometimes)
-    dplyr::summarize(issue=base::max(issue)) %>>%
+    dplyr::summarize_at(issue.colname, base::max) %>>%
     dplyr::ungroup()
   future.fillin.for.missing.issues =
     history.df %>>%
-    dplyr::select(epiweek, issue) %>>%
-    dplyr::filter(epiweek <= forecast.epiweek &
-                  (issue > forecast.epiweek | is.na(issue))) %>>%
-    dplyr::group_by(epiweek) %>>%
-    dplyr::summarize(issue=min_NA_highest(issue)) %>>%
+    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
+    dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
+    dplyr::group_by_(.dots=group.colnames) %>>%
+    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
     dplyr::ungroup()
-  available.and.recorded.issues %>>%
+  available.issues %>>%
     dplyr::bind_rows(future.fillin.for.missing.issues) %>>%
-    dplyr::group_by(epiweek) %>>%
-    dplyr::summarize(issue=min_NA_highest(issue)) %>>%
+    dplyr::group_by_(.dots=group.colnames) %>>%
+    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
     dplyr::ungroup() %>>%
-    dplyr::arrange(epiweek) %>>%
-    dplyr::left_join(history.df, c("epiweek","issue")) %>>%
-    augmentWeeklyDF(history.df[["week"]][1L]) %>>%
+    ## dplyr::arrange_(.dots=group.colnames) %>>%
+    dplyr::left_join(history.df, c(group.colnames, issue.colname)) %>>%
     return()
 }
 
-mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
-  timing.dt = unique(history.dt[epiweek <= forecast.epiweek, list(epiweek)])
+##' Mimic a past version of a dataset using (partial) history data
+##'
+##' Given some potentially partial data about past issues, given by labeling and
+##' rbinding together (available sections of available) past issues, mimic what
+##' a particular past issue would have looked like. (NA issues are treated as
+##' larger than any non-NA issue.)
+##'
+##' @param history.dt.or.df rbound partial past issues
+##' @param issue.colname name of the column containing issue( label)s, which
+##'   should have some ordering
+##' @param mimicked.issue length-1; (label of ) issue to mimic
+##' @param time.index.colnames character vector of colnames containing time
+##'   indices for observations (should not include issue.colname); used for both
+##'   filtering and grouping some data
+##' @param time.index.limits list with length matching that of
+##'   \code{time.index.colnames}; data with time indices above the corresponding
+##'   limits is filtered out this \code{time.index.limit}
+##' @param additional.group.colnames character vector; names of columns
+##'   containing any non-time-related observation indices (e.g., locations)
+##'
+##' @export
+mimicPastDF = mimicPastDF1
+
+mimicPastEpidataDF1 = function(epidata.history.dt.or.df, forecast.epiweek) {
+  mimicPastDF1(epidata.history.dt.or.df,
+               "issue", forecast.epiweek,
+               "epiweek", forecast.epiweek) %>>%
+    augmentWeeklyDF(epidata.history.dt.or.df[["week"]][1L]) %>>%
+    return()
+}
+
+mimicPastEpidataDF2 = function(epidata.history.dt, forecast.epiweek) {
+  timing.dt = unique(epidata.history.dt[epiweek <= forecast.epiweek, list(epiweek)])
   timing.dt[,issue:=forecast.epiweek]
-  available.and.recorded = history.dt[timing.dt,,roll=Inf]
-  future.fillin.for.missing = history.dt[timing.dt,,roll=-Inf]
+  available.and.recorded = epidata.history.dt[timing.dt,,roll=Inf]
+  future.fillin.for.missing = epidata.history.dt[timing.dt,,roll=-Inf]
   dplyr::bind_rows(tibble::as_data_frame(available.and.recorded),
                    tibble::as_data_frame(future.fillin.for.missing)) %>>%
     dplyr::rename(forecast.epiweek=issue) %>>%
@@ -594,7 +634,7 @@ mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
     ## remove near-duplicate records (lag=NULL vs not)
     dplyr::filter(seq_along(issue)==1L) %>>%
     dplyr::ungroup() %>>%
-    augmentWeeklyDF(history.dt[1L,week]) %>>%
+    augmentWeeklyDF(epidata.history.dt[1L,week]) %>>%
     dplyr::select(-forecast.epiweek) %>>%
     return()
 }
@@ -626,6 +666,11 @@ mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
 ##' fill in off-season data with finalized data from issue 201352, and the
 ##' observation for 201040 with data from issue 201041.
 ##'
+##' @param epidata.history.dt.or.df output of
+##'   \code{\link{fetchEpidataHistoryDF}} or \code{\link{fetchEpidataHistoryDT}}
+##' @param forecast.epiweek length-1 integer: issue number to simulate the
+##'   fetchEpidataDF for; epiweek format is \code{YYYYww}
+##'
 ##' @examples
 ##'
 ##' ## set up a cache directory:
@@ -636,14 +681,14 @@ mimicPastEpidataDF2 = function(history.dt, forecast.epiweek) {
 ##' ## fetch HHS Region 1 ILINet version history, assuming no significant
 ##' ## revisions past lag 51:
 ##' fluview.area = "hhs1"
-##' history.df = fetchEpidataHistoryDF(
+##' epidata.history.df = fetchEpidataHistoryDF(
 ##'   "fluview", fluview.area, 0:51,
 ##'   first.week.of.season = 31L,
 ##'   cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_",fluview.area))
 ##' )
 ##' ## Simulate fetchEpidataHistoryDF when issue 201540 (the first ILINet report
 ##' ## containing data for epiweek 201540) just came out:
-##' mimicPastEpidataDF(history.df, 201540L)
+##' mimicPastEpidataDF(epidata.history.df, 201540L)
 ##'
 ##' @export
 mimicPastEpidataDF = mimicPastEpidataDF1
