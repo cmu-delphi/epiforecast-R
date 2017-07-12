@@ -1,5 +1,5 @@
 ## author_header begin
-## Copyright (C) 2016 Sangwon Hyun
+## Copyright (C) 2017 Sangwon Hyun, Logan C. Brooks
 ##
 ## This file is part of epiforecast.  Algorithms included in epiforecast were developed by Logan C. Brooks, David C. Farrow, Sangwon Hyun, Shannon Gallagher, Ryan J. Tibshirani, Roni Rosenfeld, and Rob Tibshirani (Stanford University), members of the Delphi group at Carnegie Mellon University.
 ##
@@ -150,6 +150,10 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
 
 ##' Printing function for "sim" class
 ##' @param mysim Output from running an OO.sim() function.
+##'
+##' @method print sim
+##' @export
+##' @export print.sim
 print.sim = function(mysim, verbose=TRUE,...){
 
     ctrlist = mysim[["control.list"]]
@@ -162,27 +166,37 @@ print.sim = function(mysim, verbose=TRUE,...){
     cat(fill=TRUE)
     cat("====================",fill=TRUE)
     cat("Simulation settings:",fill=TRUE)
-    cat("====================",fill=TRUE)
+    cat("--------------------",fill=TRUE)
 
     print.each.control.list.item = function(x){
         stopifnot(is.list(x))
         if(!is.null(x[[1]])) { cat(names(x), "=", x[[1]], fill=T) }
     }
-    
+
     if(ctrmodel %in% c("Empirical Bayes", "Basis Regression")){
         invisible(sapply(seq_along(ctrlist),
                          function(ii) print.each.control.list.item(ctrlist[ii])))
     } else {
         stop(paste("print not written for --", ctrmodel, " -- yet!"))
-    } 
-
+    }
     cat("====================",fill=TRUE)
+
     if(verbose){
         cat(fill=TRUE)
         cat("The simulated trajectories look like this:",fill=T)
         cat(fill=TRUE)
         show.sample.trajectories(ys = mysim$ys, nshow = min(5,ncol(mysim$ys)))
     }
+
+  additional.component.names = setdiff(names(mysim), c("ys", "weights", "control.list"))
+  if(length(additional.component.names) != 0L){
+    cat(fill=TRUE)
+    cat("===============================",fill=TRUE)
+    cat("Names of additional components:",fill=TRUE)
+    cat("-------------------------------",fill=TRUE)
+    cat(paste0(sapply(additional.component.names, as.name), collapse="\n"), fill=TRUE)
+    cat("===============================",fill=TRUE)
+  }
 }
 
 
@@ -359,4 +373,55 @@ dur = function(trajectory, baseline, is.inseason, ...) {
 ##   structure(list(...), class = "sim")
 ## }
 
+c.sim_impl = function(sim, ..., recursive=FALSE, use.names=TRUE) {
+  ## check for attempts to override set arguments:
+  if (recursive != FALSE) {
+    stop ("recursive must be FALSE")
+  }
+  if (use.names != TRUE) {
+    stop ("use.names must be TRUE")
+  }
+  ## check that each argument is nontrivially named and/or a list with all
+  ## elements nontrivially named:
+  dots = list(...)
+  if (!all(
+         rlang::names2(dots) != "" |
+         sapply(dots, function(arg) {
+           is.list(arg) && all(rlang::names2(arg) != "")
+         })
+       )) {
+    stop ('All components to add to the sim object must be (a) named (and/)or (b) lists with every component named.  Names of "" are treated as invalid.')
+  }
+  ## forward operation to c method used for lists:
+  input.as.list = unclass(sim)
+  stopifnot(!anyDuplicated(names(input.as.list)))
+  result.as.list = c(input.as.list, ..., recursive=FALSE, use.names=TRUE)
+  ## check for duplicate names:
+  duplicate.name.flags = duplicated(names(result.as.list))
+  if (any(duplicate.name.flags)) {
+    stop (paste0("All components must be uniquely named; adding the specified components would result in the following duplicates:\n",
+                 paste0(sapply(names(result.as.list)[duplicate.name.flags], as.name), collapse="\n")))
+  }
+  ## re-class list result into sim object:
+  result = structure(result.as.list, class="sim")
+  return (result)
+}
 
+##' Add information to a \code{sim} object
+##'
+##' Uses \code{recursive=FALSE} and \code{use.names=TRUE} when forwarding to the
+##' list \code{c} method; any attempt to override these values will generate an
+##' error.
+##'
+##' @param sim a \code{sim} object
+##' @param ... list of components to add to the \code{sim} object; must lead to
+##'   a resulting \code{sim} object with components that are all uniquely,
+##'   nontrivially (\code{!=""}) named
+##' @return \code{sim} object with the given components appended
+##'
+##' @method c sim
+##' @export
+##' @export c.sim
+c.sim = function(sim, ...) {
+  return (c.sim_impl(sim, ...))
+}
