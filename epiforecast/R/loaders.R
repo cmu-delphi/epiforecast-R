@@ -1,5 +1,5 @@
 ## author_header begin
-## Copyright (C) 2016 Logan C. Brooks
+## Copyright (C) 2017 Logan C. Brooks
 ##
 ## This file is part of epiforecast.  Algorithms included in epiforecast were developed by Logan C. Brooks, David C. Farrow, Sangwon Hyun, Shannon Gallagher, Ryan J. Tibshirani, Roni Rosenfeld, and Rob Tibshirani (Stanford University), members of the Delphi group at Carnegie Mellon University.
 ##

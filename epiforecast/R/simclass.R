@@ -53,7 +53,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
 
     ## Make line plot of ys
     if(type=="lineplot"){
-        
+
         ## Make line plot
         matplot(mysim$ys[,1:nplot], type = 'l', ylab = ylab, xlab = xlab, col = mycols,
             lty = lty, axes = F, lwd=.5,...)
@@ -66,7 +66,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         axis(side = 1, at = time.of.forecast, lty = 0, font = 2)
         mtext(side=3, cex=1.5, font=2, text = paste("Simulated trajectories for season:", mysim$new.season.label))
         mtext(side=3, cex=1.25, line=-1.25, text = mysim$control.list$model)
-    } 
+    }
 
 
     ## Hexagonal plots (in progress)
@@ -79,7 +79,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         plot(hbin)
     }
 
-    ## Make density plot 
+    ## Make density plot
     if(type=="density"){
         mtext(side=3, cex=1.5, font=2, text = paste("Simulated trajectories for season:", mysim$new.season.label))
         mtext(side=3, cex=1.25, line=-1.25, text = mysim$control.list$model)
@@ -93,9 +93,9 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         plot(NA, xlim=c(0,52),ylim=range(mysim$ys)+c(-1,+4), ylab = ylab, xlab = xlab, col = mycols,
              lty = lty, axes = F, lwd=.5,...)
         for(jj in 1:length(intvls.in.between) ){
-            this.intvl.means = means[intvls.in.between[[jj]]] 
+            this.intvl.means = means[intvls.in.between[[jj]]]
             mydens = density(apply(mysim$ys[intvls.in.between[[jj]],],2,mean), weights = mysim$weights/sum(mysim$weights))
-            weights = mydens$y 
+            weights = mydens$y
             weights = weights-min(weights)
             shades = round(weights/max(weights)*255)
             mycols = rgb(red = myrgbs[1],
@@ -122,7 +122,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
 
         ## plot actual mean
         lines(means, lwd=3)
-        
+
         ## Overlay the lines
         if(overlay){
             mycols = make_sim_ys_colors(mysim$weights[1:nplot])
@@ -143,7 +143,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         title("Contribution of historical seasons to simulated curves (%)")
         ## pie(mytable, main="Historical seasons")
     }
-} 
+}
 
 
 
@@ -211,7 +211,7 @@ show.sample.trajectories = function(ys, nshow = 100){
 
     ## format simulated trajectories
     ys = as.data.frame(round(ys[1:(nshow+1),1:(nshow+1)],2))
-    ys[(nshow+1),] = ys[,(nshow+1)] =  rep("...",(nshow+1))
+    ys[(nshow+1),] = ys[,(nshow+1)] = rep("...",(nshow+1))
     colnames(ys) = Map(paste,rep("sim",(nshow+1)), 1:(nshow+1))
     rownames(ys) = Map(paste0,rep("time = ",(nshow+1)),1:(nshow+1))
 
@@ -279,7 +279,7 @@ forecast.sim = function(mysim,
     if(plot.hist){
         par(mfrow=c(1,1))
         ## hist(targets, axes=FALSE, main="", xlab = target)
-        weights::wtd.hist(targets, axes=FALSE, main="", xlab = target, col="skyblue") ## todo: take Ryan's original wtd.hist
+        weights::wtd.hist(targets, axes=FALSE, main="", xlab = target, col="skyblue")
         mtext(paste("Forecasts for target:", target),3,cex=2,padj=-.5)
         axis(1); axis(2);
         abline(v=estimates$mean, col = 'red', lwd=3)
@@ -295,8 +295,8 @@ forecast.sim = function(mysim,
     ## Return a list of things
     settings = list.remove(unclass(mysim), c("ys","weights"))
     return(list(settings = settings,
-                target=stats::setNames(list(targets), target.name),
-                estimates=estimates))
+                target = stats::setNames(list(targets), target.name),
+                estimates = estimates))
 }
 
 ##' Calculate the (first) peak week in a vector of weekly observations
