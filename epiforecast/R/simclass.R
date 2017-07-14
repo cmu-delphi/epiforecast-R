@@ -259,18 +259,29 @@ forecast.sim = function(mysim,
     target.fun <- match.fun(target.fun)
     targets = apply(round(mysim[["ys"]], target.calculation.digits), 2L, function(trajectory) {
       target.multival = target.fun(trajectory, ...)
-      ## Optimized version of sample(target.multival, 1L):
-      switch(length(target.multival)+1L,
-             stop ("target function must produce at least one value"),
-             target.multival[[1L]],
-             target.multival[[sample.int(length(target.multival), 1L, replace=TRUE, useHash=TRUE)]]
-             )
+      ## ## Optimized version of sample(target.multival, 1L):
+      ## switch(length(target.multival)+1L,
+      ##        stop ("target function must produce at least one value"),
+      ##        target.multival[[1L]],
+      ##        target.multival[[sample.int(length(target.multival), 1L, replace=TRUE, useHash=TRUE)]]
+      ##        )
+      target.multival
     })
+    target.weights = mysim[["weights"]]
+    if (is.list(targets)) {
+      target.lengths = sapply(targets, length)
+      target.weights <- rep(target.weights, target.lengths)/rep(target.lengths, target.lengths)
+      targets <- dplyr::combine(targets)
+    } else if (is.matrix(targets)) {
+      target.weights <- rep(target.weights/nrow(targets),
+                            each=nrow(targets))
+      targets <- as.vector(targets)
+    }
 
     ## Compute mean, median, two-sided 90% quantiles
-    estimates = list(quantile = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], c(0.05,0.95)),
-                     quartile = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], c(0.25,0.5,0.75)),
-                     decile   = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], 1:9/10),
+    estimates = list(quantile = Hmisc::wtd.quantile(targets, weights=target.weights, c(0.05,0.95)),
+                     quartile = Hmisc::wtd.quantile(targets, weights=target.weights, c(0.25,0.5,0.75)),
+                     decile   = Hmisc::wtd.quantile(targets, weights=target.weights, 1:9/10),
                      mean = mean(targets),
                      median = median(targets))
 
