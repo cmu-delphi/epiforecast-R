@@ -493,9 +493,24 @@ fetchEpidataFullDat = function(source,
 ##'
 ##' Take the epidata data frames for the specified lags plus the current
 ##' (unlagged) epidata data frame and combine them together into a single data
-##' frame (\code{tbl_df}).
+##' frame (\code{tbl_df}).  There are two major uses:
+
+##' * Preparing an \link{epidata.history.df} for
+##' \code{\link{mimicPastEpidataDF}}: \code{lags} should include all possible
+##' \code{lag} values that could contain revisions; however, larger \code{lag}
+##' values may appear in the resulting data frame from the current epidata data
+##' frame, indicating that the corresponding data are finalized and there were
+##' no non-finalized versions recorded.
+
+##' * Studying the errors for a set of \code{lags}: \code{lags} should include
+##' all \code{lags} of interest; the resulting data frame may include other lags
+##' from the current epidata data frame, which should be filtered out; this
+##' history data frame should be right-joined with a "ground truth" data frame.
+##'
+##' @md
 ##'
 ##' @seealso fetchEpidataHistoryDT
+##' @seealso mimicPastEpidataDF
 ##'
 ##' @export
 fetchEpidataHistoryDF = function(source, area, lags,
@@ -516,6 +531,7 @@ fetchEpidataHistoryDF = function(source, area, lags,
     dplyr::distinct()
   return (history.df)
 }
+## todo consider fetching by issue instead; at least for fluview, the set of all issues should be a subset of the set of all epiweeks from the current data frame
 
 ##' Combine current and lagged epidata into a \code{data.table}
 ##'
@@ -667,7 +683,9 @@ mimicPastEpidataDF2 = function(epidata.history.dt, forecast.epiweek) {
 ##' observation for 201040 with data from issue 201041.
 ##'
 ##' @param epidata.history.dt.or.df output of
-##'   \code{\link{fetchEpidataHistoryDF}} or \code{\link{fetchEpidataHistoryDT}}
+##'   \code{\link{fetchEpidataHistoryDF}} or
+##'   \code{\link{fetchEpidataHistoryDT}}; the \code{lags} argument fed to these
+##'   functions should include all lags that could possibly contain revisions.
 ##' @param forecast.epiweek length-1 integer: issue number to simulate the
 ##'   fetchEpidataDF for; epiweek format is \code{YYYYww}
 ##'
