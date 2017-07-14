@@ -96,3 +96,5 @@
 ##   }) %>>%
 ##   do.call(what=identical) %>>%
 ##   {.}
+
+## todo forecast.sim: rather than randomly sampling a value from a multival, use all and weight?

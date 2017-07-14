@@ -257,7 +257,15 @@ forecast.sim = function(mysim,
     }
 
     target.fun <- match.fun(target.fun)
-    targets = apply(round(mysim[["ys"]], target.calculation.digits), 2L, target.fun, ...)
+    targets = apply(round(mysim[["ys"]], target.calculation.digits), 2L, function(trajectory) {
+      target.multival = target.fun(trajectory, ...)
+      ## Optimized version of sample(target.multival, 1L):
+      switch(length(target.multival)+1L,
+             stop ("target function must produce at least one value"),
+             target.multival[[1L]],
+             target.multival[[sample.int(length(target.multival), 1L, replace=TRUE, useHash=TRUE)]]
+             )
+    })
 
     ## Compute mean, median, two-sided 90% quantiles
     estimates = list(quantile = Hmisc::wtd.quantile(targets, weights=mysim[["weights"]], c(0.05,0.95)),
@@ -303,11 +311,15 @@ forecast.sim = function(mysim,
 ##'
 ##' @param trajectory a vector of weekly observations
 ##' @param ... ignored
-##' @return a single integer containing the index of the first non-\code{NA} element \code{>=} all non-\code{NA} elements
+##' @return integer vector, typically of length 1; indices of elements that are
+##'   \code{>=} all other elements
 ##'
 ##' @export
 pwk = function(trajectory, ...){
-  return (which.max(trajectory))
+  if (any(is.na(trajectory))) {
+    stop ("NA elements are not allowed when calculating =pwk=.")
+  }
+  return (which(trajectory==max(trajectory)))
 }
 
 ##' Calculate the peak height of a trajectory
