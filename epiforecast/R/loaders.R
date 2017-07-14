@@ -531,7 +531,6 @@ fetchEpidataHistoryDF = function(source, area, lags,
     dplyr::distinct()
   return (history.df)
 }
-## todo consider fetching by issue instead; at least for fluview, the set of all issues should be a subset of the set of all epiweeks from the current data frame
 
 ##' Combine current and lagged epidata into a \code{data.table}
 ##'
@@ -710,20 +709,6 @@ mimicPastEpidataDF2 = function(epidata.history.dt, forecast.epiweek) {
 ##'
 ##' @export
 mimicPastEpidataDF = mimicPastEpidataDF1
-
-## ## todo turn into test
-## history.dt = fetchEpidataHistoryDT("fluview", "hhs1", 0:51,
-##                            first.week.of.season = 31L,
-##                            cache.file.prefix="~/.epiforecast-cache/fluview_hhs1")
-## list(mimicPastEpidataDF1, mimicPastEpidataDF2) %>>%
-##   lapply(function(mimicPastEpidataDFn) {
-##     ## mimicPastEpidataDFn(history.dt, 201540L) %>>%
-##     mimicPastEpidataDFn(history.dt, 201040L) %>>%
-##       dplyr::arrange(-epiweek) %>>%
-##       dplyr::select(epiweek, issue, forecast.epiweek, wili)
-##   }) %>>%
-##   do.call(what=identical) %>>%
-##   {.}
 
 fit.to.oldfit = function(fit) {
   f = lapply(fit, `[[`, "f")

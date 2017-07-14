@@ -70,3 +70,29 @@
 ## todo documentation
 ## todo imports
 ## todo examples
+
+######################
+## loaders.R #########
+######################
+
+## xxx consider fetching by issue instead in fetchEpidataHistoryDF; at least for
+## fluview, the set of all issues should be a subset of the set of all epiweeks
+## from the current data frame
+
+## todo version of mimicPastEpidataDF that never uses future data, instead
+## taking the seasonally-expected change from the last available data point or
+## stopping if there is no available data point beforehand (will need to handle finalized versions inputted later with lags outside the =lags= range... override their lag with the max lag in =lag= and update =issue= accordingly?)
+
+## ## todo turn into test
+## history.dt = fetchEpidataHistoryDT("fluview", "hhs1", 0:51,
+##                            first.week.of.season = 31L,
+##                            cache.file.prefix="~/.epiforecast-cache/fluview_hhs1")
+## list(mimicPastEpidataDF1, mimicPastEpidataDF2) %>>%
+##   lapply(function(mimicPastEpidataDFn) {
+##     ## mimicPastEpidataDFn(history.dt, 201540L) %>>%
+##     mimicPastEpidataDFn(history.dt, 201040L) %>>%
+##       dplyr::arrange(-epiweek) %>>%
+##       dplyr::select(epiweek, issue, forecast.epiweek, wili)
+##   }) %>>%
+##   do.call(what=identical) %>>%
+##   {.}
