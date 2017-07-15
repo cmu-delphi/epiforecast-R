@@ -25,7 +25,7 @@
 ##' @return Character vector containing color codes.
 make_sim_ys_colors = function(weights){
     stopifnot(all(weights <= 1 & weights >= 0))
-    mycols = brewer.pal(3,"Set1")
+    mycols = RColorBrewer::brewer.pal(3,"Set1")
     myrgbs = col2rgb(mycols[1])
     shades = round(weights/max(weights)*255)
     mycols = rgb(red = myrgbs[1],
@@ -83,7 +83,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
     if(type=="density"){
         mtext(side=3, cex=1.5, font=2, text = paste("Simulated trajectories for season:", mysim$new.season.label))
         mtext(side=3, cex=1.25, line=-1.25, text = mysim$control.list$model)
-        mycols = brewer.pal(3,"Set1")
+        mycols = RColorBrewer::brewer.pal(3,"Set1")
         myrgbs = col2rgb(mycols[1])
         pts.in.between = seq(from=1,to=52,by=2)
         pts.in.between = c(pts.in.between,52)
@@ -139,7 +139,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         all.hist.seasons.in.sim  =      as.factor(        all.hist.seasons.in.sim)
         levels(all.hist.seasons.in.sim) = mysim$old.season.labels
         mytable = table(all.hist.seasons.in.sim)/mysim$control.list$n.sims*100
-        barplot(mytable,col=brewer.pal(3,"Set3")[1])
+        barplot(mytable,col=RColorBrewer::brewer.pal(3,"Set3")[1])
         title("Contribution of historical seasons to simulated curves (%)")
         ## pie(mytable, main="Historical seasons")
     }
@@ -232,18 +232,18 @@ show.sample.trajectories = function(ys, nshow = 100){
 ##'   fit, etc.), on which to base the target forecasts
 ##' @seealso \code{\link{forecast.sim}}
 ##' @export
-forecast <- function(fit.model, ...) {
-  UseMethod("forecast", fit.model)
+target_forecast <- function(fit.model, ...) {
+  UseMethod("target_forecast", fit.model)
 }
 
 ##' Forecast a target (peak height, etc.) using a \code{sim} object
 ##'
 ##' @import rlist
 ##' @param mysim Output from running an OO.sim() function.
-##' @method forecast sim
+##' @method target_forecast sim
 ##' @export
-##' @export forecast.sim
-forecast.sim = function(mysim,
+##' @export target_forecast.sim
+target_forecast.sim = function(mysim,
                         target = c("pwk","pht","ons","dur"),
                         target.name = target,
                         target.fun = target,
@@ -291,29 +291,31 @@ forecast.sim = function(mysim,
                      median = matrixStats::weightedMedian(targets, target.weights))
 
     ## Return a list of things
-    settings = list.remove(unclass(mysim), c("ys","weights"))
+    settings = rlist::list.remove(unclass(mysim), c("ys","weights"))
     return(structure(list(settings = settings,
                           target = stats::setNames(list(targets), target.name),
+                          target.weights = target.weights,
                           estimates = estimates),
-                     class="forecast"))
+                     class="target_forecast"))
 }
 
 ##' Print a \code{forecast} object
 ##'
 ##' @param x output of a \code{forecast} method
 ##'
-##' @method print forecast
+##' @method print target_forecast
 ##' @export
-##' @export print.forecast
-print.forecast = function(x,
+##' @export print.target_forecast
+print.target_forecast = function(x,
                           plot.hist = FALSE,
                           add.to.plot = FALSE,
                           sig.digit = 2L,
                           ...) {
-  my.forecast = x
-  target.name = names(my.forecast[["target"]])
-  targets = my.forecast[["target"]]
-  estimates = my.forecast[["estimates"]]
+  target.forecast = x
+  target.name = names(target.forecast[["target"]])
+  targets = target.forecast[["target"]][[1L]]
+  target.weights = target.forecast[["target.weights"]]
+  estimates = target.forecast[["estimates"]]
 
   ## Print a bunch of things
   cat("Summary for", target.name, ":",fill=TRUE)
@@ -327,9 +329,8 @@ print.forecast = function(x,
   ## Plot histogram if asked
   if(plot.hist){
     par(mfrow=c(1,1))
-    ## hist(targets, axes=FALSE, main="", xlab = target)
-    weights::wtd.hist(targets, axes=FALSE, main="", xlab = target, col="skyblue")
-    mtext(paste("Forecasts for target:", target),3,cex=2,padj=-.5)
+    weights::wtd.hist(targets, weight=target.weights, axes=FALSE, main="", xlab = target.name, col="skyblue")
+    mtext(paste("Forecasts for target:", target.name),3,cex=2,padj=-.5)
     axis(1); axis(2);
     abline(v=estimates$mean, col = 'red', lwd=3)
     abline(v=estimates$median, col = 'blue', lwd=2)
@@ -459,7 +460,7 @@ c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
 ##' list \code{c} method; any attempt to override these values will generate an
 ##' error.
 ##'
-##' @param sim a \code{sim} object
+##' @param my.sim a \code{sim} object
 ##' @param ... list of components to add to the \code{sim} object; must lead to
 ##'   a resulting \code{sim} object with components that are all uniquely,
 ##'   nontrivially (\code{!=""}) named
@@ -468,6 +469,25 @@ c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
 ##' @method c sim
 ##' @export
 ##' @export c.sim
-c.sim = function(sim, ...) {
-  return (c_for_named_lists(sim, ...))
+c.sim = function(my.sim, ...) {
+  return (c_for_named_lists(my.sim, ...))
+}
+
+##' Add information to a \code{target_forcast} object
+##'
+##' Uses \code{recursive=FALSE} and \code{use.names=TRUE} when forwarding to the
+##' list \code{c} method; any attempt to override these values will generate an
+##' error.
+##'
+##' @param target.forcast a \code{target_forcast} object
+##' @param ... list of components to add to the \code{target_forcast} object;
+##'   must lead to a resulting \code{target_forcast} object with components that
+##'   are all uniquely, nontrivially (\code{!=""}) named
+##' @return \code{target_forcast} object with the given components appended
+##'
+##' @method c target_forcast
+##' @export
+##' @export c.target_forcast
+c.target_forcast = function(target.forcast, ...) {
+  return (c_for_named_lists(target.forcast, ...))
 }
