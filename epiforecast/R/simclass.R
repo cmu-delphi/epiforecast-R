@@ -287,8 +287,8 @@ forecast.sim = function(mysim,
     estimates = list(quantile = Hmisc::wtd.quantile(targets, weights=target.weights, c(0.05,0.95)),
                      quartile = Hmisc::wtd.quantile(targets, weights=target.weights, c(0.25,0.5,0.75)),
                      decile   = Hmisc::wtd.quantile(targets, weights=target.weights, 1:9/10),
-                     mean = mean(targets),
-                     median = median(targets))
+                     mean = stats::weighted.mean(targets, target.weights),
+                     median = matrixStats::weightedMedian(targets, target.weights))
 
     ## Return a list of things
     settings = list.remove(unclass(mysim), c("ys","weights"))
