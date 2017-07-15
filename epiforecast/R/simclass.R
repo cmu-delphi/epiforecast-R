@@ -149,12 +149,13 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
 
 
 ##' Printing function for "sim" class
-##' @param mysim Output from running an OO.sim() function.
+##' @param x Output from running an OO.sim() function.
 ##'
 ##' @method print sim
 ##' @export
 ##' @export print.sim
-print.sim = function(mysim, verbose=TRUE,...){
+print.sim = function(x, verbose=TRUE,...){
+    mysim = x
 
     ctrlist = mysim[["control.list"]]
     ctrmodel = ctrlist$model
@@ -249,9 +250,6 @@ forecast.sim = function(mysim,
                         target.calculation.digits = Inf,
                         target.multival.behavior = c("random.val", "closest.to.pred.val"),
                         hist.bins = NULL,
-                        plot.hist = FALSE,
-                        add.to.plot = FALSE,
-                        sig.digit = 2L,
                         ...){
 
     if (missing(target) && (missing(target.name) || missing(target.fun))) {
@@ -292,37 +290,55 @@ forecast.sim = function(mysim,
                      mean = mean(targets),
                      median = median(targets))
 
-    ## Print a bunch of things
-    cat("Summary for", target.name, ":",fill=TRUE)
-    cat("====================", fill=TRUE)
-    cat("The mean of", target.name, "is", round(estimates$mean,sig.digit), fill=TRUE)
-    cat("The median of", target.name, "is", round(estimates$median,sig.digit), fill=TRUE)
-    cat("And the 0.05, 0.95 quantiles are", round(estimates$quantile,sig.digit), fill=TRUE)
-    cat("And the quartiles are", round(estimates$quartile,sig.digit), fill=TRUE)
-    cat("And the deciles are", round(estimates$decile,sig.digit), fill=TRUE)
-
-    ## Plot histogram if asked
-    if(plot.hist){
-        par(mfrow=c(1,1))
-        ## hist(targets, axes=FALSE, main="", xlab = target)
-        weights::wtd.hist(targets, axes=FALSE, main="", xlab = target, col="skyblue")
-        mtext(paste("Forecasts for target:", target),3,cex=2,padj=-.5)
-        axis(1); axis(2);
-        abline(v=estimates$mean, col = 'red', lwd=3)
-        abline(v=estimates$median, col = 'blue', lwd=2)
-        abline(v=estimates$quantile, col = 'grey50', lwd=1, lty=2)
-        legend("topright", col = c('red','blue','grey50'), lty=c(1,1,2), lwd = c(2,2,1), legend = c("Mean", "Median", "5%, 95% quantiles"))
-    }
-
-    ## add lines to original plot.sim output if necessary
-    if(add.to.plot) stop("add.to.plot functionality not written yet")
-
-
     ## Return a list of things
     settings = list.remove(unclass(mysim), c("ys","weights"))
-    return(list(settings = settings,
-                target = stats::setNames(list(targets), target.name),
-                estimates = estimates))
+    return(structure(list(settings = settings,
+                          target = stats::setNames(list(targets), target.name),
+                          estimates = estimates),
+                     class="forecast"))
+}
+
+##' Print a \code{forecast} object
+##'
+##' @param x output of a \code{forecast} method
+##'
+##' @method print forecast
+##' @export
+##' @export print.forecast
+print.forecast = function(x,
+                          plot.hist = FALSE,
+                          add.to.plot = FALSE,
+                          sig.digit = 2L,
+                          ...) {
+  my.forecast = x
+  target.name = names(my.forecast[["target"]])
+  targets = my.forecast[["target"]]
+  estimates = my.forecast[["estimates"]]
+
+  ## Print a bunch of things
+  cat("Summary for", target.name, ":",fill=TRUE)
+  cat("====================", fill=TRUE)
+  cat("The mean of", target.name, "is", round(estimates$mean,sig.digit), fill=TRUE)
+  cat("The median of", target.name, "is", round(estimates$median,sig.digit), fill=TRUE)
+  cat("And the 0.05, 0.95 quantiles are", round(estimates$quantile,sig.digit), fill=TRUE)
+  cat("And the quartiles are", round(estimates$quartile,sig.digit), fill=TRUE)
+  cat("And the deciles are", round(estimates$decile,sig.digit), fill=TRUE)
+
+  ## Plot histogram if asked
+  if(plot.hist){
+    par(mfrow=c(1,1))
+    ## hist(targets, axes=FALSE, main="", xlab = target)
+    weights::wtd.hist(targets, axes=FALSE, main="", xlab = target, col="skyblue")
+    mtext(paste("Forecasts for target:", target),3,cex=2,padj=-.5)
+    axis(1); axis(2);
+    abline(v=estimates$mean, col = 'red', lwd=3)
+    abline(v=estimates$median, col = 'blue', lwd=2)
+    abline(v=estimates$quantile, col = 'grey50', lwd=1, lty=2)
+    legend("topright", col = c('red','blue','grey50'), lty=c(1,1,2), lwd = c(2,2,1), legend = c("Mean", "Median", "5%, 95% quantiles"))
+  }
+
+  ## add lines to original plot.sim output if necessary
+  if(add.to.plot) stop("add.to.plot functionality not written yet")
 }
 
 ##' Calculate the (first) peak week in a vector of weekly observations
@@ -403,7 +419,7 @@ dur = function(trajectory, baseline, is.inseason, ...) {
 ##   structure(list(...), class = "sim")
 ## }
 
-c.sim_impl = function(sim, ..., recursive=FALSE, use.names=TRUE) {
+c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
   ## check for attempts to override set arguments:
   if (recursive != FALSE) {
     stop ("recursive must be FALSE")
@@ -453,5 +469,5 @@ c.sim_impl = function(sim, ..., recursive=FALSE, use.names=TRUE) {
 ##' @export
 ##' @export c.sim
 c.sim = function(sim, ...) {
-  return (c.sim_impl(sim, ...))
+  return (c_for_named_lists(sim, ...))
 }
