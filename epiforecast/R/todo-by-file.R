@@ -96,3 +96,23 @@
 ##   }) %>>%
 ##   do.call(what=identical) %>>%
 ##   {.}
+
+## todo conversion operations for epidata df's to full dats & epidata history df's to dt's
+## todo fail gracefully with curl errors in Epidata
+## todo check augmentWeeklyDF input
+## todo trimPartialPastSeasons setting to trim all incomplete (like min # being # of weeks in season)
+## todo check fetching input, add default caching
+## todo baseline as attr to trajectory, first.week.of.season and is.part.of.season.of.length function as attr's to full.dat?
+
+#######################
+## simclass.R #########
+#######################
+
+## todo proper metrics for multibin scores (including multi pwk)
+
+######################################
+## retrospective_forecasts.R #########
+######################################
+
+## todo select twkde params
+## todo subspace projection + random walk approach

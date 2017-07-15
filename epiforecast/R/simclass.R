@@ -239,6 +239,7 @@ forecast <- function(fit.model, ...) {
 ##'
 ##' @import rlist
 ##' @param mysim Output from running an OO.sim() function.
+##' @method forecast sim
 ##' @export
 ##' @export forecast.sim
 forecast.sim = function(mysim,
@@ -246,6 +247,7 @@ forecast.sim = function(mysim,
                         target.name = target,
                         target.fun = target,
                         target.calculation.digits = Inf,
+                        target.multival.behavior = c("random.val", "closest.to.pred.val"),
                         hist.bins = NULL,
                         plot.hist = FALSE,
                         add.to.plot = FALSE,
@@ -254,6 +256,11 @@ forecast.sim = function(mysim,
 
     if (missing(target) && (missing(target.name) || missing(target.fun))) {
       stop("Must supply either (a) =target= (consider 'pwk', 'pht', 'ons', and 'dur'), or (b) =target.name= AND =target.fun=.")
+    }
+
+    target.multival.behavior <- match.arg(target.multival.behavior)
+    if (target.multival.behavior != "random.val") {
+      stop ('Only target.multival.behavior="random.val" is currently supported.')
     }
 
     target.fun <- match.fun(target.fun)

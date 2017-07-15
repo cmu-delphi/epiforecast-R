@@ -728,8 +728,3 @@ smooth.curves.to.fit = function(smooth.curves, type="Gaussian") {
     list(f=smooth.curves$smooth.obj[[fit.s.i]], tau=smooth.curves$sigma.hat[fit.s.i], type=type)
   }))
 }
-
-## todo fail gracefully with curl errors in Epidata
-## todo check augmentWeeklyDF input
-## todo trimPartialPastSeasons setting to trim all incomplete (like min # being # of weeks in season)
-## todo check fetching input, add default caching
