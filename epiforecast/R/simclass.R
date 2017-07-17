@@ -333,7 +333,7 @@ print.target_forecast = function(x, sig.digit = 2L, ...) {
   cat("And the deciles are", target.value.formatter(round(estimates$decile,sig.digit)), fill=TRUE)
 }
 
-##' Calculate the (first) peak week in a vector of weekly observations
+##' Calculate the peak week(s) in a vector of weekly observations
 ##'
 ##' @param trajectory a vector of weekly observations
 ##' @param ... ignored
@@ -359,7 +359,7 @@ pht = function(trajectory, ...){
   return (max(trajectory))
 }
 
-##' Calculate the onset of a trajectory
+##' Calculate the onset of a trajectory (post-rounding)
 ##'
 ##' @param trajectory a vector
 ##' @param baseline the onset threshold
