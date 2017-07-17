@@ -247,7 +247,10 @@ target_forecast.sim = function(mysim,
                                target = c("pwk","pht","ons","dur"),
                                target.name = target,
                                target.fun = target,
+                               ## todo make a property of target types?:
                                target.calculation.digits = Inf,
+                               target.value.formatter = identity,
+                               ## todo make a property of forecast types?
                                target.multival.behavior = c("random.val", "closest.to.pred.val"),
                                hist.bins = NULL,
                                ...){
@@ -290,12 +293,20 @@ target_forecast.sim = function(mysim,
                      mean = stats::weighted.mean(target.values, target.weights),
                      median = matrixStats::weightedMedian(target.values, target.weights))
 
+    target.settings = list(
+      target.calculation.digits = target.calculation.digits,
+      target.multival.behavior = target.multival.behavior,
+      target.value.formatter = target.value.formatter,
+      ...
+    )
+
     ## Return a list of things
     settings = rlist::list.remove(unclass(mysim), c("ys","weights"))
     return (structure(list(settings = settings,
                            target.values = stats::setNames(list(target.values), target.name),
                            target.weights = target.weights,
-                           estimates = estimates),
+                           estimates = estimates,
+                           target.settings = target.settings),
                       class="target_forecast"))
 }
 
@@ -308,19 +319,18 @@ target_forecast.sim = function(mysim,
 ##' @export print.target_forecast
 print.target_forecast = function(x, sig.digit = 2L, ...) {
   target.forecast = x
-  target.name = names(target.forecast[["target"]])
-  target.values = target.forecast[["target.values"]][[1L]]
-  target.weights = target.forecast[["target.weights"]]
+  target.name = names(target.forecast[["target.values"]])
   estimates = target.forecast[["estimates"]]
+  target.value.formatter = target.forecast[["target.settings"]][["target.value.formatter"]]
 
   ## Print a bunch of things
   cat("Summary for", target.name, ":",fill=TRUE)
   cat("====================", fill=TRUE)
-  cat("The mean of", target.name, "is", round(estimates$mean,sig.digit), fill=TRUE)
-  cat("The median of", target.name, "is", round(estimates$median,sig.digit), fill=TRUE)
-  cat("And the 0.05, 0.95 quantiles are", round(estimates$quantile,sig.digit), fill=TRUE)
-  cat("And the quartiles are", round(estimates$quartile,sig.digit), fill=TRUE)
-  cat("And the deciles are", round(estimates$decile,sig.digit), fill=TRUE)
+  cat("The mean of", target.name, "is", target.value.formatter(round(estimates$mean,sig.digit)), fill=TRUE)
+  cat("The median of", target.name, "is", target.value.formatter(round(estimates$median,sig.digit)), fill=TRUE)
+  cat("And the 0.05, 0.95 quantiles are", target.value.formatter(round(estimates$quantile,sig.digit)), fill=TRUE)
+  cat("And the quartiles are", target.value.formatter(round(estimates$quartile,sig.digit)), fill=TRUE)
+  cat("And the deciles are", target.value.formatter(round(estimates$decile,sig.digit)), fill=TRUE)
 }
 
 ##' Calculate the (first) peak week in a vector of weekly observations
@@ -482,11 +492,9 @@ c.target_forcast = function(target.forcast, ...) {
 ##' @method plot target_forecast
 ##' @export
 ##' @export plot.target_forecast
-plot.target_forecast = function(x,
-                                add=FALSE,
-                                ...) {
+plot.target_forecast = function(x, add=FALSE, ...) {
   target.forecast = x
-  target.name = names(target.forecast[["target"]])
+  target.name = names(target.forecast[["target.values"]])
   target.values = target.forecast[["target.values"]][[1L]]
   target.weights = target.forecast[["target.weights"]]
   estimates = target.forecast[["estimates"]]
@@ -503,6 +511,6 @@ plot.target_forecast = function(x,
 
   ## add lines to original plot.sim output if necessary
   if(add) {
-    stop("add.to.plot functionality not written yet")
+    stop("add=TRUE functionality not written yet")
   }
 }
