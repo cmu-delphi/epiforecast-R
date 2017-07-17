@@ -244,13 +244,13 @@ target_forecast <- function(fit.model, ...) {
 ##' @export
 ##' @export target_forecast.sim
 target_forecast.sim = function(mysim,
-                        target = c("pwk","pht","ons","dur"),
-                        target.name = target,
-                        target.fun = target,
-                        target.calculation.digits = Inf,
-                        target.multival.behavior = c("random.val", "closest.to.pred.val"),
-                        hist.bins = NULL,
-                        ...){
+                               target = c("pwk","pht","ons","dur"),
+                               target.name = target,
+                               target.fun = target,
+                               target.calculation.digits = Inf,
+                               target.multival.behavior = c("random.val", "closest.to.pred.val"),
+                               hist.bins = NULL,
+                               ...){
 
     if (missing(target) && (missing(target.name) || missing(target.fun))) {
       stop("Must supply either (a) =target= (consider 'pwk', 'pht', 'ons', and 'dur'), or (b) =target.name= AND =target.fun=.")
@@ -262,7 +262,7 @@ target_forecast.sim = function(mysim,
     }
 
     target.fun <- match.fun(target.fun)
-    targets = apply(round(mysim[["ys"]], target.calculation.digits), 2L, function(trajectory) {
+    target.values = apply(round(mysim[["ys"]], target.calculation.digits), 2L, function(trajectory) {
       target.multival = target.fun(trajectory, ...)
       ## ## Optimized version of sample(target.multival, 1L):
       ## switch(length(target.multival)+1L,
@@ -273,30 +273,30 @@ target_forecast.sim = function(mysim,
       target.multival
     })
     target.weights = mysim[["weights"]]
-    if (is.list(targets)) {
-      target.lengths = sapply(targets, length)
+    if (is.list(target.values)) {
+      target.lengths = sapply(target.values, length)
       target.weights <- rep(target.weights, target.lengths)/rep(target.lengths, target.lengths)
-      targets <- dplyr::combine(targets)
-    } else if (is.matrix(targets)) {
-      target.weights <- rep(target.weights/nrow(targets),
-                            each=nrow(targets))
-      targets <- as.vector(targets)
+      target.values <- dplyr::combine(target.values)
+    } else if (is.matrix(target.values)) {
+      target.weights <- rep(target.weights/nrow(target.values),
+                            each=nrow(target.values))
+      target.values <- as.vector(target.values)
     }
 
     ## Compute mean, median, two-sided 90% quantiles
-    estimates = list(quantile = Hmisc::wtd.quantile(targets, weights=target.weights, c(0.05,0.95)),
-                     quartile = Hmisc::wtd.quantile(targets, weights=target.weights, c(0.25,0.5,0.75)),
-                     decile   = Hmisc::wtd.quantile(targets, weights=target.weights, 1:9/10),
-                     mean = stats::weighted.mean(targets, target.weights),
-                     median = matrixStats::weightedMedian(targets, target.weights))
+    estimates = list(quantile = Hmisc::wtd.quantile(target.values, weights=target.weights, c(0.05,0.95)),
+                     quartile = Hmisc::wtd.quantile(target.values, weights=target.weights, c(0.25,0.5,0.75)),
+                     decile   = Hmisc::wtd.quantile(target.values, weights=target.weights, 1:9/10),
+                     mean = stats::weighted.mean(target.values, target.weights),
+                     median = matrixStats::weightedMedian(target.values, target.weights))
 
     ## Return a list of things
     settings = rlist::list.remove(unclass(mysim), c("ys","weights"))
-    return(structure(list(settings = settings,
-                          target = stats::setNames(list(targets), target.name),
-                          target.weights = target.weights,
-                          estimates = estimates),
-                     class="target_forecast"))
+    return (structure(list(settings = settings,
+                           target.values = stats::setNames(list(target.values), target.name),
+                           target.weights = target.weights,
+                           estimates = estimates),
+                      class="target_forecast"))
 }
 
 ##' Print a \code{forecast} object
@@ -306,14 +306,10 @@ target_forecast.sim = function(mysim,
 ##' @method print target_forecast
 ##' @export
 ##' @export print.target_forecast
-print.target_forecast = function(x,
-                          plot.hist = FALSE,
-                          add.to.plot = FALSE,
-                          sig.digit = 2L,
-                          ...) {
+print.target_forecast = function(x, sig.digit = 2L, ...) {
   target.forecast = x
   target.name = names(target.forecast[["target"]])
-  targets = target.forecast[["target"]][[1L]]
+  target.values = target.forecast[["target.values"]][[1L]]
   target.weights = target.forecast[["target.weights"]]
   estimates = target.forecast[["estimates"]]
 
@@ -325,21 +321,6 @@ print.target_forecast = function(x,
   cat("And the 0.05, 0.95 quantiles are", round(estimates$quantile,sig.digit), fill=TRUE)
   cat("And the quartiles are", round(estimates$quartile,sig.digit), fill=TRUE)
   cat("And the deciles are", round(estimates$decile,sig.digit), fill=TRUE)
-
-  ## Plot histogram if asked
-  if(plot.hist){
-    par(mfrow=c(1,1))
-    weights::wtd.hist(targets, weight=target.weights, axes=FALSE, main="", xlab = target.name, col="skyblue")
-    mtext(paste("Forecasts for target:", target.name),3,cex=2,padj=-.5)
-    axis(1); axis(2);
-    abline(v=estimates$mean, col = 'red', lwd=3)
-    abline(v=estimates$median, col = 'blue', lwd=2)
-    abline(v=estimates$quantile, col = 'grey50', lwd=1, lty=2)
-    legend("topright", col = c('red','blue','grey50'), lty=c(1,1,2), lwd = c(2,2,1), legend = c("Mean", "Median", "5%, 95% quantiles"))
-  }
-
-  ## add lines to original plot.sim output if necessary
-  if(add.to.plot) stop("add.to.plot functionality not written yet")
 }
 
 ##' Calculate the (first) peak week in a vector of weekly observations
@@ -490,4 +471,38 @@ c.sim = function(my.sim, ...) {
 ##' @export c.target_forcast
 c.target_forcast = function(target.forcast, ...) {
   return (c_for_named_lists(target.forcast, ...))
+}
+
+##' \code{plot} method for \code{target_forecast} objects
+##'
+##' @param x \code{target_forecast} object
+##' @param add logical, length 1, non-\code{NA}: whether to plot on top of the
+##'   currently active plot (vs. creating a new plot)
+##'
+##' @method plot target_forecast
+##' @export
+##' @export plot.target_forecast
+plot.target_forecast = function(x,
+                                add=FALSE,
+                                ...) {
+  target.forecast = x
+  target.name = names(target.forecast[["target"]])
+  target.values = target.forecast[["target.values"]][[1L]]
+  target.weights = target.forecast[["target.weights"]]
+  estimates = target.forecast[["estimates"]]
+
+  ## Plot histogram
+  par(mfrow=c(1,1))
+  weights::wtd.hist(target.values, weight=target.weights, axes=FALSE, main="", xlab = target.name, col="skyblue")
+  mtext(paste("Forecasts for target:", target.name),3,cex=2,padj=-.5)
+  axis(1); axis(2);
+  abline(v=estimates$mean, col = 'red', lwd=3)
+  abline(v=estimates$median, col = 'blue', lwd=2)
+  abline(v=estimates$quantile, col = 'grey50', lwd=1, lty=2)
+  legend("topright", col = c('red','blue','grey50'), lty=c(1,1,2), lwd = c(2,2,1), legend = c("Mean", "Median", "5%, 95% quantiles"))
+
+  ## add lines to original plot.sim output if necessary
+  if(add) {
+    stop("add.to.plot functionality not written yet")
+  }
 }
