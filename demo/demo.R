@@ -33,7 +33,7 @@ filename="./correct.csv"
 hhs1.dat = lapply(hhs1.dat, function(myvec){ if(length(myvec)<53) return(c(myvec,NA))  else {return(myvec)}})
 correct.hhs1.dat = do.call(cbind, hhs1.dat)
 correct.hhs1.dat = correct.hhs1.dat[-53,]
-write.csv(correct.hhs1.dat, file = filename,row.names=FALSE)
+write.csv(correct.hhs1.dat, file=filename, row.names=FALSE)
 full.dat = read.from.file(filename)
 
 

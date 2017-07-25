@@ -45,8 +45,8 @@ read.from.file = function(filename){
     check.file.contents(filename)
 
     ## Reformat table into list
-    full.dat = fread(filename,header=TRUE, data.table=FALSE)
-    return(table.to.list(full.dat)) 
+    full.dat = read.csv(filename)
+    return (table.to.list(full.dat))
 }
 
 
@@ -54,14 +54,13 @@ read.from.file = function(filename){
 ##' Function to check if a data file is properly formatted (i.e. contains the
 ##' headers, is filled with numeric values, etc.) Current implementation is very
 ##' memory-inefficient.
-##' 
+##'
 ##' @param filename name of data filewith each column equal to each season, with
 ##'   the first (n-1) columns to be, and the n'th column with the current
 ##'   season.
-##' @import data.table
 check.file.contents = function(filename) {
-    my.full.dat = fread(filename, header = TRUE, data.table=FALSE)
-    check.table.format(my.full.dat)
+  my.full.dat = read.csv(filename)
+  check.table.format(my.full.dat)
 }
 
 

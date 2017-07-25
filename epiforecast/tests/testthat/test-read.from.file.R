@@ -91,4 +91,4 @@ test_that("When last season is not partially observed, error is thrown", {
     write.csv(correct.hhs1.dat, file = filename,row.names=FALSE)
     full.dat = read.from.file(filename)
     expect_equal(class(full.dat), "list")
-}
+})

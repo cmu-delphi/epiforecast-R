@@ -509,7 +509,6 @@ fetchEpidataFullDat = function(source,
 ##'
 ##' @md
 ##'
-##' @seealso fetchEpidataHistoryDT
 ##' @seealso mimicPastEpidataDF
 ##'
 ##' @export
@@ -532,28 +531,6 @@ fetchEpidataHistoryDF = function(source, area, lags,
   return (history.df)
 }
 
-##' Combine current and lagged epidata into a \code{data.table}
-##'
-##' Data table form of \code{\link{fetchEpidataHistoryDF}}; sets the keys as
-##' \code{epiweek} and \code{issue} and adds a column \code{actual.issue}
-##' duplicating \code{issue}, to be used in rolling joins used in one possible
-##' implementation of \code{\link{mimicPastEpidataDF}}.
-##'
-##' @export
-fetchEpidataHistoryDT = function(source, area, lags,
-                                 first.week.of.season=NULL,
-                                 first.epiweek=NULL, last.epiweek=NULL,
-                                 cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE) {
-  history.df = fetchEpidataHistoryDF(source, area, lags,
-                                     first.week.of.season=first.week.of.season,
-                                     first.epiweek=first.epiweek, last.epiweek=last.epiweek,
-                                     cache.file.prefix=cache.file.prefix, cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
-  history.dt = data.table::as.data.table(history.df)
-  data.table::setkey(history.dt, epiweek, issue)
-  history.dt[,actual.issue:=issue]
-  return (history.dt)
-}
-
 min_NA_highest = function(x) {
   if (all(is.na(x))) {
     ## length-0: x[1L] should give NA of appropriate type
@@ -566,11 +543,11 @@ min_NA_highest = function(x) {
   }
 }
 
-mimicPastDF1 = function(history.dt.or.df,
+mimicPastDF1 = function(history.df,
                         issue.colname, mimicked.issue,
                         time.index.colnames=character(0), time.index.limits=list(),
                         nontime.index.colnames=character(0)) {
-  history.df = tibble::as_data_frame(history.dt.or.df)
+  history.df = tibble::as_data_frame(history.df)
   for (time.index.i in seq_along(time.index.colnames)) {
     time.index.colname.i = time.index.colnames[[time.index.i]]
     time.index.limit.i = time.index.limits[[time.index.i]]
@@ -610,7 +587,7 @@ mimicPastDF1 = function(history.dt.or.df,
 ##' a particular past issue would have looked like. (NA issues are treated as
 ##' larger than any non-NA issue.)
 ##'
-##' @param history.dt.or.df rbound partial past issues
+##' @param history.df rbound partial past issues
 ##' @param issue.colname name of the column containing issue( label)s, which
 ##'   should have some ordering
 ##' @param mimicked.issue length-1; (label of ) issue to mimic
@@ -626,31 +603,12 @@ mimicPastDF1 = function(history.dt.or.df,
 ##' @export
 mimicPastDF = mimicPastDF1
 
-mimicPastEpidataDF1 = function(epidata.history.dt.or.df, forecast.epiweek) {
-  mimicPastDF1(epidata.history.dt.or.df,
+## implementation 1:
+mimicPastEpidataDF1 = function(epidata.history.df, forecast.epiweek) {
+  mimicPastDF1(epidata.history.df,
                "issue", forecast.epiweek,
                "epiweek", forecast.epiweek) %>>%
-    augmentWeeklyDF(epidata.history.dt.or.df[["week"]][[1L]]) %>>%
-    return()
-}
-
-mimicPastEpidataDF2 = function(epidata.history.dt, forecast.epiweek) {
-  timing.dt = unique(epidata.history.dt[epiweek <= forecast.epiweek, list(epiweek)])
-  timing.dt[,issue:=forecast.epiweek]
-  available.and.recorded = epidata.history.dt[timing.dt,,roll=Inf]
-  future.fillin.for.missing = epidata.history.dt[timing.dt,,roll=-Inf]
-  dplyr::bind_rows(tibble::as_data_frame(available.and.recorded),
-                   tibble::as_data_frame(future.fillin.for.missing)) %>>%
-    dplyr::rename(forecast.epiweek=issue) %>>%
-    dplyr::rename(issue=actual.issue) %>>%
-    dplyr::arrange(epiweek) %>>%
-    dplyr::group_by(epiweek) %>>%
-    dplyr::filter(issue==min(issue, na.rm=TRUE)) %>>%
-    ## remove near-duplicate records (lag=NULL vs not)
-    dplyr::filter(seq_along(issue)==1L) %>>%
-    dplyr::ungroup() %>>%
-    augmentWeeklyDF(epidata.history.dt[,week][[1L]]) %>>%
-    dplyr::select(-forecast.epiweek) %>>%
+    augmentWeeklyDF(epidata.history.df[["week"]][[1L]]) %>>%
     return()
 }
 
@@ -681,10 +639,9 @@ mimicPastEpidataDF2 = function(epidata.history.dt, forecast.epiweek) {
 ##' fill in off-season data with finalized data from issue 201352, and the
 ##' observation for 201040 with data from issue 201041.
 ##'
-##' @param epidata.history.dt.or.df output of
-##'   \code{\link{fetchEpidataHistoryDF}} or
-##'   \code{\link{fetchEpidataHistoryDT}}; the \code{lags} argument fed to these
-##'   functions should include all lags that could possibly contain revisions.
+##' @param epidata.history.df output of \code{\link{fetchEpidataHistoryDF}}; the
+##'   \code{lags} argument fed to these functions should include all lags that
+##'   could possibly contain revisions.
 ##' @param forecast.epiweek length-1 integer: issue number to simulate the
 ##'   fetchEpidataDF for; epiweek format is \code{YYYYww}
 ##'

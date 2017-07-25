@@ -20,12 +20,11 @@
 ## license_header end
 
 ##' Make transparent colors according to weights in (0,1).
-##' @import RColorBrewer plotrix
 ##' @param weights Numeric vector with elements in [0,1].
 ##' @return Character vector containing color codes.
 make_sim_ys_colors = function(weights){
     stopifnot(all(weights <= 1 & weights >= 0))
-    mycols = RColorBrewer::brewer.pal(3,"Set1")
+    mycols = c("#E41A1C", "#377EB8", "#4DAF4A")
     myrgbs = col2rgb(mycols[1])
     shades = round(weights/max(weights)*255)
     mycols = rgb(red = myrgbs[1],
@@ -83,7 +82,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
     if(type=="density"){
         mtext(side=3, cex=1.5, font=2, text = paste("Simulated trajectories for season:", mysim$new.season.label))
         mtext(side=3, cex=1.25, line=-1.25, text = mysim$control.list$model)
-        mycols = RColorBrewer::brewer.pal(3,"Set1")
+        mycols = c("#E41A1C", "#377EB8", "#4DAF4A")
         myrgbs = col2rgb(mycols[1])
         pts.in.between = seq(from=1,to=52,by=2)
         pts.in.between = c(pts.in.between,52)
@@ -139,7 +138,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         all.hist.seasons.in.sim  =      as.factor(        all.hist.seasons.in.sim)
         levels(all.hist.seasons.in.sim) = mysim$old.season.labels
         mytable = table(all.hist.seasons.in.sim)/mysim$control.list$n.sims*100
-        barplot(mytable,col=RColorBrewer::brewer.pal(3,"Set3")[1])
+        barplot(mytable,col="#8DD3C7")
         title("Contribution of historical seasons to simulated curves (%)")
         ## pie(mytable, main="Historical seasons")
     }
@@ -422,12 +421,14 @@ c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
   ## check that each argument is nontrivially named and/or a list with all
   ## elements nontrivially named:
   dots = list(...)
-  if (!all(
-         rlang::names2(dots) != "" |
-         sapply(dots, function(arg) {
-           is.list(arg) && all(rlang::names2(arg) != "")
-         })
-       )) {
+  if (!(
+    !is.null(names(dots)) &&
+    all(
+      names(dots) != "" |
+      sapply(dots, function(arg) {
+        is.list(arg) && !is.null(names(arg)) && all(names(arg) != "")
+      })
+    ))) {
     stop ('All components to add to the sim object must be (a) named (and/)or (b) lists with every component named.  Names of "" are treated as invalid.')
   }
   ## forward operation to c method used for lists:

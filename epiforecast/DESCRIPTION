@@ -17,15 +17,12 @@ Imports:
     httr,
     Rcpp,
     rlist,
-    RColorBrewer,
-    data.table,
     Hmisc,
     weights,
     hexbin,
     plotrix,
     tibble,
     dplyr,
-    rlang,
     pipeR
 Description: Tools for forecasting semi-regular seasonal epidemic curves and
     similar time series. Includes an empirical Bayes approach that forms a prior
@@ -49,9 +46,11 @@ Collate:
     'loaders.R'
     'interface.R'
     'eb.R'
+    'forecast_type.R'
     'holidays.R'
     'read.R'
     'simclass.R'
+    'target.R'
     'todo-by-file.R'
     'twkde.R'
 LinkingTo: Rcpp

@@ -25,7 +25,6 @@ context("Testing the check.file.contents() function..")
 dummytable = matrix(c(runif(n=9,1,3),NA),ncol=5)
 dummytable.full = matrix(runif(n=10,1,3),ncol=5)
 colnames(dummytable.full) = c(1997:2001)
-library(s
 
 ## Tests:
 
@@ -62,7 +61,7 @@ test_that("Last column being full returns error.", {
                 col.names = T,
                 row.names=F,
                 sep=",")
-    print(fread("a.csv",header=TRUE))
+    print(read.csv("a.csv"))
     expect_error(check.file.contents("a.csv"))
     file.remove("a.csv")
 })
