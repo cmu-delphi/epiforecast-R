@@ -61,9 +61,9 @@ bw.SJnrd0 = function(x) {
 ##'   below this level does not grow like an epidemic; currently ignored, but
 ##'   can be used as the \code{y.scale.baseline} by passing it through the
 ##'   \code{control.list} argument.
-##' @param n.sims single non-\code{NA} integer value or \code{NULL}: the number
-##'   of curves to sample from the inferred distribution, or \code{NULL} to
-##'   match the number of trajectories in \code{new.dat.sim}
+##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
+##'   number of curves to sample from the inferred distribution, or \code{NULL}
+##'   to match the number of trajectories in \code{new.dat.sim}
 ##'
 ##' @return a sim object (list with two components: \itemize{
 ##' \item{\code{ys}: }{a numeric matrix; each column is a different possible
@@ -93,25 +93,25 @@ bw.SJnrd0 = function(x) {
 ##' new.dat = tail(full.dat, 1L)[[1]]
 ##' ## Sample from conditional curve distribution estimate using CDC's 2015
 ##' ## national %wILI onset threshold baseline of 2.1:
-##' sim = twkde.markovian.sim(dat, new.dat, 2.1, n.sims=100)
+##' sim = twkde.markovian.sim(dat, new.dat, 2.1, max.n.sims=100)
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, n.sims=2000) {
+twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, max.n.sims=2000L) {
   dat <- match.dat(dat)
   new.dat.sim <- match.new.dat.sim(new.dat.sim)
   baseline <- match.single.na.or.numeric(baseline) # (ignored by twkde though)
-  if (is.null(n.sims)) {
-    n.sims <- ncol(new.dat.sim$ys)
-  }
+  max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
+  n.sims = if (is.null(max.n.sims)) ncol(new.dat.sim$ys) else max.n.sims
   if (ncol(new.dat.sim$ys)==n.sims) {
     ys = new.dat.sim$ys
     sim.weights = new.dat.sim$weights
   } else {
     inds = sample(seq_along(new.dat.sim$weights), n.sims, prob=new.dat.sim$weights, replace=TRUE)
     ys = new.dat.sim$ys[,inds]
-    sim.weights = rep(1, n.sims)
+    n.effective.sims = max(n.sims, length(new.dat.sim$weights))
+    sim.weights = rep(mean(new.dat.sim$weights)*n.effective.sims/n.sims, n.sims)
   }
   min.n.out = min(sapply(dat, length))
   obs.mat = sapply(dat, `[`, seq_len(min.n.out))
@@ -181,9 +181,9 @@ twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, n.sims=2000)
 ##'   below this level does not grow like an epidemic; currently ignored, but
 ##'   can be used as the \code{y.scale.baseline} by passing it through the
 ##'   \code{control.list} argument.
-##' @param n.sims single non-\code{NA} integer value or \code{NULL}: the number
-##'   of curves to sample from the inferred distribution, or \code{NULL} to
-##'   match the number of trajectories in \code{new.dat.sim}
+##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
+##'   number of curves to sample from the inferred distribution, or \code{NULL}
+##'   to match the number of trajectories in \code{new.dat.sim}
 ##' @param decay.factor decay factor for the exponential moving average of
 ##'   covariate.
 ##' @param diff.decay.factor decay factor for the exponential moving average of
@@ -225,7 +225,7 @@ twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, n.sims=2000)
 ##' new.dat = tail(full.dat, 1L)[[1]]
 ##' ## Sample from conditional curve distribution estimate using CDC's 2015
 ##' ## national %wILI onset threshold baseline of 2.1:
-##' sim = twkde.sim(dat, new.dat, 2.1, n.sims=50)
+##' sim = twkde.sim(dat, new.dat, 2.1, max.n.sims=50)
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
@@ -233,7 +233,7 @@ twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, n.sims=2000)
 twkde.sim = function(## dat, new.dat.sim
                      full.dat,
                      baseline=NA_real_,
-                     n.sims=2000,
+                     max.n.sims=2000L,
                      decay.factor=0.7,
                      diff.decay.factor=0.5,
                      max.shifts=c(rep(10,20),10:1,rep(0,3),1:10,rep(10,10)),
@@ -249,20 +249,19 @@ twkde.sim = function(## dat, new.dat.sim
   new.season.label = tail(names(full.dat), 1L)
 
   baseline <- match.single.na.or.numeric(baseline) # (ignored by twkde though)
-  n.sims <- match.single.nonna.integer.or.null(n.sims)
+  max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
+  n.sims = if (is.null(max.n.sims)) ncol(new.dat.sim$ys) else max.n.sims
 
-
-  if (is.null(n.sims)) {
-    n.sims <- ncol(new.dat.sim$ys)
-  }
   if (ncol(new.dat.sim$ys)==n.sims) {
     ys = new.dat.sim$ys
     sim.weights = new.dat.sim$weights
   } else {
     inds = sample(seq_along(new.dat.sim$weights), n.sims, prob=new.dat.sim$weights, replace=TRUE)
     ys = new.dat.sim$ys[,inds]
-    sim.weights = rep(1, n.sims)
+    n.effective.sims = max(n.sims, length(new.dat.sim$weights))
+    sim.weights = rep(mean(new.dat.sim$weights)*n.effective.sims/n.sims, n.sims)
   }
+
   orig.min.n.out = min(sapply(dat, length))
   ## orig.obs.mat = sapply(dat, `[`, seq_len(orig.min.n.out)) # xxx use dat.to.matrix
   orig.obs.mat = dat.to.matrix(dat, orig.min.n.out)
@@ -378,7 +377,7 @@ twkde.sim = function(## dat, new.dat.sim
                new.season.label = list(new.season.label))
     class(sim) <- "sim"
     return (sim)
-    }
+}
 
 ## todo fix twkde =max.shifts= time smearing default to be generic, not flu-specific
 ## fixme do twkde methods actually fill in non_NA's with estimated noise resampling? don't think so, fix doc

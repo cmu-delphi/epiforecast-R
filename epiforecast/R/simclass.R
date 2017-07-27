@@ -137,7 +137,7 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         all.hist.seasons.in.sim = mysim$old.season.labels[mysim$sampled.row.major.parms$curve.i]
         all.hist.seasons.in.sim  =      as.factor(        all.hist.seasons.in.sim)
         levels(all.hist.seasons.in.sim) = mysim$old.season.labels
-        mytable = table(all.hist.seasons.in.sim)/mysim$control.list$n.sims*100
+        mytable = table(all.hist.seasons.in.sim)/mysim$control.list$max.n.sims*100
         barplot(mytable,col="#8DD3C7")
         title("Contribution of historical seasons to simulated curves (%)")
         ## pie(mytable, main="Historical seasons")
@@ -161,8 +161,7 @@ print.sim = function(x, verbose=TRUE,...){
     ctrlist = ctrlist[which(names(ctrlist)!="model")]
 
     cat(fill=TRUE)
-    cat(paste0(ctrlist$n.sims, " simulated trajectories with weights produced by ", ctrmodel, " model"), fill=T)
-               ## ", to produce ", ctrlist$n.sims), fill=TRUE)
+    cat(paste0(ncol(mysim[["ys"]]), " simulated trajectories with weights produced by ", ctrmodel, " model"), fill=TRUE)
     cat(fill=TRUE)
     cat("====================",fill=TRUE)
     cat("Simulation settings:",fill=TRUE)
@@ -185,7 +184,9 @@ print.sim = function(x, verbose=TRUE,...){
         cat(fill=TRUE)
         cat("The simulated trajectories look like this:",fill=T)
         cat(fill=TRUE)
-        show.sample.trajectories(ys = mysim$ys, nshow = min(5,ncol(mysim$ys)))
+        show.sample.trajectories(ys = mysim$ys,
+                                 n.shown.rows = min(5L, nrow(mysim$ys)),
+                                 n.shown.cols = min(5L, ncol(mysim$ys)))
     }
 
   additional.component.names = setdiff(names(mysim), c("ys", "weights", "control.list"))
@@ -202,18 +203,21 @@ print.sim = function(x, verbose=TRUE,...){
 
 ##' Showing sample trajectories of ys.
 ##' @param ys A matrix whose columns contain simulated curves.
-##' @param nshow How many curves to show.
-show.sample.trajectories = function(ys, nshow = 100){
+##' @param n.shown.rows How many observations per curve to show.
+##' @param n.shown.cols How many curves to show.
+show.sample.trajectories =
+  function(ys, n.shown.rows = 100L, n.shown.cols = 100L){
 
     ## basic error checking
     if(!(class(ys) %in% c("matrix"))) stop("ys is not a matrix!")
     if(any(apply(ys,2,function(mycol){any(is.na(mycol))}))) stop("ys has missing entries!")
 
     ## format simulated trajectories
-    ys = as.data.frame(round(ys[1:(nshow+1),1:(nshow+1)],2))
-    ys[(nshow+1),] = ys[,(nshow+1)] = rep("...",(nshow+1))
-    colnames(ys) = Map(paste,rep("sim",(nshow+1)), 1:(nshow+1))
-    rownames(ys) = Map(paste0,rep("time = ",(nshow+1)),1:(nshow+1))
+    ys = as.data.frame(round(ys[c(seq_len(n.shown.rows),NA_integer_),c(seq_len(n.shown.cols),NA_integer_)],2L))
+    ys[n.shown.rows+1L,] = rep("...", n.shown.cols+1L)
+    ys[,n.shown.cols+1L] = rep("...", n.shown.rows+1L)
+    rownames(ys) <- c(paste("time =", seq_len(n.shown.rows)), "...")
+    colnames(ys) <- c(paste("sim", seq_len(n.shown.cols)), "...")
 
     ## show it
     print(ys)
@@ -405,7 +409,7 @@ dur = function(trajectory, baseline, is.inseason, ...) {
 }
 
 ## ##' constructor should take in the bare minimum to create forecasts
-## ##' i.e. full.dat, n.sims, control.list, baseline, etc.
+## ##' i.e. full.dat, max.n.sims, control.list, baseline, etc.
 ## sim <- function(...) {
 ##   structure(list(...), class = "sim")
 ## }

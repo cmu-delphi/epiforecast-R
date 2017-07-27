@@ -38,7 +38,7 @@ full.dat = read.from.file(filename)
 
 
 ## Try EB with basic options
-mysim = eb.sim(full.dat, n.sims=1000)
+mysim = eb.sim(full.dat, max.n.sims=1000)
 plot(mysim)
 target.forecast = target_forecast(mysim,'pht')
 print(target.forecast)
@@ -47,21 +47,21 @@ plot(target.forecast)
 
 ## Try EB with more simulation settings
 control.list = get_eb_control_list(sd.option="prior",max.match.length=5)
-mysim = eb.sim(full.dat, n.sims=100, control.list=control.list)
+mysim = eb.sim(full.dat, max.n.sims=100, control.list=control.list)
 ## epitarget_forecast:::plot.sim(mysim)
 plot(mysim)
 target.forecast = target_forecast(mysim,'pwk')
 
 
 ## Try BR
-mysim = br.sim(full.dat, n.sims=100, bootstrap=T)
+mysim = br.sim(full.dat, max.n.sims=100, bootstrap=T)
 plot(mysim)
 print(mysim,verbose=TRUE)
 target.forecast = target_forecast(mysim, "pht")
 
 ## Try BR with more simulation settings
 control.list = get_br_control_list(df=5, cv.rule="1se")
-mysim = br.sim(full.dat, n.sims=100, bootstrap=T, control.list=control.list)
+mysim = br.sim(full.dat, max.n.sims=100, bootstrap=T, control.list=control.list)
 plot(mysim)
 print(mysim,verbose=TRUE)
 target.forecast = target_forecast(mysim, "pht", plot.hist=TRUE)

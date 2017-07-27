@@ -160,7 +160,7 @@ eb.infer = function(dat, new.dat,
   ## Scale proposal weights so we can bring them out of the log domain:
   scaled.bucket.weights = exp(log.bucket.weights - max(log.bucket.weights))
   ## Sample bucket indices from histogram proposal distribution:
-  sampled.bucket.inds = sample(seq_along(scaled.bucket.weights), fit.control.list$n.sims, prob=scaled.bucket.weights, replace=TRUE)
+  sampled.bucket.inds = sample(seq_along(scaled.bucket.weights), fit.control.list$max.n.sims, prob=scaled.bucket.weights, replace=TRUE)
   ## xxx should sort inds and optimize for repeated discrete parm configs in C++ code
   ## Convert vector (1-D) indices to array (#parameter-D) indices:
   sampled.bucket.rayinds = arrayInd(sampled.bucket.inds, dim(log.bucket.weights))
@@ -247,10 +247,10 @@ eb.createForecasts = function(dat, new.dat,
 
   sampled.curves.and.log.weights = eb.infer(dat, new.dat, fit.obj, time.of.forecast, control.list)
 
-  ys = structure(stats::rnorm(control.list$n.out*control.list$n.sims,
+  ys = structure(stats::rnorm(control.list$n.out*control.list$max.n.sims,
                               sampled.curves.and.log.weights[[1]],
                               sampled.curves.and.log.weights[[2]]),
-                 dim=c(control.list$n.out, control.list$n.sims))
+                 dim=c(control.list$n.out, control.list$max.n.sims))
   ys[seq_len(time.of.forecast),] <- new.dat[seq_len(time.of.forecast)]
 
   log.weights = sampled.curves.and.log.weights[[3]]

@@ -182,9 +182,9 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##'   historical trajectories; must not contain any NA's.
 ##' @param baseline a single numeric: a "baseline level" for this dataset;
 ##'   roughly speaking, data below this level does not grow like an epidemic.
-##' @param n.sims single non-\code{NA} integer value or \code{NULL}: the number
-##'   of curves to sample from the inferred distribution, or \code{NULL} to
-##'   match the number of trajectories in \code{new.dat.sim}
+##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
+##'   number of curves to sample from the inferred distribution, or \code{NULL}
+##'   to match the number of trajectories in \code{new.dat.sim}
 ##' @param ... arguments to forward to \code{\link{br.smoothedCurve}}.
 ##'
 ##' @return a list with two components:
@@ -195,7 +195,7 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' (observed data) filled in with an imagined resampling of noise based on the
 ##' model. For the basis regression method, there is a single column per
 ##' trajectory in \code{new.dat} containing the smoothed curve outputted by
-##' \code{\link{br.smoothedCurve}}, unless \code{n.sims} is non-\code{NULL}, in
+##' \code{\link{br.smoothedCurve}}, unless \code{max.n.sims} is non-\code{NULL}, in
 ##' which case, it is a resampling of these smoothed curves.
 ##'
 ##' \code{weights}: a numeric vector; assigns a weight to each column of
@@ -218,17 +218,17 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-    br.sim = function(full.dat, new.dat.sim, n.sims, baseline=0, bootstrap = F,
+    br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = F,
                       control.list = get_br_control_list(), ...) {
 
     ## Check input
     check.list.format(full.dat)
-    if(!bootstrap) n.sims = 1
+    n.sims = if (bootstrap) max.n.sims else 1L
 
-    ## Update control list with baseline and n.sims, because br.smoothedCurve needs this information
+    ## Update control list with baseline and max.n.sims, because br.smoothedCurve needs this information
     control.list = get_br_control_list(parent = control.list,
                                        baseline = baseline,
-                                       n.sims = n.sims)
+                                       max.n.sims = max.n.sims)
 
     ## Split into old dat (list) and new dat (vector)
     old.dat = head(full.dat, -1L)

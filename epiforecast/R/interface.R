@@ -202,8 +202,9 @@ trendfilter.cv = function(x, y, k=2, cv.rule=c("min","1se"), nfolds=5,
 ##'
 ##' @param parent
 ##'
-##' @param n.sims the number of simulated curves to generate in a
+##' @param max.n.sims the number of simulated curves to generate in a
 ##'     forecast
+##'
 ##' @param peak.time.dist the distribution of smoothed-curve peak
 ##'     times that the prior should follow.  If enabled, each smoothed
 ##'     curve will be x-shifted to have a peak time which is drawn
@@ -379,15 +380,15 @@ trendfilter.cv = function(x, y, k=2, cv.rule=c("min","1se"), nfolds=5,
 ##'
 ##' @examples
 ##'   default.control.list get_eb_control_list()
-##'   with.less.sims = get_eb_control_list(n.sims = 10000L)
-##'   with.less.sims.another.way = get_eb_control_list(default.control.list, n.sims = 10000L)
+##'   with.less.sims = get_eb_control_list(max.n.sims = 10000L)
+##'   with.less.sims.another.way = get_eb_control_list(default.control.list, max.n.sims = 10000L)
 ##'   with.less.sims.and.sd.option.scale = get_eb_control_list(with.less.sims, sd.option="scale")
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
 get_eb_control_list = function(parent = NULL,
-                               n.sims = 20000L,
+                               max.n.sims = 20000L,
                                peak.time.dist = NULL,
                                x.shift.dist = NULL,
                                x.scale.dist = NULL,
@@ -509,9 +510,9 @@ fit.eb.control.list.old = function(curve.obj, control.list) {
     return (with(control.list, { # access inputted value of `control.list$thing` with `thing`
         ## Almost every statement here should have the form "control.list$thing <- expression(curve.obj, thing)", which takes the input `thing`, validates input, and assigns a fit and standardized version to the control list (with `thing` usually retaining its inputted value).
 
-        ## =n.out= and =n.sims= should be single-length integers:
+        ## =n.out= and =max.n.sims= should be single-length integers:
         control.list$n.out <- n.out <- match.single.integer(n.out) # also overwrite local =n.out=
-        control.list$n.sims <- match.single.integer(n.sims)
+        control.list$max.n.sims <- match.single.integer(max.n.sims)
 
         ## Fill in defaults and fit distributions according to the specification in =get_eb_control_list=:
         ## Peak time dist: default: disabled; enabled default: fit a discrete uniform; disabled default: uniform distribution over =NA=, interpreted specially by the EB procedure; enabled default with specified number of buckets: not yet implemented.
@@ -652,7 +653,7 @@ fit.eb.control.list = function(dat, new.dat, fit.obj, time.of.forecast, control.
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, n.sims = 1000,
+eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 1000,
                   fit.obj=NULL, control.list=get_eb_control_list()) {
 
     ## Check input
@@ -669,7 +670,7 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, n.sims = 1000,
     control.list = get_eb_control_list(parent = control.list,
                                        n.out=length(new.dat),
                                        y.scale.baseline = baseline,
-                                       n.sims = n.sims)
+                                       max.n.sims = max.n.sims)
     sim = eb.createForecasts(old.dat, new.dat, fit.obj, time.of.forecast,
                              control.list = control.list)
 
@@ -724,7 +725,7 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, n.sims = 1000,
 ##'   NA, indicates to scale about 0 (regardless of sign).
 ##' @export
 get_br_control_list = function(parent = NULL,
-                               n.sims = 20000L,
+                               max.n.sims = 20000L,
                                n.out=53L,
                                model = "Basis Regression",
                                max.match.length=NULL,
