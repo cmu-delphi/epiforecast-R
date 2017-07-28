@@ -218,7 +218,7 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-    br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = F,
+    br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = FALSE,
                       control.list = get_br_control_list(), ...) {
 
     ## Check input

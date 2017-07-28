@@ -213,11 +213,25 @@ show.sample.trajectories =
     if(any(apply(ys,2,function(mycol){any(is.na(mycol))}))) stop("ys has missing entries!")
 
     ## format simulated trajectories
-    ys = as.data.frame(round(ys[c(seq_len(n.shown.rows),NA_integer_),c(seq_len(n.shown.cols),NA_integer_)],2L))
-    ys[n.shown.rows+1L,] = rep("...", n.shown.cols+1L)
-    ys[,n.shown.cols+1L] = rep("...", n.shown.rows+1L)
-    rownames(ys) <- c(paste("time =", seq_len(n.shown.rows)), "...")
-    colnames(ys) <- c(paste("sim", seq_len(n.shown.cols)), "...")
+    has.unshown.rows = n.shown.rows < nrow(ys)
+    has.unshown.cols = n.shown.cols < ncol(ys)
+    n.shown.rows <- min(n.shown.rows, nrow(ys))
+    n.shown.cols <- min(n.shown.cols, ncol(ys))
+    row.indices = c(seq_len(n.shown.rows),
+                    c(NA_integer_)[has.unshown.rows])
+    col.indices = c(seq_len(n.shown.cols),
+                    c(NA_integer_)[has.unshown.cols])
+    ys <- as.data.frame(round(ys[row.indices, col.indices, drop=FALSE],2L))
+    if (has.unshown.rows) {
+      ys[n.shown.rows+1L,] = rep("...", n.shown.cols+as.integer(has.unshown.cols))
+    }
+    if (has.unshown.cols) {
+      ys[,n.shown.cols+1L] = rep("...", n.shown.rows+as.integer(has.unshown.rows))
+    }
+    rownames(ys) <- c(paste("time =", seq_len(n.shown.rows)),
+                      c("...")[has.unshown.rows])
+    colnames(ys) <- c(paste("sim", seq_len(n.shown.cols)),
+                      c("...")[has.unshown.cols])
 
     ## show it
     print(ys)
@@ -518,4 +532,69 @@ plot.target_forecast = function(x, add=FALSE, ...) {
   if(add) {
     stop("add=TRUE functionality not written yet")
   }
+}
+
+##' Resample a sim (if necessary) to get <= max.n.sims simulated curves
+##'
+##' @param sim.obj a sim object
+##' @param max.n.sims a single non-NA non-negative integer; the inclusive upper
+##'   bound on the number of simulated curves in the result
+##' @return a sim object with <= max.n.sims simulated curves; the weights in the
+##'   result are the same as the weights of the corresponding curves in
+##'   \code{sim.obj}, implying that the sum of the weights in the result is less
+##'   than or equal to the sum of the weights in the result (due to sampling
+##'   without replacement), similar to reductions in "effective particles" in
+##'   particle sampling contexts due to resampling.
+##' @details Resampling is only performed if the number of simulations needs to
+##'   change. Resampling is done without replacement to prevent unnecessary
+##'   reductions in the number of "effective particles".
+downsample_sim = function(sim.obj, max.n.sims) {
+  max.n.sims <- match.single.nonna.integer(max.n.sims)
+  if (max.n.sims < 0L) {
+    stop ("max.n.sims must be a natural number.")
+  }
+  input.n.sims = length(sim.obj[["weights"]])
+  if (input.n.sims <= max.n.sims) {
+    result = sim.obj
+  } else {
+    inds = sample(seq_along(sim.obj$weights), max.n.sims, prob=sim.obj$weights, replace=FALSE)
+    result = sim.obj
+    result[c("ys","weights")] <- list(
+      sim.obj$ys[,inds],
+      sim.obj$weights[inds]
+    )
+    result[["last.actually.sampled.to.n.sims.of"]] <- max.n.sims
+  }
+  return (result)
+}
+
+##' Resample a sim (if necessary) to get >= min.n.sims simulated curves
+##'
+##' @param sim.obj a sim object
+##' @param max.n.sims a single non-NA non-negative integer; the inclusive lower
+##'   bound on the number of simulated curves in the result
+##' @return a sim object with >= min.n.sims simulated curves; the weights in the
+##'   result are the same as the weights of the corresponding curves in
+##'   \code{sim.obj}, which may create an inflated impression of the number of
+##'   "effective particles", in analogy with particle filtering resampling.
+##' @details Resampling is only performed if the number of simulations needs to
+##'   change. Resampling (necessarily) is done with replacement.
+upsample_sim_inflating_total_weight = function(sim.obj, min.n.sims) {
+  min.n.sims <- match.single.nonna.integer(min.n.sims)
+  if (min.n.sims < 0L) {
+    stop ("min.n.sims must be a natural number.")
+  }
+  input.n.sims = length(sim.obj[["weights"]])
+  if (input.n.sims >= min.n.sims) {
+    result = sim.obj
+  } else {
+    inds = sample(seq_along(sim.obj$weights), min.n.sims, prob=sim.obj$weights, replace=TRUE)
+    result = sim.obj
+    result[c("ys","weights")] <- list(
+      sim.obj$ys[,inds],
+      sim.obj$weights[inds]
+    )
+    result[["last.actually.sampled.to.n.sims.of"]] <- min.n.sims
+  }
+  return (result)
 }

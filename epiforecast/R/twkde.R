@@ -98,21 +98,20 @@ bw.SJnrd0 = function(x) {
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, max.n.sims=2000L) {
+twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
+  ## extract historical data and future data from full.dat
+  dat = head(full.dat, -1L)
   dat <- match.dat(dat)
+  new.dat.sim = tail(full.dat, 1L)[[1]]
   new.dat.sim <- match.new.dat.sim(new.dat.sim)
+  old.season.labels = head(names(full.dat), -1L)
+  new.season.label = tail(names(full.dat), 1L)
   baseline <- match.single.na.or.numeric(baseline) # (ignored by twkde though)
   max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
   n.sims = if (is.null(max.n.sims)) ncol(new.dat.sim$ys) else max.n.sims
-  if (ncol(new.dat.sim$ys)==n.sims) {
-    ys = new.dat.sim$ys
-    sim.weights = new.dat.sim$weights
-  } else {
-    inds = sample(seq_along(new.dat.sim$weights), n.sims, prob=new.dat.sim$weights, replace=TRUE)
-    ys = new.dat.sim$ys[,inds]
-    n.effective.sims = max(n.sims, length(new.dat.sim$weights))
-    sim.weights = rep(mean(new.dat.sim$weights)*n.effective.sims/n.sims, n.sims)
-  }
+  new.dat.sim <- downsample_sim(upsample_sim_inflating_total_weight(new.dat.sim, n.sims), n.sims)
+  ys = new.dat.sim[["ys"]]
+  sim.weights = new.dat.sim[["weights"]]
   min.n.out = min(sapply(dat, length))
   obs.mat = sapply(dat, `[`, seq_len(min.n.out))
   obs.bws = sapply(seq_len(min.n.out), function(time.of.obs)
@@ -145,7 +144,21 @@ twkde.markovian.sim = function(dat, new.dat.sim, baseline=NA_real_, max.n.sims=2
   ## weights = rep(1, n.sims)
   ## sim = list(ys=ys, weights=weights)
   sim = list(ys=ys, weights=sim.weights)
-  return (sim)
+
+  ## Make a dummy control list, containing only model name
+  control.list = list(model = "twkde")
+
+  ## Return sim object
+    sim = list(ys=ys,
+               weights=sim.weights,
+               control.list=control.list,
+               old.dat = list(dat),
+               ## fake a vector new.dat if necessary:
+               new.dat = rowMeans(as.matrix(new.dat.sim[["ys"]])),
+               old.season.labels = list(old.season.labels),
+               new.season.label = list(new.season.label))
+    class(sim) <- "sim"
+    return (sim)
 }
 
 ##' Time-parameterized kernel density estimation sim method with heuristic adjustments
@@ -252,21 +265,15 @@ twkde.sim = function(## dat, new.dat.sim
   max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
   n.sims = if (is.null(max.n.sims)) ncol(new.dat.sim$ys) else max.n.sims
 
-  if (ncol(new.dat.sim$ys)==n.sims) {
-    ys = new.dat.sim$ys
-    sim.weights = new.dat.sim$weights
-  } else {
-    inds = sample(seq_along(new.dat.sim$weights), n.sims, prob=new.dat.sim$weights, replace=TRUE)
-    ys = new.dat.sim$ys[,inds]
-    n.effective.sims = max(n.sims, length(new.dat.sim$weights))
-    sim.weights = rep(mean(new.dat.sim$weights)*n.effective.sims/n.sims, n.sims)
-  }
+  new.dat.sim <- downsample_sim(upsample_sim_inflating_total_weight(new.dat.sim, n.sims), n.sims)
+  ys = new.dat.sim[["ys"]]
+  sim.weights = new.dat.sim[["weights"]]
 
   orig.min.n.out = min(sapply(dat, length))
   ## orig.obs.mat = sapply(dat, `[`, seq_len(orig.min.n.out)) # xxx use dat.to.matrix
   orig.obs.mat = dat.to.matrix(dat, orig.min.n.out)
   for (time.of.obs in seq_len(nrow(new.dat.sim$ys))) {
-    if (!is.na(new.dat.sim$ys[time.of.obs,1])) {
+    if (!is.na(new.dat.sim$ys[time.of.obs,1L])) {
     } else {
       ## Include data from other times with discounted weights; do not consider
       ## any data from more than =max.shifts[time.of.obs]= weeks away.
@@ -372,7 +379,8 @@ twkde.sim = function(## dat, new.dat.sim
                weights=sim.weights,
                control.list=control.list,
                old.dat = list(dat),
-               new.dat = as.numeric(unlist(new.dat.sim[["ys"]])),
+               ## fake a vector new.dat if necessary:
+               new.dat = rowMeans(as.matrix(new.dat.sim[["ys"]])),
                old.season.labels = list(old.season.labels),
                new.season.label = list(new.season.label))
     class(sim) <- "sim"

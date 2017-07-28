@@ -653,7 +653,7 @@ fit.eb.control.list = function(dat, new.dat, fit.obj, time.of.forecast, control.
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 1000,
+eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 1000L,
                   fit.obj=NULL, control.list=get_eb_control_list()) {
 
     ## Check input
