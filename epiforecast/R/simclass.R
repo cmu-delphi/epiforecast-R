@@ -439,18 +439,21 @@ c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
   ## check that each argument is nontrivially named and/or a list with all
   ## elements nontrivially named:
   dots = list(...)
-  if (!(
-    !is.null(names(dots)) &&
-    all(
-      names(dots) != "" |
-      sapply(dots, function(arg) {
-        is.list(arg) && !is.null(names(arg)) && all(names(arg) != "")
-      })
-    ))) {
-    stop ('All components to add to the sim object must be (a) named (and/)or (b) lists with every component named.  Names of "" are treated as invalid.')
+  dots.namesish = if (is.null(names(dots))) {
+                    rep("", length(dots))
+                  } else {
+                    dplyr::coalesce(names(dots), "")
+                  }
+  if (any(
+    dots.namesish == "" &
+    sapply(dots, function(arg) {
+      !is.list(arg) || is.null(names(arg)) || any(is.na(names(arg)) | names(arg) == "")
+    })
+  )) {
+    stop ('All components to add to the object must be (a) named (and/)or (b) lists with every component named.  Names of "" are treated as invalid.')
   }
   ## forward operation to c method used for lists:
-  input.as.list = unclass(sim)
+  input.as.list = unclass(classed.list)
   stopifnot(!anyDuplicated(names(input.as.list)))
   result.as.list = c(input.as.list, ..., recursive=FALSE, use.names=TRUE)
   ## check for duplicate names:
@@ -459,8 +462,8 @@ c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
     stop (paste0("All components must be uniquely named; adding the specified components would result in the following duplicates:\n",
                  paste0(sapply(names(result.as.list)[duplicate.name.flags], as.name), collapse="\n")))
   }
-  ## re-class list result into sim object:
-  result = structure(result.as.list, class="sim")
+  ## re-class list result:
+  result = structure(result.as.list, class=class(classed.list))
   return (result)
 }
 
