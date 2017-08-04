@@ -1,5 +1,5 @@
 // author_header begin
-// Copyright (C) 2016 Logan C. Brooks
+// Copyright (C) 2017 Logan C. Brooks
 //
 // This file is part of epiforecast.  Algorithms included in epiforecast were developed by Logan C. Brooks, David C. Farrow, Sangwon Hyun, Shannon Gallagher, Ryan J. Tibshirani, Roni Rosenfeld, and Rob Tibshirani (Stanford University), members of the Delphi group at Carnegie Mellon University.
 //
@@ -32,7 +32,10 @@
 #include <functional>
 #include <map>
 #include <cmath>
+
 #include <Rcpp.h>
+
+#include "epiforecast_types.hpp"
 
 #define OUTELT(elt) \
   do { \
@@ -724,14 +727,6 @@ public:
     return std::array<std::size_t, ndims()>{{end_}};
   }
 };
-
-// xxx templatize
-using Time = double;
-using Observation = double;
-using Mean = double;
-using SD = double;
-using LogLikelihood = double;
-using Rp = double;
 
 // todo sampling methods given an IO&RNG object.
 
@@ -1906,7 +1901,6 @@ auto ExampleTransformedCurves(const std::vector<ObservableCurve> &fit_observable
 // Doesn't seem to have an effect:
 // [[Rcpp::plugins(cpp14)]]
 
-// -- [[Rcpp::export]]
 RcppExport SEXP ExampleZipCurves() {
   BEGIN_RCPP
     // maino();
@@ -1928,7 +1922,6 @@ RcppExport SEXP ExampleZipCurves() {
   END_RCPP
 }
 
-// -- [[Rcpp::export]]
 RcppExport SEXP ExampleCartesianCurves() {
   BEGIN_RCPP
     // maino();
@@ -1950,20 +1943,18 @@ RcppExport SEXP ExampleCartesianCurves() {
   END_RCPP
 }
 
-Trajectory TrajectoryFromSEXP(SEXP trajectory_sexp) {
+Trajectory TrajectoryFromDataFrame(const Rcpp::DataFrame &trajectory_df) {
   // todo auto &&, move, ...
-  Rcpp::DataFrame trajectory_rcpp(trajectory_sexp);
-  auto trajectory_times = Rcpp::as<std::vector<Time>>(trajectory_rcpp["time"]);
-  auto trajectory_observations = Rcpp::as<std::vector<Observation>>(trajectory_rcpp["observation"]);
+  auto trajectory_times = Rcpp::as<std::vector<Time>>(trajectory_df["time"]);
+  auto trajectory_observations = Rcpp::as<std::vector<Observation>>(trajectory_df["observation"]);
   auto trajectory_gen = MakeFMapZipProductIterable(&std::make_pair<const Time&, const Observation&>, trajectory_times, trajectory_observations);
   auto trajectory = Trajectory(trajectory_gen.begin(), trajectory_gen.end());
   return trajectory;
 }
 
-std::vector<std::pair<Time, Rp>> ShrinkageMapFromSEXP(SEXP shrinkage_map_sexp) {
-  Rcpp::DataFrame df(shrinkage_map_sexp);
-  auto times = Rcpp::as<std::vector<Time>>(df["time"]);
-  auto weights = Rcpp::as<std::vector<Rp>>(df["weight"]);
+std::vector<std::pair<Time, Rp>> ShrinkageMapFromDataFrame(const Rcpp::DataFrame &shrinkage_map_df) {
+  auto times = Rcpp::as<std::vector<Time>>(shrinkage_map_df["time"]);
+  auto weights = Rcpp::as<std::vector<Rp>>(shrinkage_map_df["weight"]);
   auto gen = MakeFMapZipProductIterable(&std::make_pair<const Time&, const Rp&>, times, weights);
   std::vector<std::pair<Time, Rp>> result(gen.begin(), gen.end());
   return result;
@@ -1971,38 +1962,21 @@ std::vector<std::pair<Time, Rp>> ShrinkageMapFromSEXP(SEXP shrinkage_map_sexp) {
 
 // todo pack arguments into a list, convert to POD struct and pass around that way.
 
-// -- [[Rcpp::export]]
-RcppExport SEXP CartesianProductCurvesRcpp
+// [[Rcpp::export]]
+std::vector<Rcpp::DataFrame> CartesianProductCurves
 (
- // SEXP new_dat_sexp,
- // SEXP dat_sexp,
- SEXP fit_obj_sexp,
- SEXP y_scale_baseline_sexp,
- // SEXP observed_past_shrinkage_map_sexp,
- // SEXP reasonable_future_shrinkage_map_sexp,
- // SEXP n_future_neighbors_sexp,
- SEXP curve_index_choices_sexp,
- SEXP peak_time_choices_sexp,
- SEXP x_shift_choices_sexp,
- SEXP x_scale_choices_sexp,
- SEXP sd_choices_sexp,
- SEXP sd_scale_choices_sexp,
- SEXP peak_height_choices_sexp,
- SEXP y_scale_choices_sexp) {
-  BEGIN_RCPP  // forward exceptions to R
+ Rcpp::List fit_obj_rcpp,
+ Mean y_scale_baseline,
+ std::vector<std::ptrdiff_t> curve_index_choices,
+ std::vector<Time> peak_time_choices,
+ std::vector<Time> x_shift_choices,
+ std::vector<Time> x_scale_choices,
+ std::vector<SD> sd_choices,
+ std::vector<Rp> sd_scale_choices,
+ std::vector<Mean> peak_height_choices,
+ std::vector<Rp> y_scale_choices) {
     // ProfilerStart("./myprofile.log");
       // xxx prevent copying using proxies to Rcpp versions
-  // Rcpp::Rcout << "new.dat" << std::endl;
-  // Trajectory new_dat = TrajectoryFromSEXP(new_dat_sexp);
-  // Rcpp::Rcout << "dat" << std::endl;
-  // auto dat_rcpp = Rcpp::List(dat_sexp);
-  // std::vector<Trajectory> dat;
-  // dat.reserve(dat_rcpp.length());
-  // for (const SEXP &historical_trajectory_sexp : dat_rcpp) {
-  //   dat.push_back(TrajectoryFromSEXP(historical_trajectory_sexp));
-  // }
-  // Rcpp::Rcout << "fit.obj" << std::endl;
-  Rcpp::List fit_obj_rcpp(fit_obj_sexp);
   std::vector<ObservableCurve> fit_observable_curves;
   for (const SEXP &curve_sexp : fit_obj_rcpp) {
     Rcpp::List curve_rcpp(curve_sexp);
@@ -2018,29 +1992,6 @@ RcppExport SEXP CartesianProductCurvesRcpp
     ObservableCurve observable_curve = MakeObservableCurve(mean_curve, tau);
     fit_observable_curves.push_back(observable_curve);
   }
-
-  auto y_scale_baseline = Rcpp::as<Mean>(y_scale_baseline_sexp);
-  // std::vector<std::pair<Time,Rp>> observed_past_shrinkage_map = ShrinkageMapFromSEXP(observed_past_shrinkage_map_sexp);
-  // std::vector<std::pair<Time,Rp>> reasonable_future_shrinkage_map = ShrinkageMapFromSEXP(reasonable_future_shrinkage_map_sexp);
-  // auto n_future_neighbors = Rcpp::as<std::size_t>(n_future_neighbors_sexp);
-
-  // Rcpp::Rcout << "choices" << std::endl;
-  // Rcpp::Rcout << "curve.index" << std::endl;
-  auto curve_index_choices = Rcpp::as<std::vector<std::ptrdiff_t>>(curve_index_choices_sexp);
-  // Rcpp::Rcout << "peak.time" << std::endl;
-  auto peak_time_choices = Rcpp::as<std::vector<Time>>(peak_time_choices_sexp);
-  // Rcpp::Rcout << "x.shift" << std::endl;
-  auto x_shift_choices = Rcpp::as<std::vector<Time>>(x_shift_choices_sexp);
-  // Rcpp::Rcout << "x.scale" << std::endl;
-  auto x_scale_choices = Rcpp::as<std::vector<Time>>(x_scale_choices_sexp);
-  // Rcpp::Rcout << "sd" << std::endl;
-  auto sd_choices = Rcpp::as<std::vector<SD>>(sd_choices_sexp);
-  // Rcpp::Rcout << "sd.scale" << std::endl;
-  auto sd_scale_choices = Rcpp::as<std::vector<Rp>>(sd_scale_choices_sexp);
-  // Rcpp::Rcout << "peak.height" << std::endl;
-  auto peak_height_choices = Rcpp::as<std::vector<Mean>>(peak_height_choices_sexp);
-  // Rcpp::Rcout << "y.scale" << std::endl;
-  auto y_scale_choices = Rcpp::as<std::vector<Rp>>(y_scale_choices_sexp);
 
   // Rcpp::Rcout << "make result" << std::endl;
   const auto &result_gen = ObservableCurveGenerator<CartesianProducts>(
@@ -2104,54 +2055,47 @@ RcppExport SEXP CartesianProductCurvesRcpp
                );
     result_vec.push_back(curve_rcpp);
   }
-  return Rcpp::wrap(result_vec);
-  END_RCPP  // forward exceptions to R
+  return result_vec;
 }
 
-// -- [[Rcpp::export]]
-RcppExport SEXP CartesianProductLogWeightsRcpp
+// [[Rcpp::export]]
+Rcpp::NumericVector CartesianProductLogWeights
 (
- SEXP new_dat_sexp,
- SEXP dat_sexp,
- SEXP observed_past_shrinkage_map_sexp,
- SEXP reasonable_future_shrinkage_map_sexp,
- SEXP n_future_neighbors_sexp,
- SEXP fit_obj_sexp,
- SEXP y_scale_baseline_sexp,
- SEXP curve_index_choices_sexp,
- SEXP peak_time_choices_sexp,
- SEXP x_shift_choices_sexp,
- SEXP x_scale_choices_sexp,
- SEXP sd_choices_sexp,
- SEXP sd_scale_choices_sexp,
- SEXP peak_height_choices_sexp,
- SEXP y_scale_choices_sexp,
- SEXP bias_peaktime_mean_sexp,
- SEXP bias_peaktime_sd_sexp,
- SEXP bias_peaktime_shrinkage_sexp,
- SEXP bias_peakheight_mean_sexp,
- SEXP bias_peakheight_sd_sexp,
- SEXP bias_peakheight_shrinkage_sexp
+ Rcpp::DataFrame new_dat_df,
+ Rcpp::List dat_rcpp,
+ Rcpp::DataFrame observed_past_shrinkage_map_df,
+ Rcpp::DataFrame reasonable_future_shrinkage_map_df,
+ std::size_t n_future_neighbors,
+ Rcpp::List fit_obj_rcpp,
+ Mean y_scale_baseline,
+ std::vector<std::ptrdiff_t> curve_index_choices,
+ std::vector<Time> peak_time_choices,
+ std::vector<Time> x_shift_choices,
+ std::vector<Time> x_scale_choices,
+ std::vector<SD> sd_choices,
+ std::vector<Rp> sd_scale_choices,
+ std::vector<Mean> peak_height_choices,
+ std::vector<Rp> y_scale_choices,
+ Time bias_peaktime_mean,
+ Time bias_peaktime_sd,
+ Rp bias_peaktime_shrinkage,
+ Mean bias_peakheight_mean,
+ SD bias_peakheight_sd,
+ Rp bias_peakheight_shrinkage
  ) {
-  BEGIN_RCPP  // forward exceptions to R
     // ProfilerStart("./myprofile.log");
       // xxx prevent copying using proxies to Rcpp versions
-  // Rcpp::Rcout << "new.dat" << std::endl;
-  Trajectory current_trajectory = TrajectoryFromSEXP(new_dat_sexp);
-  // Rcpp::Rcout << "dat" << std::endl;
-  auto dat_rcpp = Rcpp::List(dat_sexp);
+  Trajectory current_trajectory = TrajectoryFromDataFrame(new_dat_df);
   std::vector<Trajectory> historical_trajectories;
   historical_trajectories.reserve(dat_rcpp.length());
   for (const SEXP &historical_trajectory_sexp : dat_rcpp) {
-    historical_trajectories.push_back(TrajectoryFromSEXP(historical_trajectory_sexp));
+    historical_trajectories.push_back(TrajectoryFromDataFrame(Rcpp::DataFrame(historical_trajectory_sexp)));
   }
   // Rcpp::Rcout << "observed_past_shrinkage_map" << std::endl;
-  std::vector<std::pair<Time,Rp>> observed_past_shrinkage_map = ShrinkageMapFromSEXP(observed_past_shrinkage_map_sexp);
+  std::vector<std::pair<Time,Rp>> observed_past_shrinkage_map = ShrinkageMapFromDataFrame(observed_past_shrinkage_map_df);
   // Rcpp::Rcout << "reasonable_future_shrinkage_map" << std::endl;
-  std::vector<std::pair<Time,Rp>> reasonable_future_shrinkage_map = ShrinkageMapFromSEXP(reasonable_future_shrinkage_map_sexp);
-  auto n_future_neighbors = Rcpp::as<std::size_t>(n_future_neighbors_sexp);
+  std::vector<std::pair<Time,Rp>> reasonable_future_shrinkage_map = ShrinkageMapFromDataFrame(reasonable_future_shrinkage_map_df);
   // Rcpp::Rcout << "fit.obj" << std::endl;
-  Rcpp::List fit_obj_rcpp(fit_obj_sexp);
   std::vector<ObservableCurve> fit_observable_curves;
   for (const SEXP &curve_sexp : fit_obj_rcpp) {
     Rcpp::List curve_rcpp(curve_sexp);
@@ -2167,32 +2111,6 @@ RcppExport SEXP CartesianProductLogWeightsRcpp
     ObservableCurve observable_curve = MakeObservableCurve(mean_curve, tau);
     fit_observable_curves.push_back(observable_curve);
   }
-
-  auto y_scale_baseline = Rcpp::as<Mean>(y_scale_baseline_sexp);
-
-  // Rcpp::Rcout << "choices" << std::endl;
-  // Rcpp::Rcout << "curve.index" << std::endl;
-  auto curve_index_choices = Rcpp::as<std::vector<std::ptrdiff_t>>(curve_index_choices_sexp);
-  // Rcpp::Rcout << "peak.time" << std::endl;
-  auto peak_time_choices = Rcpp::as<std::vector<Time>>(peak_time_choices_sexp);
-  // Rcpp::Rcout << "x.shift" << std::endl;
-  auto x_shift_choices = Rcpp::as<std::vector<Time>>(x_shift_choices_sexp);
-  // Rcpp::Rcout << "x.scale" << std::endl;
-  auto x_scale_choices = Rcpp::as<std::vector<Time>>(x_scale_choices_sexp);
-  // Rcpp::Rcout << "sd" << std::endl;
-  auto sd_choices = Rcpp::as<std::vector<SD>>(sd_choices_sexp);
-  // Rcpp::Rcout << "sd.scale" << std::endl;
-  auto sd_scale_choices = Rcpp::as<std::vector<Rp>>(sd_scale_choices_sexp);
-  // Rcpp::Rcout << "peak.height" << std::endl;
-  auto peak_height_choices = Rcpp::as<std::vector<Mean>>(peak_height_choices_sexp);
-  // Rcpp::Rcout << "y.scale" << std::endl;
-  auto y_scale_choices = Rcpp::as<std::vector<Rp>>(y_scale_choices_sexp);
-  auto bias_peaktime_mean = Rcpp::as<Time>(bias_peaktime_mean_sexp);
-  auto bias_peaktime_sd = Rcpp::as<Time>(bias_peaktime_sd_sexp);
-  auto bias_peaktime_shrinkage = Rcpp::as<Rp>(bias_peaktime_shrinkage_sexp);
-  auto bias_peakheight_mean = Rcpp::as<Mean>(bias_peakheight_mean_sexp);
-  auto bias_peakheight_sd = Rcpp::as<SD>(bias_peakheight_sd_sexp);
-  auto bias_peakheight_shrinkage = Rcpp::as<Rp>(bias_peakheight_shrinkage_sexp);
 
   // Rcpp::Rcout << "CART make result" << std::endl;
   auto &&xformed_curves_gen = ObservableCurveGenerator<CartesianProducts>(
@@ -2243,10 +2161,8 @@ RcppExport SEXP CartesianProductLogWeightsRcpp
   // xxx vs init with size and set.  check distance operators...
   Rcpp::NumericVector result_rcpp(log_weights_gen.begin(), log_weights_gen.end());
   return result_rcpp;
-  END_RCPP  // forward exceptions to R
 }
 
-// // -- [[Rcpp::export]]
 // RcppExport SEXP ZipProductCurvesAndLogWeightsRcpp
 // (
 //  SEXP new_dat_sexp,
@@ -2381,53 +2297,42 @@ RcppExport SEXP CartesianProductLogWeightsRcpp
 //   END_RCPP  // forward exceptions to R
 // }
 
-// -- [[Rcpp::export]]
-RcppExport SEXP ZipProductCurvesAndLogWeightspRcpp
+// [[Rcpp::export]]
+SEXP ZipProductCurvesAndLogWeightsp
 (
- SEXP output_times_sexp,
- SEXP new_dat_sexp,
- SEXP dat_sexp,
- SEXP observed_past_shrinkage_map_sexp,
- SEXP reasonable_future_shrinkage_map_sexp,
- SEXP n_future_neighbors_sexp,
- SEXP fit_obj_sexp,
- SEXP y_scale_baseline_sexp,
- SEXP curve_index_choices_sexp,
- SEXP peak_time_choices_sexp,
- SEXP x_shift_choices_sexp,
- SEXP x_scale_choices_sexp,
- SEXP sd_choices_sexp,
- SEXP sd_scale_choices_sexp,
- SEXP peak_height_choices_sexp,
- SEXP y_scale_choices_sexp,
- SEXP bias_peaktime_mean_sexp,
- SEXP bias_peaktime_sd_sexp,
- SEXP bias_peaktime_shrinkage_sexp,
- SEXP bias_peakheight_mean_sexp,
- SEXP bias_peakheight_sd_sexp,
- SEXP bias_peakheight_shrinkage_sexp
+ std::vector<Time> output_times,
+ Rcpp::DataFrame new_dat_df,
+ Rcpp::List dat_rcpp,
+ Rcpp::DataFrame observed_past_shrinkage_map_df,
+ Rcpp::DataFrame reasonable_future_shrinkage_map_df,
+ std::size_t n_future_neighbors,
+ Rcpp::List fit_obj_rcpp,
+ Mean y_scale_baseline,
+ std::vector<std::ptrdiff_t> curve_index_choices,
+ std::vector<Time> peak_time_choices,
+ std::vector<Time> x_shift_choices,
+ std::vector<Time> x_scale_choices,
+ std::vector<SD> sd_choices,
+ std::vector<Rp> sd_scale_choices,
+ std::vector<Mean> peak_height_choices,
+ std::vector<Rp> y_scale_choices,
+ Time bias_peaktime_mean,
+ Time bias_peaktime_sd,
+ Rp bias_peaktime_shrinkage,
+ Mean bias_peakheight_mean,
+ SD bias_peakheight_sd,
+ Rp bias_peakheight_shrinkage
  ) {
-  BEGIN_RCPP  // forward exceptions to R
     // ProfilerStart("./myprofile.log");
       // xxx prevent copying using proxies to Rcpp versions
-  // Rcpp::Rcout << "output_times" << std::endl;
-  auto output_times = Rcpp::as<std::vector<Time> >(output_times_sexp);
-  // Rcpp::Rcout << "new.dat" << std::endl;
-  Trajectory current_trajectory = TrajectoryFromSEXP(new_dat_sexp);
-  // Rcpp::Rcout << "dat" << std::endl;
-  auto dat_rcpp = Rcpp::List(dat_sexp);
+  Trajectory current_trajectory = TrajectoryFromDataFrame(new_dat_df);
   std::vector<Trajectory> historical_trajectories;
   historical_trajectories.reserve(dat_rcpp.length());
   for (const SEXP &historical_trajectory_sexp : dat_rcpp) {
-    historical_trajectories.push_back(TrajectoryFromSEXP(historical_trajectory_sexp));
+    historical_trajectories.push_back(TrajectoryFromDataFrame(Rcpp::DataFrame(historical_trajectory_sexp)));
   }
-  // Rcpp::Rcout << "observed_past_shrinkage_map" << std::endl;
-  std::vector<std::pair<Time,Rp>> observed_past_shrinkage_map = ShrinkageMapFromSEXP(observed_past_shrinkage_map_sexp);
-  // Rcpp::Rcout << "reasonable_future_shrinkage_map" << std::endl;
-  std::vector<std::pair<Time,Rp>> reasonable_future_shrinkage_map = ShrinkageMapFromSEXP(reasonable_future_shrinkage_map_sexp);
-  auto n_future_neighbors = Rcpp::as<std::size_t>(n_future_neighbors_sexp);
-  // Rcpp::Rcout << "fit.obj" << std::endl;
-  Rcpp::List fit_obj_rcpp(fit_obj_sexp);
+  std::vector<std::pair<Time,Rp>> observed_past_shrinkage_map = ShrinkageMapFromDataFrame(observed_past_shrinkage_map_df);
+  std::vector<std::pair<Time,Rp>> reasonable_future_shrinkage_map = ShrinkageMapFromDataFrame(reasonable_future_shrinkage_map_df);
   std::vector<ObservableCurve> fit_observable_curves;
   for (const SEXP &curve_sexp : fit_obj_rcpp) {
     Rcpp::List curve_rcpp(curve_sexp);
@@ -2444,33 +2349,10 @@ RcppExport SEXP ZipProductCurvesAndLogWeightspRcpp
     fit_observable_curves.push_back(observable_curve);
   }
 
-  auto y_scale_baseline = Rcpp::as<Mean>(y_scale_baseline_sexp);
-
-  // Rcpp::Rcout << "choices" << std::endl;
-  auto curve_index_choices = Rcpp::as<std::vector<std::ptrdiff_t>>(curve_index_choices_sexp);
-  auto peak_time_choices = Rcpp::as<std::vector<Time>>(peak_time_choices_sexp);
-  auto x_shift_choices = Rcpp::as<std::vector<Time>>(x_shift_choices_sexp);
-  auto x_scale_choices = Rcpp::as<std::vector<Time>>(x_scale_choices_sexp);
-  auto sd_choices = Rcpp::as<std::vector<SD>>(sd_choices_sexp);
-  auto sd_scale_choices = Rcpp::as<std::vector<Rp>>(sd_scale_choices_sexp);
-  auto peak_height_choices = Rcpp::as<std::vector<Mean>>(peak_height_choices_sexp);
-  auto y_scale_choices = Rcpp::as<std::vector<Rp>>(y_scale_choices_sexp);
-  auto bias_peaktime_mean = Rcpp::as<Time>(bias_peaktime_mean_sexp);
-  auto bias_peaktime_sd = Rcpp::as<Time>(bias_peaktime_sd_sexp);
-  auto bias_peaktime_shrinkage = Rcpp::as<Rp>(bias_peaktime_shrinkage_sexp);
-  auto bias_peakheight_mean = Rcpp::as<Mean>(bias_peakheight_mean_sexp);
-  auto bias_peakheight_sd = Rcpp::as<SD>(bias_peakheight_sd_sexp);
-  auto bias_peakheight_shrinkage = Rcpp::as<Rp>(bias_peakheight_shrinkage_sexp);
-
   // Rcpp::Rcout << "ZIP make result" << std::endl;
   auto &&xformed_curves_gen = ObservableCurveGenerator<ZipProducts>(
-               // new_dat,
-               // dat,
                fit_observable_curves,
                y_scale_baseline,
-               // observed_past_shrinkage_map,
-               // reasonable_future_shrinkage_map,
-               // n_future_neighbors,
                curve_index_choices,
                peak_time_choices,
                x_shift_choices,
@@ -2527,10 +2409,15 @@ RcppExport SEXP ZipProductCurvesAndLogWeightspRcpp
   }
   Rcpp::List result_rcpp({{means, sds, log_weights}});
   return result_rcpp;
-  END_RCPP  // forward exceptions to R
 }
 
 // todo bias shrinkage/scaling weight
+// todo alternative approach: pseudocount prior + kernel conditional streaming
+// todo try to use features of [[Rcpp::export]] to eliminate SEXP conversions when possible (typedefs complicate)
+
+// todo clean and comment
+// todo incremental, pseudocount prior + kernel-based conditional algorithm
+// todo investigate huge compiled size
 
 // clang-format off
 // todo system includes
