@@ -599,6 +599,12 @@ upsample_sim_inflating_total_weight = function(sim.obj, min.n.sims) {
       sim.obj$ys[,c(seq_len(input.n.sims), sample.inds),drop=FALSE],
       c(sim.obj$weights, rep(mean(sim.obj$weights), length(sample.inds)))
     )
+    ## shuffle the results (e.g., to prevent dependencies in case this is paired
+    ## with another upsampled sim object):
+    result[c("ys","weights")] <- list(
+      sim.obj$ys[,sample(seq_len(ncol(result$ys))),drop=FALSE],
+      sample(sim.obj$weights)
+    )
     result[["last.actually.sampled.to.n.sims.of"]] <- min.n.sims
   }
   return (result)
