@@ -428,7 +428,7 @@ dur = function(trajectory, baseline, is.inseason, ...) {
 ##   structure(list(...), class = "sim")
 ## }
 
-c_for_named_lists = function(sim, ..., recursive=FALSE, use.names=TRUE) {
+c_for_named_lists = function(classed.list, ..., recursive=FALSE, use.names=TRUE) {
   ## check for attempts to override set arguments:
   if (recursive != FALSE) {
     stop ("recursive must be FALSE")
