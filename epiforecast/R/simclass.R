@@ -560,11 +560,12 @@ downsample_sim = function(sim.obj, max.n.sims) {
   if (input.n.sims <= max.n.sims) {
     result = sim.obj
   } else {
-    inds = sample(seq_along(sim.obj$weights), max.n.sims, prob=sim.obj$weights, replace=FALSE)
-    result = sim.obj
+    inds = sample(seq_along(sim.obj$weights), max.n.sims,
+                  prob=sim.obj$weights, replace=FALSE)
+    result = sim.obj # to include other things besides ys and weights
     result[c("ys","weights")] <- list(
-      sim.obj$ys[,inds],
-      sim.obj$weights[inds]
+      sim.obj$ys[,inds,drop=FALSE],
+      rep(mean(sim.obj$weights), length(inds))
     )
     result[["last.actually.sampled.to.n.sims.of"]] <- max.n.sims
   }
@@ -591,11 +592,12 @@ upsample_sim_inflating_total_weight = function(sim.obj, min.n.sims) {
   if (input.n.sims >= min.n.sims) {
     result = sim.obj
   } else {
-    inds = sample(seq_along(sim.obj$weights), min.n.sims, prob=sim.obj$weights, replace=TRUE)
-    result = sim.obj
+    sample.inds = sample(seq_along(sim.obj$weights), min.n.sims-input.n.sims,
+                         prob=sim.obj$weights, replace=TRUE)
+    result = sim.obj # to include other things besides ys and weights
     result[c("ys","weights")] <- list(
-      sim.obj$ys[,inds],
-      sim.obj$weights[inds]
+      sim.obj$ys[,c(seq_len(input.n.sims), sample.inds),drop=FALSE],
+      c(sim.obj$weights, rep(mean(sim.obj$weights), length(sample.inds)))
     )
     result[["last.actually.sampled.to.n.sims.of"]] <- min.n.sims
   }
