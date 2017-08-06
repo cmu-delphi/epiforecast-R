@@ -63,7 +63,7 @@ NULL
 ##'
 ##' @export
 br.smoothedCurve = function(full.dat, dat.obj, cur.season,
-                           control.list = get.br.control.list()){
+                            control.list = get.br.control.list()){
 
     if(control.list$model!="Basis Regression") stop("Wrong control list! Use the right one for basis regression!")
 
@@ -178,29 +178,15 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' Function for making forecasts with the basis regression method with output
 ##' matching the format of distributional forecasting methods.
 ##'
-##' @param full.dat a list of numeric vectors, one per past season, containing
-##'   historical trajectories; must not contain any NA's.
-##' @param baseline a single numeric: a "baseline level" for this dataset;
-##'   roughly speaking, data below this level does not grow like an epidemic.
-##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
-##'   number of curves to sample from the inferred distribution, or \code{NULL}
-##'   to match the number of trajectories in \code{new.dat.sim}
+##' @template sim.method_template
+##'
 ##' @param ... arguments to forward to \code{\link{br.smoothedCurve}}.
 ##'
-##' @return a list with two components:
-##'
-##' \code{ys}: a numeric matrix; in most other methods, each column is a
-##' different possible trajectory for the current season, with NA's in new.dat
-##' filled in with random draws from the forecasted distribution, and non-NA's
-##' (observed data) filled in with an imagined resampling of noise based on the
-##' model. For the basis regression method, there is a single column per
-##' trajectory in \code{new.dat} containing the smoothed curve outputted by
-##' \code{\link{br.smoothedCurve}}, unless \code{max.n.sims} is non-\code{NULL}, in
-##' which case, it is a resampling of these smoothed curves.
-##'
-##' \code{weights}: a numeric vector; assigns a weight to each column of
-##' \code{ys}, which is used by methods relying on importance sampling. For the
-##' basis regresion method, this is just the number 1.
+##' @details For the basis regression method, there is a single column per
+##'   trajectory in \code{new.dat} containing the smoothed curve outputted by
+##'   \code{\link{br.smoothedCurve}}, unless \code{max.n.sims} is
+##'   non-\code{NULL}, in which case, it is a resampling of these smoothed
+##'   curves.
 ##'
 ##' @examples
 ##' fluview.nat.recent.df =

@@ -108,11 +108,38 @@
 ## simclass.R #########
 #######################
 
+## todo: sim objects (/ something with a new name) should include at least two
+## options: (a) a constant, and (b) a list of ys and weights; this will require
+## some refactoring. The br method should map constants to constants unless
+## bootstrapping. Constants should not be represented as a single column with
+## weight 1, because this cannot be distinguished from a single draw from a
+## distribution with importance weight 1.
+
+## todo make sure the weights for all the sim methods can be interpreted as
+## effective number of draws
+
 ## todo proper metrics for multibin scores (including multi pwk)
+
+## todo upsample_sim_inflating_total_weight -> upsample_sim (adjust weighting accordingly), special treatment of new.dat rather than new.dat.sim
 
 ######################################
 ## retrospective_forecasts.R #########
 ######################################
 
 ## todo select twkde params
-## todo subspace projection + random walk approach
+## todo subspace projection + random walk forecast method
+## fixme better dataset representation... list of data sources (history df's? ilinet, fluview baselines, metadata?, in.season, ...) and auxiliary information indexed in a uniform way for location and time
+## todo interface for multiresolution (seasonal vs. weekly vs. ..., national vs. regions vs. ...) datasets and metadata, targets
+## todo instead of faking new.dat when given a new.dat.sim, store and use one in new.dat.sim
+
+#####################################
+## empirical.trajectories.R #########
+#####################################
+
+## todo due to different seasons having different baselines,
+## empirical.trajectories.sim will not produce the historical distribution for
+## onsets (but will for the other flusight targets); optional scaling based on
+## current and historical baselines to give historical onset distribution, to
+## adjust percentages for differences in network composition from season to
+## season (but changing the output from the historical distributions) (perhaps
+## this scaling could happen during a pre-processing step for full.dat)

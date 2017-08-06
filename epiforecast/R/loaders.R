@@ -205,7 +205,7 @@ fetchUpdatingResource = function(fetch.thunk.fun,
     }
 
   if (should.fetch.now) {
-    message("No cache, empty cache, expired cache, or forced cache invalidation; fetching data from server.")
+    message("No cache, empty cache, expired cache, or forced cache invalidation; fetching data.")
     ## todo prompt for confirmation on fetch/refetch
     ## todo option to read from cache without considering refetch
     fetch.response <- fetch.thunk.fun()

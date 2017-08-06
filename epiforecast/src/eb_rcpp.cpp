@@ -2411,12 +2411,8 @@ SEXP ZipProductCurvesAndLogWeightsp
   return result_rcpp;
 }
 
-// todo bias shrinkage/scaling weight
-// todo alternative approach: pseudocount prior + kernel conditional streaming
-// todo try to use features of [[Rcpp::export]] to eliminate SEXP conversions when possible (typedefs complicate)
-
 // todo clean and comment
-// todo incremental, pseudocount prior + kernel-based conditional algorithm
+// todo alternative approach: pseudocount prior + kernel conditional streaming
 // todo investigate huge compiled size
 
 // clang-format off

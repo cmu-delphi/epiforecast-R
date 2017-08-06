@@ -602,3 +602,90 @@ rownames(weekConventions) <- c("first.wday","owning.wday")
 ## todo week convention strings as alternatives to specifying first&owning wday
 ## todo options interface for week convention, season first.week
 ## todo function to ensure rep_len compatibility / array conformability between args
+
+##' Convert times (indices) into model weeks (shifted indices)
+##'
+##' @param time integer or numeric vector; integer indices into trajectories
+##'   containing weekly data, or numeric numbers that could also refer to times
+##'   between these indices
+##' @param first.week.of.season epi week number of the first element in a
+##'   trajectory (i.e., corresponding to time \code{1L})
+##' @return integer or numeric vector with same length as \code{time}; model
+##'   weeks --- times shifted forward by \code{first.week.of.season-1L} ---
+##'   corresponding to \code{time}
+##'
+##' @export
+time_to_model_week = function(time, first.week.of.season) {
+  return (time + first.week.of.season - 1L)
+}
+
+##' Convert model weeks (shifted indices) into times (indices)
+##'
+##' @param model.week integer or numeric vector; model weeks --- times shifted
+##'   forward by \code{first.week.of.season-1L}
+##' @param first.week.of.season epi week number of the first element in a
+##'   trajectory (i.e., corresponding to time \code{1L})
+##' @return integer or numeric vector with same length as \code{model.week};
+##'   times --- integer indices into trajectories containing weekly data, or
+##'   numeric numbers that could also refer to times between these indices
+##'
+##' @export
+model_week_to_time = function(model.week, first.week.of.season) {
+  return (model.week - first.week.of.season + 1L)
+}
+
+##' Convert model week numbers into epi week numbers
+##'
+##' @param model.week integer or numeric vector; model weeks --- epi weeks that
+##'   don't (necessarily) wrap around to 1 at the start of a new year (after
+##'   week 52 or 53 of the previous year) but rather wrap around when a season
+##'   ends, starting back at \code{first.week.of.season}; values could be
+##'   integers between \code{first.week.of.season} to
+##'   \code{first.week.of.season+52L} or \code{first.week.of.season+53L} for
+##'   integers, or a valid integer value plus a number in the clopen interval
+##'   [0,1) for numeric vectors
+##' @param first.week.of.season epi week number of the first element in a
+##'   trajectory (i.e., corresponding to time \code{1L})
+##' @param n.weeks.in.season \code{52L} or \code{53L} --- the length of the
+##'   indexed trajectory, corresponding to the number of weeks in the first year
+##'   contained in the season
+##' @return integer or numeric vector with same length as \code{model.week}; epi
+##'   week numbers (wrapper versions of model week numbers in 1..52 + [0,1) or
+##'   1..53 + [0,1)) corresponding to the given model week numbers
+##'
+##' @export
+model_week_to_epi_week = function(model.week, first.week.of.season, n.weeks.in.season) {
+  if (any(!is.na(model.week) & (model.week < first.week.of.season | model.week >= first.week.of.season + n.weeks.in.season))) {
+    stop ("Model week numbers cannot be less than the first week number of the season, nor >=1 more than first.week.of.season + n.weeks.in.season - 1.")
+  }
+  return ((model.week - 1L) %% n.weeks.in.season + 1L)
+}
+
+##' Convert epi week numbers into model week numbers
+##'
+##' @param epi.week integer or numeric vector; epi week numbers (wrapper
+##'   versions of model week numbers in 1..52 + [0,1) or 1..53 + [0,1))
+##' @param first.week.of.season epi week number of the first element in a
+##'   trajectory (i.e., corresponding to time \code{1L})
+##' @param n.weeks.in.season \code{52L} or \code{53L} --- the length of the
+##'   indexed trajectory, corresponding to the number of weeks in the first year
+##'   contained in the season
+##' @return integer or numeric vector with same length as \code{epi.week}; model
+##'   weeks --- epi weeks that don't (necessarily) wrap around to 1 at the start
+##'   of a new year (after week 52 or 53 of the previous year) but rather wrap
+##'   around when a season ends, starting back at \code{first.week.of.season};
+##'   values could be integers between \code{first.week.of.season} to
+##'   \code{first.week.of.season+52L} or \code{first.week.of.season+53L} for
+##'   integers, or a valid integer value plus a number in the clopen interval
+##'   [0,1) for numeric vectors
+##'
+##' @export
+epi_week_to_model_week = function(epi.week, first.week.of.season, n.weeks.in.season) {
+  if (any(!is.na(epi.week) & (epi.week < 1L | epi.week >= n.weeks.in.season + 1L))) {
+    stop ("Epi week numbers cannot be less than 1, nor >=1 more than n.weeks.in.season.")
+  }
+  should.shift = epi.week < first.week.of.season
+  model.week = epi.week %>>%
+    magrittr::inset(should.shift, .[should.shift] + n.weeks.in.season)
+  return (model.week)
+}

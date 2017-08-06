@@ -44,14 +44,19 @@ target.forecast = target_forecast(mysim,'pht')
 print(target.forecast)
 plot(target.forecast)
 
-
 ## Try EB with more simulation settings
 control.list = get_eb_control_list(sd.option="prior",max.match.length=5)
 mysim = eb.sim(full.dat, max.n.sims=100, control.list=control.list)
-## epitarget_forecast:::plot.sim(mysim)
 plot(mysim)
 target.forecast = target_forecast(mysim,'pwk')
 
+## Try empirical futures
+mysim = empirical.futures.sim(full.dat)
+plot(mysim)
+
+## Try empirical trajectories
+mysim = empirical.trajectories.sim(full.dat)
+plot(mysim)
 
 ## Try BR
 mysim = br.sim(full.dat, max.n.sims=100, bootstrap=T)
@@ -66,6 +71,10 @@ plot(mysim)
 print(mysim,verbose=TRUE)
 target.forecast = target_forecast(mysim, "pht", plot.hist=TRUE)
 target.forecast = target_forecast(mysim, "pwk", plot.hist=TRUE)
+
+## Try Markovian twkde
+mysim = twkde.markovian.sim(full.dat)
+plot(mysim)
 
 ## Try twkde
 mysim = twkde.sim(full.dat)

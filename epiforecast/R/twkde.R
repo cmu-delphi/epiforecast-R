@@ -49,32 +49,7 @@ bw.SJnrd0 = function(x) {
 ##' weighting function is a Gaussian kernel with width determined by
 ##' \code{bw.SJnrd0}.
 ##'
-##' @param dat a list of numeric vectors, one per past season, containing
-##'   historical trajectories.
-##' @param new.dat.sim a numeric vector (trajectory), numeric matrix (cbound
-##'   trajectories), or sim object (list with $ys a numeric matrix (cbound
-##'   trajectories) and $weights a numeric vector (associated weights)), with
-##'   \code{NA}'s for all future or missing data points to forecast or infer;
-##'   currently only supports \code{NA}'s at future points, not mixed in between
-##'   non-\code{NA} data
-##' @param baseline a "baseline level" for this dataset; roughly speaking, data
-##'   below this level does not grow like an epidemic; currently ignored, but
-##'   can be used as the \code{y.scale.baseline} by passing it through the
-##'   \code{control.list} argument.
-##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
-##'   number of curves to sample from the inferred distribution, or \code{NULL}
-##'   to match the number of trajectories in \code{new.dat.sim}
-##'
-##' @return a sim object (list with two components: \itemize{
-##' \item{\code{ys}: }{a numeric matrix; each column is a different possible
-##' trajectory for the current season, with \code{NA}'s in \code{new.dat.sim}
-##' filled in with random draws from the forecasted distribution, and non-NA's
-##' (observed data) filled in with an imagined resampling of noise based on the
-##' model.}
-##' \item{\code{weights}: }{a numeric vector; assigns a weight to each column of
-##' \code{ys}, which is used by other methods that rely on importance
-##' sampling).}
-##' }
+##' @template sim.method_template
 ##'
 ##' @examples
 ##' fluview.nat.recent.df =
@@ -108,7 +83,8 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
   new.season.label = tail(names(full.dat), 1L)
   baseline <- match.single.na.or.numeric(baseline) # (ignored by twkde though)
   max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
-  n.sims = if (is.null(max.n.sims)) ncol(new.dat.sim$ys) else max.n.sims
+  n.sims = max.n.sims
+
   new.dat.sim <- downsample_sim(upsample_sim_inflating_total_weight(new.dat.sim, n.sims), n.sims)
   ys = new.dat.sim[["ys"]]
   sim.weights = new.dat.sim[["weights"]]
@@ -146,19 +122,19 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
   sim = list(ys=ys, weights=sim.weights)
 
   ## Make a dummy control list, containing only model name
-  control.list = list(model = "twkde")
+  control.list = list(model = "twkde.markovian")
 
   ## Return sim object
-    sim = list(ys=ys,
-               weights=sim.weights,
-               control.list=control.list,
-               old.dat = list(dat),
-               ## fake a vector new.dat if necessary:
-               new.dat = rowMeans(as.matrix(new.dat.sim[["ys"]])),
-               old.season.labels = list(old.season.labels),
-               new.season.label = list(new.season.label))
-    class(sim) <- "sim"
-    return (sim)
+  sim = list(ys=ys,
+             weights=sim.weights,
+             control.list=control.list,
+             old.dat = list(dat),
+             ## fake a vector new.dat if necessary:
+             new.dat = rowMeans(new.dat.sim[["ys"]]),
+             old.season.labels = list(old.season.labels),
+             new.season.label = list(new.season.label))
+  class(sim) <- "sim"
+  return (sim)
 }
 
 ##' Time-parameterized kernel density estimation sim method with heuristic adjustments
@@ -182,21 +158,7 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
 ##' linearly mixed with a randomly selected value from historical curves around
 ##' that time.
 ##'
-##' @param dat a list of numeric vectors, one per past season, containing
-##'   historical trajectories.
-##' @param new.dat.sim a numeric vector (trajectory), numeric matrix (cbound
-##'   trajectories), or sim object (list with $ys a numeric matrix (cbound
-##'   trajectories) and $weights a numeric vector (associated weights)), with
-##'   \code{NA}'s for all future or missing data points to forecast or infer;
-##'   currently only supports \code{NA}'s at future points, not mixed in between
-##'   non-\code{NA} data
-##' @param baseline a "baseline level" for this dataset; roughly speaking, data
-##'   below this level does not grow like an epidemic; currently ignored, but
-##'   can be used as the \code{y.scale.baseline} by passing it through the
-##'   \code{control.list} argument.
-##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
-##'   number of curves to sample from the inferred distribution, or \code{NULL}
-##'   to match the number of trajectories in \code{new.dat.sim}
+##' @template sim.method_template
 ##' @param decay.factor decay factor for the exponential moving average of
 ##'   covariate.
 ##' @param diff.decay.factor decay factor for the exponential moving average of
@@ -210,16 +172,6 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
 ##'   non-time-based kernel components (last observed value, sum of observed
 ##'   values, exponential moving average of values, exponential moving average
 ##'   of differences).
-##'
-##' @return a sim object (list with two components: \itemize{
-##' \item{\code{ys}: }{a numeric matrix; each column is a different possible
-##' trajectory for the current season, with \code{NA}'s in \code{new.dat.sim} filled in with
-##' random draws from the forecasted distribution, and non-\code{NA}'s (observed data)
-##' filled in with an imagined resampling of noise based on the model.}
-##' \item{\code{weights}: }{a numeric vector; assigns a weight to each column of
-##' \code{ys}, which is used by other methods that rely on importance
-##' sampling).}
-##' }
 ##'
 ##' @examples
 ##' fluview.nat.recent.df =
@@ -263,7 +215,7 @@ twkde.sim = function(## dat, new.dat.sim
 
   baseline <- match.single.na.or.numeric(baseline) # (ignored by twkde though)
   max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
-  n.sims = if (is.null(max.n.sims)) ncol(new.dat.sim$ys) else max.n.sims
+  n.sims = max.n.sims
 
   new.dat.sim <- downsample_sim(upsample_sim_inflating_total_weight(new.dat.sim, n.sims), n.sims)
   ys = new.dat.sim[["ys"]]
@@ -375,16 +327,16 @@ twkde.sim = function(## dat, new.dat.sim
   control.list = list(model = "twkde")
 
   ## Return sim object
-    sim = list(ys=ys,
-               weights=sim.weights,
-               control.list=control.list,
-               old.dat = list(dat),
-               ## fake a vector new.dat if necessary:
-               new.dat = rowMeans(as.matrix(new.dat.sim[["ys"]])),
-               old.season.labels = list(old.season.labels),
-               new.season.label = list(new.season.label))
-    class(sim) <- "sim"
-    return (sim)
+  sim = list(ys=ys,
+             weights=sim.weights,
+             control.list=control.list,
+             old.dat = list(dat),
+             ## fake a vector new.dat if necessary:
+             new.dat = rowMeans(new.dat.sim[["ys"]]),
+             old.season.labels = list(old.season.labels),
+             new.season.label = list(new.season.label))
+  class(sim) <- "sim"
+  return (sim)
 }
 
 ## todo fix twkde =max.shifts= time smearing default to be generic, not flu-specific

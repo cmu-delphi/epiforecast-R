@@ -23,7 +23,8 @@ Imports:
     plotrix,
     tibble,
     dplyr,
-    pipeR
+    pipeR,
+    matrixStats
 Description: Tools for forecasting semi-regular seasonal epidemic curves and
     similar time series. Includes an empirical Bayes approach that forms a prior
     by transforming historical curves, a basis regression approach that balances
@@ -46,6 +47,8 @@ Collate:
     'loaders.R'
     'interface.R'
     'eb.R'
+    'empirical.futures.R'
+    'empirical.trajectories.R'
     'forecast_type.R'
     'holidays.R'
     'read.R'

@@ -42,13 +42,56 @@ match.integer = function(inp) {
   }
 }
 
+##' Match length-1 numeric input
+##'
+##' Returns a possibly-named length-1 possibly-NA numeric vector version of the
+##' input, or produces an error if the input seems inappropriate.
+##'
+##' @param x supposed to be a possibly-named length-1 numeric object
+##'
+##' @return \code{x} as a length-1 numeric vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.single.na.or.numeric = function(x) {
+  if (is.numeric(x) && length(x)==1L) {
+    return (as.vector(x))
+  } else {
+    stop (sprintf("Argument =%s= must be a length 1 numeric vector representing an integral value.", paste(deparse(match.call()$n), collapse="\n")))
+  }
+}
+
+##' Match length-1 non-\code{NA} numeric-valued input
+##'
+##' Returns a possibly-named length-1 non-NA numeric-class vector version of the
+##' input, or produces an error if the input seems inappropriate.
+##'
+##' @param x supposed to be a possibly-named length-1 non-NA numeric-valued
+##'   numeric object
+##'
+##' @return \code{x} as a length-1 numeric-class vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.single.nonna.numeric = function(x) {
+  if (is.numeric(x) && length(x)==1L && !is.na(x)) {
+    x <- as.vector(x)
+    storage.mode(x) <- "numeric"
+    return (x)
+  } else {
+    stop (sprintf("Argument =%s= must be a length-1 numeric object.", paste(deparse(match.call()$x), collapse="\n")))
+  }
+}
+
 ##' Match length-1 non-\code{NA} integer-valued input
 ##'
 ##' Returns a possibly-named length-1 non-NA integer-class vector version of the
 ##' input, or produces an error if the input seems inappropriate.
 ##'
 ##' @param n supposed to be a possibly-named length-1 non-NA integer-valued
-##'   numeric object
+##'   is.numeric object
 ##'
 ##' @return \code{n} as a length-1 integer-class vector
 ##'
@@ -91,23 +134,55 @@ match.single.nonna.integer.or.null = function(n) {
   }
 }
 
-##' Match length-1 numeric input
+##' Match all non-negative --- within \code{eps} --- \code{is.numeric} input
 ##'
-##' Returns a possibly-named length-1 possibly-NA numeric vector version of the
-##' input, or produces an error if the input seems inappropriate.
+##' Returns the input with any nearly-non-negative entries replaced with 0 if
+##' the original input \code{is.numeric} and all of its entries are within
+##' \code{eps} of being non-negative. Otherwise raises an error.
 ##'
-##' @param x supposed to be a possibly-named length-1 numeric object
+##' @param x object that \code{is.numeric}; object to check
 ##'
-##' @return \code{x} as a length-1 numeric vector
+##' @param eps single non-NA non-negative \code{is.numeric}; threshold of tolerance for negative values
+##'
+##' @return \code{x} with negative (nearly non-negative) entries replaced with 0
+##'   if \code{x} meets the nearly non-negative criterion; otherwise an error is
+##'   raised
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-match.single.na.or.numeric = function(x) {
-  if (is.numeric(x) && length(x)==1L) {
-    return (as.vector(x))
+match.nonnegative.numeric = function(x, eps=sqrt(.Machine[["double.eps"]])) {
+  eps <- match.single.nonna.numeric(eps)
+  if (eps < 0) {
+    stop ("eps must be >= 0")
+  }
+  if (is.numeric(x) && all(x >= -eps)) {
+    return (pmax(x, 0))
   } else {
-    stop (sprintf("Argument =%s= must be a length 1 numeric vector representing an integral value.", paste(deparse(match.call()$n), collapse="\n")))
+    stop (sprintf("All entries in argument =%s= should be non-negative.", paste(deparse(match.call()$n), collapse="\n")))
+  }
+}
+
+##' Match length-1 non-\code{NA} numeric-valued input
+##'
+##' Returns a possibly-named length-1 non-NA numeric-class vector version of the
+##' input, or produces an error if the input seems inappropriate.
+##'
+##' @param x supposed to be a possibly-named length-1 non-NA numeric-valued
+##'   numeric object
+##'
+##' @return \code{x} as a length-1 numeric-class vector
+##'
+##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
+##'
+##' @export
+match.single.nonna.numeric = function(x) {
+  if (is.numeric(x) && length(x)==1L && !is.na(x)) {
+    x <- as.vector(x)
+    storage.mode(x) <- "numeric"
+    return (x)
+  } else {
+    stop (sprintf("Argument =%s= must be a length-1 numeric object.", paste(deparse(match.call()$x), collapse="\n")))
   }
 }
 

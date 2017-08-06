@@ -253,6 +253,19 @@ target_forecast <- function(fit.model, ...) {
   UseMethod("target_forecast", fit.model)
 }
 
+wtd.quantile.or.na =
+  function (x, weights = NULL, probs = c(0, 0.25, 0.5, 0.75, 1),
+            type = c("quantile", "(i-1)/(n-1)", "i/(n+1)", "i/n"),
+            normwt = FALSE, na.rm = TRUE) {
+  if (na.rm && all(is.na(x))) {
+    ## x is empty or all NA's; return appropriate NA:
+    x[NA_integer_][[1L]]
+  } else {
+    Hmisc::wtd.quantile(x, weights=weights, probs=probs,
+                        type=type, normwt=normwt, na.rm=na.rm)
+  }
+}
+
 ##' Forecast a target (peak height, etc.) using a \code{sim} object
 ##'
 ##' @import rlist
@@ -265,10 +278,11 @@ target_forecast.sim = function(mysim,
                                target.name = target,
                                target.fun = target,
                                ## todo make a property of target types?:
-                               target.calculation.digits = Inf,
+                               target_trajectory_preprocessor = function(trajectory) trajectory,
                                target.value.formatter = identity,
                                ## todo make a property of forecast types?
                                target.multival.behavior = c("random.val", "closest.to.pred.val"),
+                               compute.estimates = TRUE,
                                hist.bins = NULL,
                                ...){
 
@@ -282,8 +296,9 @@ target_forecast.sim = function(mysim,
     }
 
     target.fun <- match.fun(target.fun)
-    target.values = apply(round(mysim[["ys"]], target.calculation.digits), 2L, function(trajectory) {
-      target.multival = target.fun(trajectory, ...)
+    target.values = apply(mysim[["ys"]], 2L, function(trajectory) {
+      processed.trajectory = target_trajectory_preprocessor(trajectory)
+      target.multival = target.fun(processed.trajectory, ...)
       ## ## Optimized version of sample(target.multival, 1L):
       ## switch(length(target.multival)+1L,
       ##        stop ("target function must produce at least one value"),
@@ -304,26 +319,30 @@ target_forecast.sim = function(mysim,
     }
 
     ## Compute mean, median, two-sided 90% quantiles
-    estimates = list(quantile = Hmisc::wtd.quantile(target.values, weights=target.weights, c(0.05,0.95)),
-                     quartile = Hmisc::wtd.quantile(target.values, weights=target.weights, c(0.25,0.5,0.75)),
-                     decile   = Hmisc::wtd.quantile(target.values, weights=target.weights, 1:9/10),
-                     mean = stats::weighted.mean(target.values, target.weights),
-                     median = matrixStats::weightedMedian(target.values, target.weights))
+    if (compute.estimates) {
+      estimates = list(quantile = wtd.quantile.or.na(target.values, weights=target.weights, c(0.05,0.95)),
+                       quartile = wtd.quantile.or.na(target.values, weights=target.weights, c(0.25,0.5,0.75)),
+                       decile   = wtd.quantile.or.na(target.values, weights=target.weights, 1:9/10),
+                       mean = stats::weighted.mean(target.values, target.weights),
+                       median = matrixStats::weightedMedian(target.values, target.weights))
+    }
 
     target.settings = list(
-      target.calculation.digits = target.calculation.digits,
-      target.multival.behavior = target.multival.behavior,
+      target_trajectory_preprocessor = target_trajectory_preprocessor,
       target.value.formatter = target.value.formatter,
+      target.multival.behavior = target.multival.behavior,
       ...
     )
 
     ## Return a list of things
     settings = rlist::list.remove(unclass(mysim), c("ys","weights"))
-    return (structure(list(settings = settings,
+    return (structure(c(list(settings = settings,
                            target.values = stats::setNames(list(target.values), target.name),
                            target.weights = target.weights,
-                           estimates = estimates,
                            target.settings = target.settings),
+                        if (compute.estimates) list(estimates = estimates)
+                        else list()
+                        ),
                       class="target_forecast"))
 }
 
@@ -343,83 +362,15 @@ print.target_forecast = function(x, sig.digit = 2L, ...) {
   ## Print a bunch of things
   cat("Summary for", target.name, ":",fill=TRUE)
   cat("====================", fill=TRUE)
-  cat("The mean of", target.name, "is", target.value.formatter(round(estimates$mean,sig.digit)), fill=TRUE)
-  cat("The median of", target.name, "is", target.value.formatter(round(estimates$median,sig.digit)), fill=TRUE)
-  cat("And the 0.05, 0.95 quantiles are", target.value.formatter(round(estimates$quantile,sig.digit)), fill=TRUE)
-  cat("And the quartiles are", target.value.formatter(round(estimates$quartile,sig.digit)), fill=TRUE)
-  cat("And the deciles are", target.value.formatter(round(estimates$decile,sig.digit)), fill=TRUE)
-}
-
-##' Calculate the peak week(s) in a vector of weekly observations
-##'
-##' @param trajectory a vector of weekly observations
-##' @param ... ignored
-##' @return integer vector, typically of length 1; indices of elements that are
-##'   \code{>=} all other elements
-##'
-##' @export
-pwk = function(trajectory, ...){
-  if (any(is.na(trajectory))) {
-    stop ("NA elements are not allowed when calculating =pwk=.")
+  if (is.null(estimates)) {
+    cat("No estimate computations recorded.")
+  } else {
+    cat("The mean of", target.name, "is", target.value.formatter(round(estimates$mean,sig.digit)), fill=TRUE)
+    cat("The median of", target.name, "is", target.value.formatter(round(estimates$median,sig.digit)), fill=TRUE)
+    cat("And the 0.05, 0.95 quantiles are", target.value.formatter(round(estimates$quantile,sig.digit)), fill=TRUE)
+    cat("And the quartiles are", target.value.formatter(round(estimates$quartile,sig.digit)), fill=TRUE)
+    cat("And the deciles are", target.value.formatter(round(estimates$decile,sig.digit)), fill=TRUE)
   }
-  return (which(trajectory==max(trajectory)))
-}
-
-##' Calculate the peak height of a trajectory
-##'
-##' @param trajectory a vector
-##' @param ... ignored
-##' @return a scalar --- the maximum value of the vector
-##'
-##' @export
-pht = function(trajectory, ...){
-  return (max(trajectory))
-}
-
-##' Calculate the onset of a trajectory (post-rounding)
-##'
-##' @param trajectory a vector
-##' @param baseline the onset threshold
-##' @param is.inseason logical vector length-compatible with \code{trajectory},
-##'   acting as a mask on possible output values
-##' @param ... ignored
-##' @return the first index which is part of the in-season and is part of a run
-##'   of consecutive observations above the onset threshold that lasts at least
-##'   for two additional indices
-##'
-##' @export
-ons = function(trajectory, baseline, is.inseason, ...) {
-  above.baseline = trajectory >= baseline
-  next.three.above.baseline =
-      above.baseline &
-      dplyr::lead(above.baseline, 1L) &
-      dplyr::lead(above.baseline, 2L)
-  return (which(is.inseason & next.three.above.baseline)[1L][[1L]])
-}
-
-##' Calculate the onset of a trajectory
-##'
-##' @param trajectory a vector
-##' @param baseline the onset threshold
-##' @param is.inseason logical vector length-compatible with \code{trajectory},
-##'   acting as a mask on possible output values
-##' @param ... ignored
-##' @return a single non-\code{NA} integer: the number of indices which are part
-##'   of the in-season and part of a run of at least three consecutive
-##'   observations above the onset threshold
-##'
-##' @export
-dur = function(trajectory, baseline, is.inseason, ...) {
-  above.baseline = trajectory >= baseline
-  next.three.above.baseline =
-    above.baseline &
-    dplyr::lead(above.baseline, 1L) &
-    dplyr::lead(above.baseline, 2L)
-  part.of.run =
-    (next.three.above.baseline |
-     dplyr::lag(next.three.above.baseline, 1L) |
-     dplyr::lag(next.three.above.baseline, 2L))
-  return (sum(is.inseason & part.of.run, na.rm=TRUE))
 }
 
 ## ##' constructor should take in the bare minimum to create forecasts
@@ -572,6 +523,15 @@ downsample_sim = function(sim.obj, max.n.sims) {
   return (result)
 }
 
+shuffle_sim_indices = function(sim.obj) {
+  shuffled.inds = sample.int(length(sim.obj[["weights"]]))
+  sim.obj[c("ys","weights")] <- list(
+    sim.obj$ys[,shuffled.inds,drop=FALSE],
+    sim.obj$weights[shuffled.inds]
+  )
+  return (sim.obj)
+}
+
 ##' Resample a sim (if necessary) to get >= min.n.sims simulated curves
 ##'
 ##' @param sim.obj a sim object
@@ -601,10 +561,7 @@ upsample_sim_inflating_total_weight = function(sim.obj, min.n.sims) {
     )
     ## shuffle the results (e.g., to prevent dependencies in case this is paired
     ## with another upsampled sim object):
-    result[c("ys","weights")] <- list(
-      sim.obj$ys[,sample(seq_len(ncol(result$ys))),drop=FALSE],
-      sample(sim.obj$weights)
-    )
+    result <- shuffle_sim_indices(result)
     result[["last.actually.sampled.to.n.sims.of"]] <- min.n.sims
   }
   return (result)
