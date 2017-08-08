@@ -19,6 +19,9 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+##' @import pipeR
+NULL
+
 ##' Calculate the peak week(s) in a vector of weekly observations
 ##'
 ##' @param trajectory a vector of weekly observations
@@ -133,7 +136,7 @@ week.unit = list(
     return (epi.weeks.char)
   },
   from_string = function(epi.weeks.char, is.inseason, ...) {
-    n.weeks.in.season = is.inseason
+    n.weeks.in.season = length(is.inseason)
     epi.weeks.numeric = as.numeric(dplyr::recode(epi.weeks.char, "none"=NA_character_))
     epi.weeks.integer = as.integer(epi.weeks.numeric)
     epi.weeks = if (all(epi.weeks.numeric==epi.weeks.integer)) {
@@ -158,6 +161,12 @@ flusight2016.onset.target = list(
   unit = week.unit,
   for_processed_trajectory = function(processed.trajectory, baseline, is.inseason, ...) {
     if (length(is.inseason) != length(processed.trajectory)) {
+      print("traj")
+      print(processed.trajectory)
+      print(length(processed.trajectory))
+      print("seas")
+      print(is.inseason)
+      print(length(is.inseason))
       stop ("length(is.inseason) != length(processed.trajectory)")
     }
     if (!all(0 <= processed.trajectory & processed.trajectory <= 100 &
@@ -235,7 +244,8 @@ flusight2016.targets = list(
   flusight2016_percentage_target_for_lookahead(2L),
   flusight2016_percentage_target_for_lookahead(3L),
   flusight2016_percentage_target_for_lookahead(4L)
-)
+) %>>%
+  setNames(sapply(., magrittr::extract2, "Target"))
 
 flusight2016_target_trajectory_preprocessor = function(trajectory) {
   round(pmax(trajectory, 0), 1L)

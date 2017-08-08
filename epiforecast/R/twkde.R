@@ -204,11 +204,10 @@ twkde.sim = function(## dat, new.dat.sim
                      max.shifts=c(rep(10,20),10:1,rep(0,3),1:10,rep(10,10)),
                      shift.decay.factor = 0.7,
                      tradeoff.weights=c(0.5, 0.25, 0.25, 0.5)) {
-
   ## extract historical data and future data from full.dat
   dat = head(full.dat, -1L)
   dat <- match.dat(dat)
-  new.dat.sim = tail(full.dat, 1L)[[1]]
+  new.dat.sim = tail(full.dat, 1L)[[1L]]
   new.dat.sim <- match.new.dat.sim(new.dat.sim)
   old.season.labels = head(names(full.dat), -1L)
   new.season.label = tail(names(full.dat), 1L)
@@ -222,7 +221,6 @@ twkde.sim = function(## dat, new.dat.sim
   sim.weights = new.dat.sim[["weights"]]
 
   orig.min.n.out = min(sapply(dat, length))
-  ## orig.obs.mat = sapply(dat, `[`, seq_len(orig.min.n.out)) # xxx use dat.to.matrix
   orig.obs.mat = dat.to.matrix(dat, orig.min.n.out)
   for (time.of.obs in seq_len(nrow(new.dat.sim$ys))) {
     if (!is.na(new.dat.sim$ys[time.of.obs,1L])) {

@@ -651,7 +651,7 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 10
     old.season.labels = head(names(full.dat), -1L)
     new.season.label = tail(names(full.dat), 1L)
 
-    ## Make forecast 
+    ## Make forecast
     if(is.null(time.of.forecast)) time.of.forecast = get.latest.time(new.dat)
     control.list = get_eb_control_list(parent = control.list,
                                        n.out=length(new.dat),
@@ -671,8 +671,8 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 10
             new.season.label = list(new.season.label))
 
     ## Cast it as class |sim| before returning.
-    class(sim) = "sim"
-    
+    class(sim) <- "sim"
+
     return (sim)
 }
 

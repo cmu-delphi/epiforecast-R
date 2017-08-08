@@ -19,6 +19,9 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+##' @import pipeR
+NULL
+
 ##' @include match.R
 ##'
 ##' @seealso weighted.bw.nrd0
@@ -26,24 +29,27 @@
 ##' @export
 weighted.bw.nrd0ish = function(x, w) {
   w <- match.nonnegative.numeric(w)
-  ## fac =
-  fac.a =
-    min(diff(unname(Hmisc::wtd.quantile(x, w, c(0.25, 0.75))))/1.34,
-        dplyr::coalesce(sqrt(Hmisc::wtd.var(x, w)), 0))
-  ## if (fac==0) fac <- weighted.mean(abs(x), w)
-  ## if (fac==0) fac <- 1
-  fac.b = weighted.mean(abs(x), w)
-  if (fac.b==0) fac.b <- 1
+  fac.pos.pseudoweight = 3
+  ## the core of the nrd type rules (taken along with the scaling at the end),
+  ## potentially a problematic 0:
+  fac.data = min(diff(unname(Hmisc::wtd.quantile(x, w, c(0.25, 0.75))))/1.34,
+                 dplyr::coalesce(sqrt(Hmisc::wtd.var(x, w)), 0))
+  ## a strictly positive scale fac based on the mean magnitude of x, unless it
+  ## is too close to 0, in which case an arbitrary scale of 1 is assumed:
+  fac.pos = weighted.mean(abs(x), w)
+  if (fac.pos < .Machine[["double.eps"]]) fac.pos <- 1
+  ## combine using w and pseudoweight:
   fac <- weighted.mean(
-    c(fac.a, fac.b),
-    c(sum(w), 3)
+    c(fac.data, fac.pos),
+    c(sum(w), fac.pos.pseudoweight)
   )
-  result = 0.9 * fac * sum(w)^-0.2
+  ## nrd scaling rule, adjusted to incorporate the pseudoweight
+  result = 0.9 * fac * (sum(w)+fac.pos.pseudoweight)^-0.2
   return (result)
 }
 
-get_na_value_or_empty_for_target = function(target.info, ...) {
-  bin.info = target.info[["bin_info_for"]](...)
+get_na_value_or_empty_for_target = function(target, ...) {
+  bin.info = target[["bin_info_for"]](...)
   breaks = bin.info[["breaks"]]
   if (bin.info[["include.na"]]) {
     ## get NA of appropriate type:
@@ -53,39 +59,62 @@ get_na_value_or_empty_for_target = function(target.info, ...) {
   }
 }
 
-get_na_string_or_empty_for_target = function(target.info, ...) {
-  target.info[["unit"]][["to_string"]](
-    get_na_value_or_empty_for_target(target.info, ...),
+get_na_string_or_empty_for_target = function(target, ...) {
+  target[["unit"]][["to_string"]](
+    get_na_value_or_empty_for_target(target, ...),
     ...
   )
 }
 
 point.mae.forecast.type = list(
   Type = "Point",
-  Value_from_weighted_univals = function(target.info,
-                                         target.values, target.weights,
-                                         ...) {
+  forecast_value_from_weighted_univals = function(target,
+                                                  target.values, target.weights,
+                                                  ...) {
     matrixStats::weightedMedian(target.values, target.weights, na.rm=TRUE)
   },
-  Bin_start_incl_for = function(target.info, ...) {
+  Value_from_forecast_value = function(forecast.value, target, ...) {
+    ## forecast.value is a point prediction in its natural representation; Value
+    ## should be its character representation in a forecast spreadsheet; call
+    ## the appropriate to_string method
+    target[["unit"]][["to_string"]](forecast.value, ...)
+  },
+  forecast_value_from_Value = function(Value, target, ...) {
+    target[["unit"]][["from_string"]](Value, ...)
+  },
+  Bin_start_incl_for = function(target, ...) {
     return (NA_character_)
   },
-  Bin_end_notincl_for = function(target.info, ...) {
+  Bin_end_notincl_for = function(target, ...) {
     return (NA_character_)
+  },
+  evaluate_forecast_value = function(target, forecast.value, observation.value) {
+    ## calculate absolute error with some special treatment of NA's
+    if (is.na(observation.value)) {
+      NA_real_
+    } else if (is.na(forecast.value)) {
+      Inf
+    } else {
+      ## (note: all evaluate_forecast_value's should return numerics)
+      return (as.numeric(abs(forecast.value - observation.value)))
+    }
+    ## xxx will probably also need the domain settings (e.g.,
+    ## flusight2016.settings) to go with the target in some contexts, but only
+    ## the target is passed in here
   }
 )
 
 distr.logscore.forecast.type = list(
   Type = "Bin",
-  Value_from_weighted_univals = function(target.info,
-                                         target.values, target.weights,
-                                         label.bins=TRUE,
-                                         uniform.pseudoweight.total=3,
-                                         smooth.sim.targets=TRUE,
-                                         ...) {
+  forecast_value_from_weighted_univals = function(target,
+                                                  target.values, target.weights,
+                                                  label.bins=TRUE,
+                                                  uniform.pseudoweight.total=3,
+                                                  smooth.sim.targets=TRUE,
+                                                  ...) {
     target.weights <- match.nonnegative.numeric(target.weights)
     ## get bin info and check:
-    bin.info = target.info[["bin_info_for"]](...)
+    bin.info = target[["bin_info_for"]](...)
     stopifnot(bin.info[["include.na"]] || !any(is.na(target.values)))
     breaks = bin.info[["breaks"]]
     rightmost.closed = bin.info[["rightmost.closed"]]
@@ -149,7 +178,6 @@ distr.logscore.forecast.type = list(
                                bw=bw,
                                weights=non.na.target.weights %>>%
                                  magrittr::divide_by(sum(.)))
-      .GlobalEnv[["g.pdf.fit"]] <- pdf.fit
       cdf.fit = list(x=pdf.fit[["x"]], y=cumsum(pdf.fit[["y"]]))
       ## linear interpolation, constant extrapolation (so 0 mass assigned
       ## outside range(cdf.fit[["x"]])...):
@@ -175,10 +203,10 @@ distr.logscore.forecast.type = list(
     }
     if (label.bins) {
       left.delimiter = "["
-      left.break.string = target.info[["unit"]][["to_string"]](
+      left.break.string = target[["unit"]][["to_string"]](
         breaks[-length(breaks)], ...
       )
-      right.break.string = target.info[["unit"]][["to_string"]](
+      right.break.string = target[["unit"]][["to_string"]](
         breaks[-1L], ...
       )
       right.delimiter =
@@ -187,7 +215,7 @@ distr.logscore.forecast.type = list(
       bin.names = c(
         paste0(left.delimiter, left.break.string, ", ",
                right.break.string, right.delimiter),
-        get_na_string_or_empty_for_target(target.info, ...)
+        get_na_string_or_empty_for_target(target, ...)
         )
       names(bin.weights) <- bin.names
     }
@@ -195,53 +223,71 @@ distr.logscore.forecast.type = list(
     bin.weights <- bin.weights/sum(bin.weights)
     return (bin.weights)
   },
-  Bin_start_incl_for = function(target.info, ...) {
-    bin.info = target.info[["bin_info_for"]](...)
+  Value_from_forecast_value = function(forecast.value, target, ...) {
+    ## forecast.value is a numeric vector of probabilities; Value must be a
+    ## character vector; convert from numeric to character
+    as.character(forecast.value)
+  },
+  forecast_value_from_Value = function(Value, target, ...) {
+    as.numeric(Value)
+  },
+  Bin_start_incl_for = function(target, ...) {
+    bin.info = target[["bin_info_for"]](...)
     breaks = bin.info[["breaks"]]
     Bin_start_incl = c(
-      target.info[["unit"]][["to_string"]](
+      target[["unit"]][["to_string"]](
         breaks[-length(breaks)], ...
       ),
-      get_na_string_or_empty_for_target(target.info, ...)
+      get_na_string_or_empty_for_target(target, ...)
     )
     return (Bin_start_incl)
   },
-  Bin_end_notincl_for = function(target.info, ...) {
-    bin.info = target.info[["bin_info_for"]](...)
+  Bin_end_notincl_for = function(target, ...) {
+    bin.info = target[["bin_info_for"]](...)
     breaks = bin.info[["breaks"]]
     Bin_end_notincl = c(
-      target.info[["unit"]][["to_string"]](
+      target[["unit"]][["to_string"]](
         breaks[-1L], ...
       ),
-      get_na_string_or_empty_for_target(target.info, ...)
+      get_na_string_or_empty_for_target(target, ...)
     )
     return (Bin_end_notincl)
+  },
+  evaluate_forecast_value = function(target, forecast.value, observation.value) {
+    ## treat observation.value as flags or reals on [0,1] denoting if a bin is
+    ## counted as correct / "how corect" it is
+    return (log(sum(forecast.value*observation.value)))
   }
 )
 
-partial_spreadsheet_from_weighted_univals =
-  function(forecast.type, target.info,
-           target.values, target.weights,
-           only.Value=FALSE,
-           ...) {
-    Value = forecast.type[["Value_from_weighted_univals"]](target.info, target.values, target.weights, label.bins=FALSE, ...)
-    if (only.Value) {
-      return (tibble::tibble(Value=Value))
-    } else {
-      partial.spreadsheet =
-        tibble::tibble(
-                  Target=target.info[["Target"]],
-                  Type=forecast.type[["Type"]],
-                  Unit=target.info[["unit"]][["Unit"]],
-                  Bin_start_incl=forecast.type[["Bin_start_incl_for"]](target.info, ...),
-                  Bin_end_notincl=forecast.type[["Bin_end_notincl_for"]](target.info, ...),
-                  Value=Value
-                )
-      return (partial.spreadsheet)
-    }
+subspreadsheet_from_forecast_value = function(forecast.value,
+                                              target, forecast.type,
+                                              only.Value=FALSE,
+                                              ...) {
+  Value = forecast.type[["Value_from_forecast_value"]](forecast.value, target, ...)
+  if (only.Value) {
+    return (tibble::tibble(Value=Value))
+  } else {
+    subspreadsheet =
+      ## tibble::tibble acts a bit slow in this case; forming and converting a
+      ## data.frame instead is faster
+      data.frame(
+        Target=target[["Target"]],
+        Type=forecast.type[["Type"]],
+        Unit=target[["unit"]][["Unit"]],
+        Bin_start_incl=forecast.type[["Bin_start_incl_for"]](target, ...),
+        Bin_end_notincl=forecast.type[["Bin_end_notincl_for"]](target, ...),
+        Value=Value,
+        check.names=FALSE,
+        stringsAsFactors=FALSE
+      ) %>>%
+      tibble::as_tibble()
+    return (subspreadsheet)
+  }
 }
 
 flusight2016.proxy.forecast.types = list(
   point.mae.forecast.type,
   distr.logscore.forecast.type
-)
+) %>>%
+  setNames(sapply(., magrittr::extract2, "Type"))

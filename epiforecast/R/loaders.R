@@ -181,13 +181,18 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
 ##'   using the cache result (unless \code{force.cache.invalidation=TRUE})
 ##' @param force.cache.invalidation \code{TRUE} to force a cache update, even if
 ##'   the cache invalidation period has not passed; otherwise \code{FALSE}
+##' @param do.display.message \code{TRUE} or \code{FALSE}; \code{TRUE} to enable
+##'   messages about whether the cache is being used or not, or \code{FALSE} to
+##'   disable these messages
 ##'
 ##' @export
 fetchUpdatingResource = function(fetch.thunk.fun,
                                  check.response.fun,
                                  cache.file.prefix=NULL,
                                  cache.invalidation.period=as.difftime(1L, units="days"),
-                                 force.cache.invalidation=FALSE) {
+                                 force.cache.invalidation=FALSE,
+                                 silent=FALSE
+                                 ) {
   cache.file =
     if (is.null(cache.file.prefix)) {
       NULL
@@ -205,13 +210,17 @@ fetchUpdatingResource = function(fetch.thunk.fun,
     }
 
   if (should.fetch.now) {
-    message("No cache, empty cache, expired cache, or forced cache invalidation; fetching data.")
+    if (!silent) {
+      message("No cache, empty cache, expired cache, or forced cache invalidation; fetching data.")
+    }
     ## todo prompt for confirmation on fetch/refetch
     ## todo option to read from cache without considering refetch
     fetch.response <- fetch.thunk.fun()
     fetch.time <- Sys.time()
   } else {
-    message("Cached version of data used.")
+    if (!silent) {
+      message("Cached version of data used.")
+    }
     fetch.response = fetch.info$fetch.response
     fetch.time = fetch.info$fetch.time
   }
@@ -323,7 +332,7 @@ fetchUpdatingResource = function(fetch.thunk.fun,
 fetchEpidataDF = function(source, area, lag=NULL,
                           first.week.of.season=NULL,
                           first.epiweek=NULL, last.epiweek=NULL,
-                          cache.file.prefix=NULL, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE) {
+                          cache.file.prefix=NULL, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE, silent=FALSE) {
   if (!is.null(lag) && length(lag) > 1) stop("Fetching epidata for multiple lags simultaneously is not supported.")
   ## todo drop first season if not enough data for specified first week of season
 
@@ -345,7 +354,8 @@ fetchEpidataDF = function(source, area, lag=NULL,
     },
     cache.file.prefix=cache.file.prefix,
     cache.invalidation.period=cache.invalidation.period,
-    force.cache.invalidation=force.cache.invalidation
+    force.cache.invalidation=force.cache.invalidation,
+    silent=silent
   )
 
   ## Convert list of lists to a tibble:
@@ -370,7 +380,7 @@ fetchEpidataDF = function(source, area, lag=NULL,
 }
 
 ##' Fetch data from delphi-epidata, trim partial seasons, and convert to list of trajectories
-##' 
+##'
 ##' @param source length-1 character vector; name of data source; one of
 ##'   \itemize{
 ##'
@@ -515,20 +525,33 @@ fetchEpidataFullDat = function(source,
 fetchEpidataHistoryDF = function(source, area, lags,
                                  first.week.of.season=NULL,
                                  first.epiweek=NULL, last.epiweek=NULL,
-                                 cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE) {
-  lag.dfs = lapply(lags, function(lag) {
-    fetchEpidataDF(source, area, lag,
-                   first.week.of.season=first.week.of.season,
-                   first.epiweek=first.epiweek, last.epiweek=last.epiweek,
-                   cache.file.prefix=paste0(cache.file.prefix,"_lag",lag), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
-  })
-  current.df = fetchEpidataDF(source, area, NULL,
-                   first.week.of.season=first.week.of.season,
-                   first.epiweek=first.epiweek, last.epiweek=last.epiweek,
-                   cache.file.prefix=paste0(cache.file.prefix,"_current"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation)
-  history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
-    dplyr::distinct()
-  return (history.df)
+                                 cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE,
+                                 silent=FALSE) {
+  fetchUpdatingResource(
+    function() {
+      lag.dfs = lapply(lags, function(lag) {
+        fetchEpidataDF(source, area, lag,
+                       first.week.of.season=first.week.of.season,
+                       first.epiweek=first.epiweek, last.epiweek=last.epiweek,
+                       ## cache.file.prefix=paste0(cache.file.prefix,"_lag",lag), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
+                       silent=TRUE)
+      })
+      current.df = fetchEpidataDF(source, area, NULL,
+                                  first.week.of.season=first.week.of.season,
+                                  first.epiweek=first.epiweek, last.epiweek=last.epiweek,
+                                  ## cache.file.prefix=paste0(cache.file.prefix,"_current"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
+                                  silent=TRUE)
+      history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
+        dplyr::distinct()
+      return (history.df)
+    },
+    function(fetch.response) {
+      return ()
+    },
+    cache.file.prefix=paste0(cache.file.prefix,"_history"),
+    cache.invalidation.period=cache.invalidation.period,
+    silent=silent
+  )
 }
 
 min_NA_highest = function(x) {

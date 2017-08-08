@@ -131,6 +131,9 @@
 ## fixme better dataset representation... list of data sources (history df's? ilinet, fluview baselines, metadata?, in.season, ...) and auxiliary information indexed in a uniform way for location and time
 ## todo interface for multiresolution (seasonal vs. weekly vs. ..., national vs. regions vs. ...) datasets and metadata, targets
 ## todo instead of faking new.dat when given a new.dat.sim, store and use one in new.dat.sim
+## todo effective number of particles impacted by number of seasons used (as well as widths...)
+## todo try the weighted bw function instead of the bw.SJnrd0
+## todo test some changes on earlier seasons
 
 #####################################
 ## empirical.trajectories.R #########
@@ -143,3 +146,21 @@
 ## adjust percentages for differences in network composition from season to
 ## season (but changing the output from the historical distributions) (perhaps
 ## this scaling could happen during a pre-processing step for full.dat)
+
+#######################
+## cv_apply.R #########
+#######################
+
+## todo better cv_apply interface
+## todo object-oriented iterator design
+## todo other iterator structures: not one iterator per input dim, but one output dim per iterator (+ the result dimensionality dims)
+## todo non-CV versions
+## todo similar functions on cartesian products
+## xxx option for warm starts?
+## xxx option for parallelism?
+## xxx decide on dropping behavior (especially in some cases, LHS will always have 1 index in a given dimension)
+
+## todo better operations on scalar/vector/matrix/arrays: scalars
+## distinguishable from length-1 vectors, drop=FALSE whenever it is an option,
+## uniform interface for length/dim & names/dimnames, dplyr operations if
+## possible. Look into tbl_cube.
