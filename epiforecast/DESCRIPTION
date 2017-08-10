@@ -24,7 +24,9 @@ Imports:
     tibble,
     dplyr,
     pipeR,
-    matrixStats
+    matrixStats,
+    quantreg,
+    lpSolve
 Description: Tools for forecasting semi-regular seasonal epidemic curves and
     similar time series. Includes an empirical Bayes approach that forms a prior
     by transforming historical curves, a basis regression approach that balances
@@ -40,6 +42,7 @@ Collate:
     'utils.R'
     'br.R'
     'checks.R'
+    'cv_apply.R'
     'cv.R'
     'delphi_epidata.R'
     'eb_dists.R'
@@ -53,6 +56,7 @@ Collate:
     'holidays.R'
     'read.R'
     'simclass.R'
+    'ensemble.R'
     'target.R'
     'todo-by-file.R'
     'twkde.R'

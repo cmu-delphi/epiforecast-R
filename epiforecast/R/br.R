@@ -29,7 +29,7 @@ NULL
 ##' Function for making forecasts with the basis regression method
 ##'
 ##' Estimates missing values in \code{dat.obj[[cur.season]]} by regressing the
-##' mean of "psuedo-trajectories" formed from non-\code{NA} observations from
+##' mean of "pseudo-trajectories" formed from non-\code{NA} observations from
 ##' \code{dat.obj[[cur.season]]} and "pseudo-observations" formed from
 ##' \code{dat.obj[-cur.season]} on a set of basis elements.
 ##'

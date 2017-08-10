@@ -247,7 +247,7 @@ show.sample.trajectories =
 ##' implementation for a given model fit for additional details.
 ##' @param fit.model the fit model (trajectory forecast, simulations, regression
 ##'   fit, etc.), on which to base the target forecasts
-##' @seealso \code{\link{forecast.sim}}
+##' @seealso \code{\link{target_forecast.sim}}
 ##' @export
 target_forecast <- function(fit.model, ...) {
   UseMethod("target_forecast", fit.model)
@@ -337,9 +337,9 @@ target_forecast.sim = function(mysim,
     ## Return a list of things
     settings = rlist::list.remove(unclass(mysim), c("ys","weights"))
     return (structure(c(list(settings = settings,
-                           target.values = stats::setNames(list(target.values), target.name),
-                           target.weights = target.weights,
-                           target.settings = target.settings),
+                             target.values = stats::setNames(list(target.values), target.name),
+                             target.weights = target.weights,
+                             target.settings = target.settings),
                         if (compute.estimates) list(estimates = estimates)
                         else list()
                         ),
@@ -363,7 +363,7 @@ print.target_forecast = function(x, sig.digit = 2L, ...) {
   cat("Summary for", target.name, ":",fill=TRUE)
   cat("====================", fill=TRUE)
   if (is.null(estimates)) {
-    cat("No estimate computations recorded.")
+    cat("No estimate computations recorded.", fill=TRUE)
   } else {
     cat("The mean of", target.name, "is", target.value.formatter(round(estimates$mean,sig.digit)), fill=TRUE)
     cat("The median of", target.name, "is", target.value.formatter(round(estimates$median,sig.digit)), fill=TRUE)
@@ -537,13 +537,11 @@ shuffle_sim_indices = function(sim.obj) {
 ##' @param sim.obj a sim object
 ##' @param max.n.sims a single non-NA non-negative integer; the inclusive lower
 ##'   bound on the number of simulated curves in the result
-##' @return a sim object with >= min.n.sims simulated curves; the weights in the
-##'   result are the same as the weights of the corresponding curves in
-##'   \code{sim.obj}, which may create an inflated impression of the number of
-##'   "effective particles", in analogy with particle filtering resampling.
+##' @return a sim object with >= min.n.sims simulated curves; the sum of weights
+##'   in the result will equal the sum of the results in the input.
 ##' @details Resampling is only performed if the number of simulations needs to
-##'   change. Resampling (necessarily) is done with replacement.
-upsample_sim_inflating_total_weight = function(sim.obj, min.n.sims) {
+##'   change. Any resampling is (necessarily) done with replacement.
+upsample_sim = function(sim.obj, min.n.sims) {
   min.n.sims <- match.single.nonna.integer(min.n.sims)
   if (min.n.sims < 0L) {
     stop ("min.n.sims must be a natural number.")
@@ -554,10 +552,13 @@ upsample_sim_inflating_total_weight = function(sim.obj, min.n.sims) {
   } else {
     sample.inds = sample(seq_along(sim.obj$weights), min.n.sims-input.n.sims,
                          prob=sim.obj$weights, replace=TRUE)
+    mean.result.weight = sum(sim.obj[["weights"]])/min.n.sims
     result = sim.obj # to include other things besides ys and weights
     result[c("ys","weights")] <- list(
-      sim.obj$ys[,c(seq_len(input.n.sims), sample.inds),drop=FALSE],
-      c(sim.obj$weights, rep(mean(sim.obj$weights), length(sample.inds)))
+      sim.obj$ys[,c(seq_len(input.n.sims),
+                    sample.inds), drop=FALSE],
+      c(sim.obj[["weights"]]*mean.result.weight/mean(sim.obj[["weights"]]),
+        rep(mean.result.weight, length(sample.inds)))
     )
     ## shuffle the results (e.g., to prevent dependencies in case this is paired
     ## with another upsampled sim object):

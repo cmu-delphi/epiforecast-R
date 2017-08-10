@@ -120,20 +120,28 @@
 
 ## todo proper metrics for multibin scores (including multi pwk)
 
-## todo upsample_sim_inflating_total_weight -> upsample_sim (adjust weighting accordingly), special treatment of new.dat rather than new.dat.sim
+## todo special treatment of new.dat whenever turned into a new.dat.sim
+
+## xxx upsample_sim: concat sample to single copy of sim object, versus
+## repeating the existing sim object as many times as possible and just filling
+## in the remainder with samples
 
 ######################################
 ## retrospective_forecasts.R #########
 ######################################
 
-## todo select twkde params
-## todo subspace projection + random walk forecast method
 ## fixme better dataset representation... list of data sources (history df's? ilinet, fluview baselines, metadata?, in.season, ...) and auxiliary information indexed in a uniform way for location and time
 ## todo interface for multiresolution (seasonal vs. weekly vs. ..., national vs. regions vs. ...) datasets and metadata, targets
 ## todo instead of faking new.dat when given a new.dat.sim, store and use one in new.dat.sim
 ## todo effective number of particles impacted by number of seasons used (as well as widths...)
-## todo try the weighted bw function instead of the bw.SJnrd0
+## todo try the weighted bw function instead of the bw.SJnrd0 --- issue: needs
+## to be called many times (more than the unweighted version --- the weights
+## change) and would be slow (half the time appeared to be spent in bw
+## calculations last check).
 ## todo test some changes on earlier seasons
+## todo kernel HMM approach
+## todo GP approach
+## todo curve decomposition (+ random walk) approach, regression onto #seasons approach
 
 #####################################
 ## empirical.trajectories.R #########
@@ -159,8 +167,28 @@
 ## xxx option for warm starts?
 ## xxx option for parallelism?
 ## xxx decide on dropping behavior (especially in some cases, LHS will always have 1 index in a given dimension)
+## todo fix issues with dimension combining and naming behavior when there are single outputs; when to run simplify2array vs. not...
 
 ## todo better operations on scalar/vector/matrix/arrays: scalars
 ## distinguishable from length-1 vectors, drop=FALSE whenever it is an option,
 ## uniform interface for length/dim & names/dimnames, dplyr operations if
 ## possible. Look into tbl_cube.
+
+####################
+## twkde.R #########
+####################
+
+## todo select twkde params
+## todo fully parameterized bandwidth matrix, especially
+## todo try ks package's kcde, reichlab/kcde
+## xxx a single variable to balance between x and diff(x): a convex combination of the two
+
+#######################
+## ensemble.R #########
+#######################
+
+## todo calculate degen EM results in log space, in Rcpp
+## todo ridge penalty on point prediction coef's
+## xxx should use =rq= for constrainedLADPtPredFit with the R= r= args if
+## possible; it's probably faster
+## todo weighted versions of ensemble weight fitting algorithms

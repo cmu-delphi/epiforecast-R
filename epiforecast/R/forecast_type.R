@@ -19,6 +19,7 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+##' @include ensemble.R
 ##' @import pipeR
 NULL
 
@@ -27,8 +28,11 @@ NULL
 ##' @seealso weighted.bw.nrd0
 ##'
 ##' @export
-weighted.bw.nrd0ish = function(x, w) {
+weighted.bw.nrd0ish = function(x, w=rep(1, length(x))) {
   w <- match.nonnegative.numeric(w)
+  if (length(w) != length(x)) {
+    stop ("w must have the same length as x")
+  }
   fac.pos.pseudoweight = 3
   ## the core of the nrd type rules (taken along with the scaling at the end),
   ## potentially a problematic 0:
@@ -66,6 +70,21 @@ get_na_string_or_empty_for_target = function(target, ...) {
   )
 }
 
+point_prediction_error = function(forecast.value, observation.value) {
+  ## calculate absolute error with some special treatment of NA's
+  if (is.na(observation.value)) {
+    NA_real_
+  } else if (is.na(forecast.value)) {
+    Inf
+  } else {
+    ## (note: all evaluate_forecast_value's should return numerics)
+    return (as.numeric(forecast.value - observation.value))
+  }
+  ## xxx will probably also need the domain settings (e.g.,
+  ## flusight2016.settings) to go with the target in some contexts, but only
+  ## the target is passed in here
+}
+
 point.mae.forecast.type = list(
   Type = "Point",
   forecast_value_from_weighted_univals = function(target,
@@ -88,21 +107,32 @@ point.mae.forecast.type = list(
   Bin_end_notincl_for = function(target, ...) {
     return (NA_character_)
   },
-  evaluate_forecast_value = function(target, forecast.value, observation.value) {
-    ## calculate absolute error with some special treatment of NA's
-    if (is.na(observation.value)) {
-      NA_real_
-    } else if (is.na(forecast.value)) {
-      Inf
-    } else {
-      ## (note: all evaluate_forecast_value's should return numerics)
-      return (as.numeric(abs(forecast.value - observation.value)))
+  evaluate_forecast_value = function(forecast.value, observation.value) {
+    return (abs(point_prediction_error(forecast.value, observation.value)))
+  },
+  fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observation.values.list, total.instance.weight, fallback.method.index) {
+    X = instance.method.forecast.values.listmat
+    mode(X) <- "numeric"
+    if (any(is.na(X[,fallback.method.index]))) {
+      stop ("Fallback method must not contain any NA point predictions.")
     }
-    ## xxx will probably also need the domain settings (e.g.,
-    ## flusight2016.settings) to go with the target in some contexts, but only
-    ## the target is passed in here
+    y = instance.observation.values.list
+    mode(y) <- "numeric"
+    ## exclude instances where observation was NA:
+    X <- X[!is.na(y),,drop=FALSE]
+    y <- y[!is.na(y)]
+    ## replace NA method point predictions with fallback values:
+    X[is.na(X)] <- X[row(X)[is.na(X)], fallback.method.index]
+    ## fit model and return coefficients:
+    ## return (lasso_lad_coef(y, X, include.intercept=FALSE))
+    return (simplex_lad_weights(y, X))
   }
 )
+
+unibin_log_score = function(forecast.value, observation.value) {
+  ## treat observation.value as flags or numeric indicators
+  return (log(sum(forecast.value*observation.value)))
+}
 
 distr.logscore.forecast.type = list(
   Type = "Bin",
@@ -253,10 +283,26 @@ distr.logscore.forecast.type = list(
     )
     return (Bin_end_notincl)
   },
-  evaluate_forecast_value = function(target, forecast.value, observation.value) {
-    ## treat observation.value as flags or reals on [0,1] denoting if a bin is
-    ## counted as correct / "how corect" it is
-    return (log(sum(forecast.value*observation.value)))
+  evaluate_forecast_value = unibin_log_score,
+  fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observation.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score=-8) {
+    instance.method.log.scores.mat = Map(unibin_log_score, instance.method.forecast.values.listmat, instance.observation.values.list) %>>%
+      {
+        dim(.) <- dim(instance.method.forecast.values.listmat)
+        dimnames(.) <- dimnames(instance.method.forecast.values.listmat)
+        mode(.) <- "numeric"
+        .
+      }
+    if (any(instance.method.log.scores.mat[,fallback.method.index] <= excessively.low.fallback.log.score)) {
+      stop ("Fallback method produced excessively low log score for at least one training instance.")
+    }
+    degenerate.em.weights = degenerate_em_weights(exp(instance.method.log.scores.mat))
+    fallback.inflation.factor = min(1, 3/total.instance.weight)
+    if (is.character(fallback.method.index)) {
+      fallback.method.index <- which(colnames(instance.method.log.scores.mat)==fallback.method.index)
+    }
+    weights = (1-fallback.inflation.factor)*degenerate.em.weights +
+                  fallback.inflation.factor*as.numeric(seq_len(ncol(instance.method.log.scores.mat))==fallback.method.index)
+    return (weights)
   }
 )
 

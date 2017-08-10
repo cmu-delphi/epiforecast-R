@@ -40,6 +40,7 @@ fluview.location.spreadsheet.names = c("US National", paste0("HHS Region ",1:10)
 location.forecast.values.dir = "~/files/nosync/forecast-values-storage"
 spreadsheet.dir = "~/files/nosync/spreadsheet-storage"
 retro.methods = list(
+  "Delphi_Uniform"=uniform_forecast,
   "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
   "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
     eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
@@ -241,6 +242,7 @@ flusight2016_location_forecast_values_obj_from_sim =
         is.inseason=flusight2016.settings[["is.inseason"]],
         target.time.of.forecast=flusight2016.settings[["target.time.of.forecast"]],
         compute.estimates=FALSE,
+        target.info=target,
         ...
       )
       target.values = target.forecast[["target.values"]][[target.name]]
@@ -387,13 +389,13 @@ if (!dir.exists(location.forecast.values.dir)) {
 ##             flusight2016.targets, flusight2016.proxy.forecast.types
 ##           ))
 
-sample.location.spreadsheet.obj %>>%
-  (location.spreadsheet) %>>%
-  dplyr::filter(Type=="Bin") %>>%
-  ## ggplot2::ggplot(ggplot2::aes(Bin_start_incl, weight=as.numeric(Value))) +
-  ggplot2::ggplot(ggplot2::aes(factor(Bin_start_incl, unique(Bin_start_incl)), weight=as.numeric(Value))) +
-  ggplot2::facet_grid(factor(Target, unique(Target)) ~ Unit, scales="free_x") +
-  ggplot2::geom_bar()
+## sample.location.spreadsheet.obj %>>%
+##   (location.spreadsheet) %>>%
+##   dplyr::filter(Type=="Bin") %>>%
+##   ## ggplot2::ggplot(ggplot2::aes(Bin_start_incl, weight=as.numeric(Value))) +
+##   ggplot2::ggplot(ggplot2::aes(factor(Bin_start_incl, unique(Bin_start_incl)), weight=as.numeric(Value))) +
+##   ggplot2::facet_grid(factor(Target, unique(Target)) ~ Unit, scales="free_x") +
+##   ggplot2::geom_bar()
 
 system.time({
 ## tryCatch({
@@ -483,7 +485,7 @@ stat.method.names = names(retro.methods)
 ## xxx cache functions do not check for any stat.* versus retro.* setting
 ## differences...
 
-component.ftmlws.forecast.values =
+component.ftclws.forecast.values =
   stat.seasons %>>%
   setNames(paste0(.,"/",.+1L)) %>>%
   lapply(function(stat.season) {
@@ -516,7 +518,7 @@ component.ftmlws.forecast.values =
       }) %>>% simplify2array()
   }) %>>% simplify2array() %>>%
   {
-    names(dimnames(.)) <- c("Type", "Target", "Method", "Location", "Model Week","Season")
+    names(dimnames(.)) <- c("Type", "Target", "Component", "Location", "Model Week","Season")
     .
   }
 
@@ -576,12 +578,12 @@ retro.truth.ftlws.forecast.values =
 ## todo use more efficient representations than many files stored on disk and
 ## lots of lists in memory
 
-component.lwsmtf.forecast.values =
-  aperm(component.ftmlws.forecast.values, c(4:6,3:1))
+component.lwsctf.forecast.values =
+  aperm(component.ftclws.forecast.values, c(4:6,3:1))
 retro.truth.lwstf.forecast.values =
   aperm(retro.truth.ftlws.forecast.values, c(3:5,2:1))
 
-component.lwsmtf.evaluations =
+component.lwsctf.evaluations =
   seq_along(stat.forecast.types) %>>%
   setNames(names(stat.forecast.types)) %>>%
   sapply(function(stat.forecast.type.i) {
@@ -590,15 +592,14 @@ component.lwsmtf.evaluations =
       setNames(names(stat.targets)) %>>%
       sapply(function(stat.target.i) {
         stat.target = stat.targets[[stat.target.i]]
-        component.lwsm.forecast.values.tf = component.lwsmtf.forecast.values[,,,,stat.target.i,stat.forecast.type.i, drop=TRUE]
+        component.lwsc.forecast.values.tf = component.lwsmtf.forecast.values[,,,,stat.target.i,stat.forecast.type.i, drop=TRUE]
         Map(stat.forecast.type[["evaluate_forecast_value"]],
-            stat.target,
-            component.lwsm.forecast.values.tf,
+            component.lwsc.forecast.values.tf,
             retro.truth.lwstf.forecast.values[,,,stat.target.i,stat.forecast.type.i, drop=TRUE]
             ) %>>%
           {
-            dim(.) <- dim(component.lwsm.forecast.values.tf)
-            dimnames(.) <- dimnames(component.lwsm.forecast.values.tf)
+            dim(.) <- dim(component.lwsc.forecast.values.tf)
+            dimnames(.) <- dimnames(component.lwsc.forecast.values.tf)
             mode(.) <- "numeric"
             .
           }
@@ -609,49 +610,250 @@ component.lwsmtf.evaluations =
     .
   }
 
-component.lwsmtf.evaluations[,,match(2003:2009, stat.seasons),,,] %>>%
-  reshape2::melt(value.name="Evaluation") %>>% tibble::as_tibble() %>>%
-  dplyr::group_by(`Model Week`, Method, Target, Type) %>>%
-  ## (na.rm=TRUE for Season onset Point predictions)
-  dplyr::summarize(Evaluation = mean(Evaluation, na.rm=TRUE)) %>>%
-  dplyr::ungroup() %>>%
-  ggplot2::ggplot(ggplot2::aes(`Model Week`, Evaluation, colour=Method, group=Method)) +
-  ggplot2::facet_grid(Type ~ Target, scales="free_y") +
-  ggplot2::geom_line()
+## component.lwsctf.evaluations[,,match(2003:2009, stat.seasons),,,] %>>%
+##   reshape2::melt(value.name="Evaluation") %>>% tibble::as_tibble() %>>%
+##   dplyr::group_by(`Model Week`, Component, Target, Type) %>>%
+##   ## (na.rm=TRUE for Season onset Point predictions)
+##   dplyr::summarize(Evaluation = mean(Evaluation, na.rm=TRUE)) %>>%
+##   dplyr::ungroup() %>>%
+##   ggplot2::ggplot(ggplot2::aes(`Model Week`, Evaluation, colour=Component, group=Component)) +
+##   ggplot2::facet_grid(Type ~ Target, scales="free_y") +
+##   ggplot2::geom_line()
 
-component.lwsmtf.evaluations[,,match(2003:2009, stat.seasons),,,] %>>%
-  reshape2::melt(value.name="Evaluation") %>>% tibble::as_tibble() %>>%
-  dplyr::filter(Target=="1 wk ahead", Type=="Bin") %>>%
-  dplyr::mutate(Evaluation=log(0.1/131+0.9*exp(Evaluation))) %>>%
-  dplyr::group_by(Location, `Model Week`, Season, Method) %>>%
-  ## (na.rm=TRUE for Season onset Point predictions)
-  dplyr::summarize(Evaluation = mean(Evaluation, na.rm=TRUE)) %>>%
-  dplyr::ungroup() %>>%
-  ggplot2::ggplot(ggplot2::aes(`Model Week`, Evaluation, colour=Method, group=Method)) +
-  ggplot2::facet_grid(Location ~ Season, scales="free_y") +
-  ggplot2::geom_line()
+## component.lwsctf.evaluations[,,match(2003:2009, stat.seasons),,,] %>>%
+##   reshape2::melt(value.name="Evaluation") %>>% tibble::as_tibble() %>>%
+##   dplyr::filter(Target=="1 wk ahead", Type=="Bin") %>>%
+##   dplyr::mutate(Evaluation=log(0.1/131+0.9*exp(Evaluation))) %>>%
+##   dplyr::group_by(Location, `Model Week`, Season, Component) %>>%
+##   ## (na.rm=TRUE for Season onset Point predictions)
+##   dplyr::summarize(Evaluation = mean(Evaluation, na.rm=TRUE)) %>>%
+##   dplyr::ungroup() %>>%
+##   ggplot2::ggplot(ggplot2::aes(`Model Week`, Evaluation, colour=Component, group=Component)) +
+##   ggplot2::facet_grid(Location ~ Season, scales="free_y") +
+##   ggplot2::geom_line()
 
-component.lwsmtf.evaluations[,,match(2003:2009, stat.seasons),,,] %>>%
-  reshape2::melt(value.name="Evaluation") %>>% tibble::as_tibble() %>>%
-  dplyr::filter(Target=="1 wk ahead", Type=="Bin") %>>%
-  dplyr::mutate(Evaluation=log(0.1/131+0.9*exp(Evaluation))) %>>%
-  ## dplyr::group_by(Location, `Model Week`, Season, Method) %>>%
-  ## ## (na.rm=TRUE for Season onset Point predictions)
-  ## dplyr::summarize(Evaluation = mean(Evaluation, na.rm=TRUE)) %>>%
-  ## dplyr::ungroup() %>>%
-  ggplot2::ggplot(ggplot2::aes(Evaluation, fill=Method, group=Method)) +
-  ggplot2::facet_wrap(~ Method) +
-  ggplot2::geom_histogram()
+## component.lwsctf.evaluations[,,match(2003:2009, stat.seasons),,,] %>>%
+##   reshape2::melt(value.name="Evaluation") %>>% tibble::as_tibble() %>>%
+##   dplyr::filter(Target=="1 wk ahead", Type=="Bin") %>>%
+##   dplyr::mutate(Evaluation=log(0.1/131+0.9*exp(Evaluation))) %>>%
+##   ## dplyr::group_by(Location, `Model Week`, Season, Component) %>>%
+##   ## ## (na.rm=TRUE for Season onset Point predictions)
+##   ## dplyr::summarize(Evaluation = mean(Evaluation, na.rm=TRUE)) %>>%
+##   ## dplyr::ungroup() %>>%
+##   ggplot2::ggplot(ggplot2::aes(Evaluation, fill=Component, group=Component)) +
+##   ggplot2::facet_wrap(~ Component) +
+##   ggplot2::geom_histogram()
 
-## component.ftmlws.forecast.values[[
-retro.truth.ftlws.forecast.values[[
-                                   "Bin", "1 wk ahead",
-                                   ## "Delphi_BasisRegression_PackageDefaults",
-                                   ## "Delphi_DeltaDensity_PackageDefaults",
-                                   "US National", "MW50", "2016/2017"
-                                   ]] %>>%
-  plot(type="l")
+## ## component.ftclws.forecast.values[[
+## retro.truth.ftlws.forecast.values[[
+##                                     "Bin", "1 wk ahead",
+##                                     ## "Delphi_BasisRegression_PackageDefaults",
+##                                     ## "Delphi_DeltaDensity_PackageDefaults",
+##                                     "US National", "MW50", "2016/2017"
+##                                     ]] %>>%
+##   plot(type="l")
+
+stat.component.clwstf.coefs =
+  ## component.lwsctf.forecast.values[1:6,1:2,,1:4,1:3,1:2,drop=FALSE] %>>%
+  component.lwsctf.forecast.values %>>%
+  ## component.lwsctf.forecast.values[,,,,,"Bin",drop=FALSE] %>>%
+  cv_apply(list(all=NULL,
+                smear=-4:4,
+                loo_oneahead=
+                  retro.first.noncv.epiweek %>>%
+                  {yearWeekToSeasonModelWeekDF(.%/%100L, .%%100L, usa.flu.first.week.of.season, 3L)} %>>%
+                  (season) %>>%
+                  match(stat.seasons),
+                all=NULL,
+                each=NULL,
+                each=NULL
+                ),
+           parallel_dim_i=2L,
+           function(train, test) {
+             Target = dimnames(train)[["Target"]]
+             target = stat.targets[[Target]]
+             Type = dimnames(train)[["Type"]]
+             forecast.type = stat.forecast.types[[Type]]
+             component.dim.i = match("Component", names(dimnames(train)))
+             instance.method.forecast.values.listmat =
+               train %>>% R.utils::wrap(list(seq_len(length(dim(train)))[-component.dim.i],
+                                             component.dim.i))
+             instance.observation.values.list =
+               do.call(`[`, c(list(retro.truth.lwstf.forecast.values), dimnames(train)[-component.dim.i])) %>>%
+               magrittr::extract(seq_along(.))
+             forecast.type[["fit_ensemble_coefs"]](
+               instance.method.forecast.values.listmat, instance.observation.values.list,
+               prod(dim(train)[match(c("Location","Season"),names(dimnames(train)))]),
+               "Delphi_Uniform"
+             )
+           }) %>>%
+  {
+    old.component.dim.i = which(names(dimnames(.)) == "Component")
+    stopifnot(length(old.component.dim.i)==1L && old.component.dim.i!=1L)
+    structure(.,
+              dim=dim(.)[-old.component.dim.i],
+              dimnames=c(setNames(dimnames(.)[1L], "Component"),
+                         dimnames(.)[-c(1L,old.component.dim.i)])
+              )
+  } %>>%
+  {.}
+
+## stat.component.clwstf.coefs %>>%
+##   reshape2::melt(value.name="Coefficient") %>>%
+##   tibble::as_tibble() %>>%
+##   dplyr::group_by(Target, `Model Week`, Component) %>>%
+##   dplyr::summarize(`Mean Coefficient`=mean(Coefficient)) %>>%
+##   dplyr::ungroup() %>>%
+##   dplyr::mutate(`Model Week`=`Model Week` %>>%
+##                   stringr::str_sub(3L) %>>%
+##                   as.integer()
+##                 ) %>>%
+##   ggplot2::ggplot(ggplot2::aes(`Model Week`, `Mean Coefficient`, colour=Component, group=Component)) +
+##   ggplot2::facet_wrap(~ Target) +
+##   ggplot2::geom_line() +
+##   ggplot2::scale_colour_brewer(palette="Set1") +
+##   ggplot2::theme(panel.background=ggplot2::element_rect(fill="grey"))
+
+## apply(stat.component.clwstf.coefs, c(1L,5:6), mean)
+
+## saveRDS(component.ftclws.forecast.values, "~/files/nosync/component.ftclws.forecast.values.rds")
+## saveRDS(retro.truth.ftlws.forecast.values, "~/files/nosync/retro.truth.ftlws.forecast.values.rds")
+## saveRDS(stat.component.clwstf.coefs, "~/files/nosync/stat.component.clwstf.coefs.rds")
+
+if (any(sapply(dimnames(component.lwsctf.forecast.values), is.null))) {
+  stop("component.lwsctf.forecast.values must have all dimnames filled in")
+}
+
+stat.lwstf.forecast.values =
+  component.lwsctf.forecast.values %>>%
+  cv_apply(list(each=NULL, each=NULL, each=NULL, all=NULL, each=NULL, each=NULL),
+           parallel_dim_i=2L,
+           function(train, test) {
+             slice.component.lwsctf.forecast.values = train
+             ## stopifnot(all(dim(component.forecast.values)[names(dimnames(component.forecast.values))!="Component"]==1L))
+             slice.component.clwstf.forecast.values =
+               aperm(slice.component.lwsctf.forecast.values, c(4L,1:3,5:6))
+             coef.inds.list = dimnames(slice.component.clwstf.forecast.values)
+             for (dim.i in seq_along(coef.inds.list)) {
+               dim.stat.names = dimnames(stat.component.clwstf.coefs)[[dim.i]]
+               if (length(dim.stat.names)==1L && dim.stat.names=="all") {
+                 coef.inds.list[[dim.i]] <- rep("all", length(coef.inds.list[[dim.i]]))
+               }
+             }
+             slice.stat.component.clwstf.coefs = do.call(`[`, c(list(stat.component.clwstf.coefs), coef.inds.list))
+             ## todo prevent these tiny negative weights from appearing earlier,
+             ## and rename coefs back to weights:
+             ## if (any(slice.stat.component.clwstf.coefs < 0))
+             ##   print(slice.stat.component.clwstf.coefs)
+             slice.stat.component.clwstf.coefs <- pmax(0, slice.stat.component.clwstf.coefs)
+             slice.stat.component.clwstf.coefs <-
+               slice.stat.component.clwstf.coefs %>>% magrittr::divide_by(sum(.))
+             slice.component.clwstf.forecast.values %>>%
+               do.call(what=rbind) %>>%
+               ## fixme should sub in fallback's beforehand to avoid NA's instead
+               ## of using na.rm=TRUE, so can match conditions under which the
+               ## coefficients were optimized
+               matrixStats::colWeightedMeans(slice.stat.component.clwstf.coefs, na.rm=TRUE) %>>%
+               ## xxx this shoehorns all forecast.value's into numerics, even
+               ## though other code attempts to keep the forecast.value type a
+               ## function of the target and may assume this other type.
+               dplyr::coalesce(NA_real_) %>>%
+               list()
+           }) %>>%
+  structure(
+    dim=dim(.)[names(dimnames(.)) != "Component"],
+    dimnames=dimnames(.)[names(dimnames(.)) != "Component"]
+  )
+
+stat.ftlws.forecast.values = aperm(stat.lwstf.forecast.values, c(5:4,1:3))
+
+ensemble.method.name = "Delphi_Stat_FewerComponentsNoBackcastNoNowcast"
+method.spreadsheet.dir = file.path(spreadsheet.dir, ensemble.method.name)
+if (!dir.exists(method.spreadsheet.dir)) {
+  dir.create(method.spreadsheet.dir)
+}
+stat.ftlws.forecast.values %>>%
+  cv_apply(list(all=NULL, all=NULL, all=NULL, each=NULL, each=NULL),
+           parallel_dim_i=4L,
+           function(stat.ftl.forecast.values.for.ws, same.thing) {
+             stat.season =
+               dimnames(stat.ftl.forecast.values.for.ws)[["Season"]] %>>%
+               stringr::str_replace("^(\\d+)/\\d+$", "\\1") %>>%
+               as.integer()
+             stat.model.week =
+               dimnames(stat.ftl.forecast.values.for.ws)[["Model Week"]] %>>%
+               stringr::str_sub(3L) %>>%
+               as.integer()
+             stat.epiweek = seasonModelWeekToYearWeekDF(stat.season, stat.model.week,
+                                                        usa.flu.first.week.of.season, 3L) %>>%
+               with(year*100L + week)
+             if (stat.epiweek %in% retro.epiweeks) {
+               retro.epiweek = stat.epiweek
+               print(retro.epiweek)
+               forecast.spreadsheet =
+                 retro.Locations %>>%
+                 setNames(.) %>>%
+                 lapply(function(retro.Location) {
+                   flusight2016.settings = flusight_2016_settings(retro.epiweek, retro.Location)
+                   ## retro.targets %>>%
+                   ##   lapply(function(retro.target) {
+                   ##     Target = retro.target[["Target"]]
+                   ##     retro.forecast.types %>>%
+                   ##       lapply(function(retro.forecast.type) {
+                   ##         Type = retro.forecast.type[["Type"]]
+                   ##         location.forecast.values.obj = list(
+                   ##           flusight2016.settings=flusight2016.settings,
+                   ##           location.forecast.values=stat.ftl.forecast.values.for.ws[[Type,Target,retro.Location,1L,1L]]
+                   ##         )
+                   ##       }) %>>% dplyr::bind_rows(.id="Type")
+                   ##   }) %>>% dplyr::bind_rows(.id="Target")
+                   location.forecast.values.obj = list(
+                     flusight2016.settings=flusight2016.settings,
+                     location.forecast.values=stat.ftl.forecast.values.for.ws[,,retro.Location,,] %>>%
+                       ## to nested (Target-)list of (Type-)lists of forecast values:
+                       apply(2L, identity)
+                   )
+                   location.spreadsheet.obj = flusight2016_location_spreadsheet_obj_from_location_forecast_values_obj(
+                     location.forecast.values.obj,
+                     retro.targets, retro.forecast.types,
+                     flusight2016.settings
+                   )
+                   location.spreadsheet.obj[["location.spreadsheet"]]
+                 }) %>>% dplyr::bind_rows(.id="Location")
+               ## print(forecast.spreadsheet)
+               bin.sum.deviation.df =
+                 forecast.spreadsheet %>>%
+                 dplyr::filter(Type=="Bin") %>>%
+                 dplyr::group_by(Location, Target) %>>%
+                 dplyr::mutate(`Bin Sum Deviation`=sum(as.numeric(Value))-1) %>>%
+                 dplyr::filter(abs(`Bin Sum Deviation`) > sqrt(.Machine[["double.eps"]])) %>>%
+                 dplyr::arrange(-abs(`Bin Sum Deviation`)) %>>%
+                 {.}
+               if (nrow(bin.sum.deviation.df) != 0L) {
+                 print(bin.sum.deviation.df)
+                 ## bin.sum.deviation.df %>>%
+                 ##   dplyr::filter(Location=="US National") %>>%
+                 ##   dplyr::filter(Target=="Season peak week") %>>%
+                 ##   View()
+                 stop ("Bin forecast not properly normalized.")
+               }
+               ## if (any(is.na(as.numeric(forecast.spreadsheet[["Value"]])))) {
+               ##   print(forecast.spreadsheet %>>% dplyr::filter(is.na(as.numeric(Value))))
+               ##   stop ("All ensemble Value's should be non-NA.") # or maybe okay
+               ## }
+               write.csv(forecast.spreadsheet,
+                         file.path(
+                           method.spreadsheet.dir,
+                           sprintf("EW%02d-%d-%s.csv",
+                                   retro.epiweek %% 100L,
+                                   retro.epiweek %/% 100L,
+                                   ensemble.method.name)),
+                         row.names=FALSE)
+             }
+           })
+
 
 ## todo better dataset representation... list of data sources (history df's? ilinet, fluview baselines, metadata?, in.season, ...) and auxiliary information indexed in a uniform way for location and time
 ## xxx exclude 2009/2010 (test & training) as is typical?
 ## xxx lost opportunities/experimentation on earlier seasons?
+## xxx Method vs. Component
