@@ -28,7 +28,8 @@ Imports:
     quantreg,
     lpSolve,
     parallel,
-    R.utils
+    R.utils,
+    RCurl
 Description: Tools for forecasting semi-regular seasonal epidemic curves and
     similar time series. Includes an empirical Bayes approach that forms a prior
     by transforming historical curves, a basis regression approach that balances
