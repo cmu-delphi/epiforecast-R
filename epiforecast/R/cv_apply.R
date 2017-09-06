@@ -1,5 +1,6 @@
-library(parallel)
-library(R.utils)
+##' @import parallel
+##' @import R.utils
+NULL
 
 cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim_i=0L, ...) {
   current_dim_i = length(indexer_list)
