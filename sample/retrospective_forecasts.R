@@ -592,7 +592,7 @@ component.lwsctf.evaluations =
       setNames(names(stat.targets)) %>>%
       sapply(function(stat.target.i) {
         stat.target = stat.targets[[stat.target.i]]
-        component.lwsc.forecast.values.tf = component.lwsmtf.forecast.values[,,,,stat.target.i,stat.forecast.type.i, drop=TRUE]
+        component.lwsc.forecast.values.tf = component.lwsctf.forecast.values[,,,,stat.target.i,stat.forecast.type.i, drop=TRUE]
         Map(stat.forecast.type[["evaluate_forecast_value"]],
             component.lwsc.forecast.values.tf,
             retro.truth.lwstf.forecast.values[,,,stat.target.i,stat.forecast.type.i, drop=TRUE]
