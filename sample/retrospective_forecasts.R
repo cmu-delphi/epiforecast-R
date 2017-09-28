@@ -124,7 +124,7 @@ fluview.history.l.dfs =
     )
   })
 
-flusight_2016_settings = function(forecast.epiweek, forecast.Location) {
+flusight2016_settings = function(forecast.epiweek, forecast.Location) {
   forecast.smw = yearWeekToSeasonModelWeekDF(forecast.epiweek%/%100L, forecast.epiweek%%100L,
                                              usa.flu.first.week.of.season, 3L)
   mimicked.baseline = mimicPastDF(fluview.baseline.df,
@@ -210,7 +210,7 @@ fluview_wili_retro_full_dat = function(retro.epiweek, retro.Location,
 flusight2016retro_sim = function(sim.method, retro.epiweek, retro.Location,
                                  first.noncv.retro.epiweek=retro.epiweek,
                                  max.n.sims=2000L) {
-  flusight2016.settings = flusight_2016_settings(retro.epiweek, retro.Location)
+  flusight2016.settings = flusight2016_settings(retro.epiweek, retro.Location)
   retro.full.dat = fluview_wili_retro_full_dat(retro.epiweek, retro.Location,
                                                first.noncv.retro.epiweek=first.noncv.retro.epiweek)
   retro.sim = sim.method(retro.full.dat,
@@ -538,7 +538,7 @@ retro.truth.ftlws.forecast.values =
                                                    usa.flu.first.week.of.season, 3L) %>>%
           with(year*100L + week)
         n.weeks.next.season = lastWeekNumber(stat.season+1L, 3L)
-        first.retro.forecast.time.next.season = which(usa_flu_inseason_flags(n.weeks.next.season))[[1L]]
+        first.retro.forecast.time.next.season = which(usa_flu_inseason_flags(n.weeks.next.season))[[1L]] # xxx should be based on retro.epiweeks...
         first.retro.forecast.mw.next.season = time_to_model_week(first.retro.forecast.time.next.season, usa.flu.first.week.of.season)
         retro.truth.epiweek = seasonModelWeekToYearWeekDF(stat.season+1L, first.retro.forecast.mw.next.season,
                                                           usa.flu.first.week.of.season, 3L) %>>%
@@ -554,7 +554,7 @@ retro.truth.ftlws.forecast.values =
               ys=as.matrix(retro.truth.trajectory),
               weights=1,
               control.list=list(model="retro.truth"),
-              flusight2016.settings=flusight_2016_settings(stat.epiweek, stat.Location)
+              flusight2016.settings=flusight2016_settings(stat.epiweek, stat.Location)
             ) %>>% structure(class="sim")
             retro.truth.location.forecast.values =
               flusight2016_location_forecast_values_obj_from_sim(
@@ -794,7 +794,7 @@ stat.ftlws.forecast.values %>>%
                  retro.Locations %>>%
                  setNames(.) %>>%
                  lapply(function(retro.Location) {
-                   flusight2016.settings = flusight_2016_settings(retro.epiweek, retro.Location)
+                   flusight2016.settings = flusight2016_settings(retro.epiweek, retro.Location)
                    ## retro.targets %>>%
                    ##   lapply(function(retro.target) {
                    ##     Target = retro.target[["Target"]]
