@@ -54,6 +54,37 @@ firstEpiweekOfUniverse = 123401L
 ##'
 ##' @export
 augmentWeeklyDF = function(df, first.week.of.season=NULL) {
+  df <- augmentWeeklyDFWithTimingSynonyms(df, first.week.of.season)
+  if (is.null(first.week.of.season))
+    first.week.of.season <- utils::head(df$week, n=1L)
+
+  ## fill in missing weekly data points:
+  last.season = utils::tail(df$season, 1L)
+  ## season.dates.but.last = seasonDates(utils::head(df$season, 1L), last.season-1, first.week.of.season, 0L,3L)
+  ## season.dates.last = structure(
+  ##     list(df$date[df$season==last.season]),
+  ##     names=names(namedSeason(last.season, first.week.of.season)))
+  ## season.dates = c(season.dates.but.last, season.dates.last)
+  season.dates = DatesOfSeason(Seq(utils::head(df$season, 1L), last.season), first.week.of.season, 0L, 3L)
+  new.date = do.call(base::c, season.dates) # unlist(season.dates) w/o class change
+  inds = match(new.date, df$date)
+  df <- do.call(tibble::data_frame, lapply(df, `[`, inds)) # df[inds,] w/ desired NA behavior a/f
+  new.ywwd = DateToYearWeekWdayDF(new.date, 0L, 3L)
+  new.epiweek = 100L*new.ywwd$year + new.ywwd$week
+  new.year = new.ywwd$year
+  new.week = new.ywwd$week
+  new.wday = new.ywwd$wday
+  new.season.model.week = yearWeekToSeasonModelWeekDF(new.year, new.week, first.week.of.season, 3L)
+  df$epiweek <- new.epiweek
+  df$year <- new.year
+  df$week <- new.week
+  df$season <- new.season.model.week$season
+  df$model.week <- new.season.model.week$model.week
+  df$date <- yearWeekWdayVecsToDate(new.year, new.week, new.wday, 0L, 3L)
+  return (df)
+}
+
+augmentWeeklyDFWithTimingSynonyms = function(df, first.week.of.season=NULL) {
   if ("date" %in% names(df)) {
     date = df$date
     ywwd = DateToYearWeekWdayDF(date, 0L, 3L)
@@ -101,29 +132,7 @@ augmentWeeklyDF = function(df, first.week.of.season=NULL) {
   ## }
   df$season <- season.model.week$season
   df$model.week <- season.model.week$model.week
-
-  ## fill in missing weekly data points:
-  last.season = utils::tail(df$season, 1L)
-  ## season.dates.but.last = seasonDates(utils::head(df$season, 1L), last.season-1, first.week.of.season, 0L,3L)
-  ## season.dates.last = structure(
-  ##     list(df$date[df$season==last.season]),
-  ##     names=names(namedSeason(last.season, first.week.of.season)))
-  ## season.dates = c(season.dates.but.last, season.dates.last)
-  season.dates = DatesOfSeason(Seq(utils::head(df$season, 1L), last.season), first.week.of.season, 0L, 3L)
-  new.date = do.call(base::c, season.dates) # unlist(season.dates) w/o class change
-  inds = match(new.date, date)
-  df <- do.call(tibble::data_frame, lapply(df, `[`, inds)) # df[inds,] w/ desired NA behavior a/f
-  new.ywwd = DateToYearWeekWdayDF(new.date, 0L, 3L)
-  new.epiweek = 100L*new.ywwd$year + new.ywwd$week
-  new.year = new.ywwd$year
-  new.week = new.ywwd$week
-  new.season.model.week = yearWeekToSeasonModelWeekDF(new.year, new.week, first.week.of.season, 3L)
-  df$epiweek <- new.epiweek
-  df$year <- new.year
-  df$week <- new.week
-  df$season <- new.season.model.week$season
-  df$model.week <- new.season.model.week$model.week
-  df$date <- yearWeekWdayVecsToDate(new.year, new.week, wday, 0L, 3L)
+  df$wday <- wday
   return (df)
 }
 
@@ -566,11 +575,20 @@ min_NA_highest = function(x) {
   }
 }
 
+max_NA_highest = function(x) {
+  is.na.x = is.na(x)
+  if (any(is.na.x)) {
+    x[is.na.x][[1L]]
+  } else {
+    max(x, na.rm=TRUE)
+  }
+}
+
 mimicPastDF1 = function(history.df,
                         issue.colname, mimicked.issue,
                         time.index.colnames=character(0), time.index.limits=list(),
                         nontime.index.colnames=character(0)) {
-  history.df = tibble::as_data_frame(history.df)
+  history.df <- tibble::as_data_frame(history.df)
   for (time.index.i in seq_along(time.index.colnames)) {
     time.index.colname.i = time.index.colnames[[time.index.i]]
     time.index.limit.i = time.index.limits[[time.index.i]]
@@ -695,6 +713,49 @@ fit.to.oldfit = function(fit) {
   f <- sapply(f, `[`, seq_len(min(lengths(f))))
   tau = sapply(fit, `[[`, "tau")
   return (list(f=f, tau=tau))
+}
+
+mimicPastHistoryDF = function(recorded.history.df,
+                              issue.colname, mimicked.issue,
+                              time.index.colnames=character(0), time.index.limits=list(),
+                              nontime.index.colnames=character(0)) {
+  recorded.history.df <- tibble::as_data_frame(recorded.history.df)
+  ## filter out observations for times outside the time limits:
+  for (time.index.i in seq_along(time.index.colnames)) {
+    time.index.colname.i = time.index.colnames[[time.index.i]]
+    time.index.limit.i = time.index.limits[[time.index.i]]
+    recorded.history.df <- recorded.history.df %>>%
+      dplyr::filter(.[[time.index.colname.i]] <= time.index.limit.i)
+  }
+  group.colnames = c(nontime.index.colnames, time.index.colnames)
+  available.issues =
+    recorded.history.df %>>%
+    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
+    dplyr::filter(.[[issue.colname]] <= mimicked.issue) %>>%
+    {.}
+  future.fillin.for.missing.issues =
+    recorded.history.df %>>%
+    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
+    dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
+    dplyr::group_by_(.dots=group.colnames) %>>%
+    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+    dplyr::ungroup()
+  future.fillin.for.missing.issues %>>%
+    ## remove future fill-in for groups that have actually available issues:
+    dplyr::anti_join(available.issues, group.colnames) %>>%
+    ## combine with the actually available issues:
+    dplyr::bind_rows(available.issues) %>>%
+    ## dplyr::arrange_(.dots=group.colnames) %>>%
+    dplyr::left_join(recorded.history.df, c(group.colnames, issue.colname)) %>>%
+    return()
+}
+
+mimicPastEpidataHistoryDF = function(epidata.recorded.history.df, forecast.epiweek) {
+  mimicPastHistoryDF(epidata.recorded.history.df,
+                     "issue", forecast.epiweek,
+                     "epiweek", forecast.epiweek) %>>%
+    augmentWeeklyDFWithTimingSynonyms(epidata.recorded.history.df[["week"]][[1L]]) %>>%
+    return()
 }
 
 oldfit.to.fit = function(oldfit, type="Gaussian") {
