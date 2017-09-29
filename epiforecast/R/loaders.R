@@ -715,49 +715,6 @@ fit.to.oldfit = function(fit) {
   return (list(f=f, tau=tau))
 }
 
-mimicPastHistoryDF = function(recorded.history.df,
-                              issue.colname, mimicked.issue,
-                              time.index.colnames=character(0), time.index.limits=list(),
-                              nontime.index.colnames=character(0)) {
-  recorded.history.df <- tibble::as_data_frame(recorded.history.df)
-  ## filter out observations for times outside the time limits:
-  for (time.index.i in seq_along(time.index.colnames)) {
-    time.index.colname.i = time.index.colnames[[time.index.i]]
-    time.index.limit.i = time.index.limits[[time.index.i]]
-    recorded.history.df <- recorded.history.df %>>%
-      dplyr::filter(.[[time.index.colname.i]] <= time.index.limit.i)
-  }
-  group.colnames = c(nontime.index.colnames, time.index.colnames)
-  available.issues =
-    recorded.history.df %>>%
-    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
-    dplyr::filter(.[[issue.colname]] <= mimicked.issue) %>>%
-    {.}
-  future.fillin.for.missing.issues =
-    recorded.history.df %>>%
-    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
-    dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
-    dplyr::group_by_(.dots=group.colnames) %>>%
-    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-    dplyr::ungroup()
-  future.fillin.for.missing.issues %>>%
-    ## remove future fill-in for groups that have actually available issues:
-    dplyr::anti_join(available.issues, group.colnames) %>>%
-    ## combine with the actually available issues:
-    dplyr::bind_rows(available.issues) %>>%
-    ## dplyr::arrange_(.dots=group.colnames) %>>%
-    dplyr::left_join(recorded.history.df, c(group.colnames, issue.colname)) %>>%
-    return()
-}
-
-mimicPastEpidataHistoryDF = function(epidata.recorded.history.df, forecast.epiweek) {
-  mimicPastHistoryDF(epidata.recorded.history.df,
-                     "issue", forecast.epiweek,
-                     "epiweek", forecast.epiweek) %>>%
-    augmentWeeklyDFWithTimingSynonyms(epidata.recorded.history.df[["week"]][[1L]]) %>>%
-    return()
-}
-
 oldfit.to.fit = function(oldfit, type="Gaussian") {
   return (lapply(seq_along(oldfit$tau), function(fit.s.i) {
     list(f=oldfit$f[,fit.s.i], tau=oldfit$tau[fit.s.i], type=type)
