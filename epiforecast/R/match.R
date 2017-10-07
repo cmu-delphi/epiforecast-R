@@ -33,7 +33,7 @@
 ##'
 ##' @export
 match.integer = function(inp) {
-  if (is.numeric(inp) && all(as.integer(inp)==inp)) {
+  if (is.numeric(inp) && all(is.na(inp) | as.integer(inp)==inp)) {
     storage.mode(inp) <- "integer" # like as.integer, but doesn't strip attrs like names
     return (inp)
   } else {

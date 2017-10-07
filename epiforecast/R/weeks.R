@@ -32,11 +32,11 @@ NULL
 ##' @return integer-class \%w format weekday numbers
 match.wday.w = function(wday) {
   wday <- match.integer(wday)
-  if (!all(wday %in% 0:7)) {
+  if (!all(is.na(wday) | wday %in% 0:7)) {
     stop (sprintf("All values of =%s= must be =%%in%% 0:7=.",
                   paste(deparse(match.call()$wday), collapse="")))
   }
-  wday[wday==7] <- 0
+  wday[!is.na(wday) & wday==7] <- 0
   return (wday)
 }
 
@@ -49,11 +49,11 @@ match.wday.w = function(wday) {
 ##' @return integer-class \%w format weekday numbers
 match.single.wday.w = function(wday) {
   wday <- match.single.nonna.integer(wday)
-  if (!all(wday %in% 0:7)) {
+  if (!all(is.na(wday) | wday %in% 0:7)) {
     stop (sprintf("All values of =%s= must be =%%in%% 0:7=.",
                   paste(deparse(match.call()$wday), collapse="")))
   }
-  wday[wday==7] <- 0
+  wday[!is.na(wday) & wday==7] <- 0
   return (wday)
 }
 
@@ -81,10 +81,6 @@ DateToYearWeekWdayDF = function(date, first.wday, owning.wday) {
   first.wday <- match.single.wday.w(first.wday)
   owning.wday <- match.single.wday.w(owning.wday)
 
-  if (any(is.na(date))) {
-    stop("NA dates are not currently supported (they at least interfere with some bug-detection checks).")
-  }
-
   ## Extract %w wday's from input |date|:
   input.wday = lubridate::wday(date) - 1
 
@@ -94,12 +90,12 @@ DateToYearWeekWdayDF = function(date, first.wday, owning.wday) {
   ## make sure:
   first.to.input = (input.wday - first.wday + 7) %% 7
   first.to.owning = (owning.wday - first.wday + 7) %% 7
-  if (!all(first.to.input %in% 0:6) || !all(first.to.owning %in% 0:6)) {
+  if (!all(is.na(first.to.input) | first.to.input %in% 0:6) || !all(is.na(first.to.owning) | first.to.owning %in% 0:6)) {
     stop ("Bug detected: logic error when determining weekday shifts (1st check).")
   }
 
   owning.date = date - first.to.input + first.to.owning
-  if (!all(as.integer(format(owning.date,"%w"))==owning.wday))
+  if (!all(is.na(owning.date) | as.integer(format(owning.date,"%w"))==owning.wday))
     stop("Bug detected: logic error when determining weekday shifts (2nd check).")
 
   owning.year = as.integer(lubridate::year(owning.date))
@@ -176,9 +172,9 @@ yearWeekWdayVecsToDate = function(year, week, wday, first.wday, owning.wday, err
   }
 
   if (error.on.wrap) {
-    if (any(week <= 0)) {
+    if (any(!is.na(week) & week <= 0)) {
       stop ("Week numbers must be positive (in particular, week 0 is not supported) when |error.on.wrap| is TRUE.")
-    } else if (any(week > lastWeekNumber(year, owning.wday))) {
+    } else if (any(!is.na(week) & week > lastWeekNumber(year, owning.wday))) {
       stop ("Week numbers must not exceed the last week number in the corresponding year unless |error.on.wrap| is FALSE.")
     }
   }
@@ -189,7 +185,7 @@ yearWeekWdayVecsToDate = function(year, week, wday, first.wday, owning.wday, err
   ## make sure:
   first.to.input = (wday - first.wday + 7) %% 7
   first.to.owning = (owning.wday - first.wday + 7) %% 7
-  if (!all(first.to.input %in% 0:6) || !all(first.to.owning %in% 0:6)) {
+  if (!all(is.na(first.to.input) | first.to.input %in% 0:6) || !all(is.na(first.to.owning) | first.to.owning %in% 0:6)) {
     stop ("Bug detected: logic error when determining weekday shifts.")
   }
 
@@ -197,13 +193,13 @@ yearWeekWdayVecsToDate = function(year, week, wday, first.wday, owning.wday, err
   ## lubridate assigns wday 1 to Sunday; adjust:
   jan1.wday = lubridate::wday(jan1) - 1
   jan1.to.owning = (owning.wday - jan1.wday + 7) %% 7
-  if (!all(jan1.to.owning %in% 0:6)) {
+  if (!all(is.na(jan1.to.owning) | jan1.to.owning %in% 0:6)) {
     stop ("Bug detected: logic error when determining weekday shifts.")
   }
   week1.owning = jan1 + jan1.to.owning
 
   date = week1.owning + (week-1)*7 - first.to.owning + first.to.input
-  if (!all(as.integer(format(date,"%w"))==wday)) {
+  if (!all(is.na(date) | as.integer(format(date,"%w"))==wday)) {
     stop ("Bug detected: logic error when determining weekday shifts.")
   }
 
@@ -308,7 +304,7 @@ seasonOfYearWeek = function(year, week, first.week) {
   year <- match.integer(year)
   week <- match.integer(week)
   first.week <- match.integer(first.week)
-  if (!all(1L <= first.week & first.week <= 52L)) {
+  if (!all(is.na(first.week) | 1L <= first.week & first.week <= 52L)) {
     violators = unique(first.week)
     violators <- violators[!(1L <= violators & violators <= 52L)]
     stop(paste("Season starting weeks must be %in% 1:52; violators: ", violators, collapse=","))
@@ -688,4 +684,33 @@ epi_week_to_model_week = function(epi.week, first.week.of.season, n.weeks.in.sea
   model.week = epi.week %>>%
     magrittr::inset(should.shift, .[should.shift] + n.weeks.in.season)
   return (model.week)
+}
+
+epiweek_to_Date = function(epiweek, wday) {
+  yearWeekWdayVecsToDate(
+    epiweek %/% 100L, epiweek %% 100L, wday, 0L,3L
+  )
+}
+
+epiweek_to_sunday = function(epiweek) {
+  epiweek_to_Date(epiweek, 0L)
+}
+
+Date_to_epiweek = function(date) {
+  ywwd = DateToYearWeekWdayDF(date, 0L,3L)
+  ywwd[["year"]]*100L + ywwd[["week"]]
+}
+
+add_epiweek_integer = function(epiweek, int) {
+  epiweek %>>%
+    epiweek_to_sunday() %>>%
+    magrittr::add(7L*int) %>>%
+    Date_to_epiweek()
+}
+
+subtract_epiweek_epiweek = function(epiweek.a, epiweek.b) {
+  difftime(epiweek_to_sunday(epiweek.a),
+           epiweek_to_sunday(epiweek.b), "days") %>>%
+    as.integer(units="days") %>>%
+    magrittr::divide_by_int(7L)
 }
