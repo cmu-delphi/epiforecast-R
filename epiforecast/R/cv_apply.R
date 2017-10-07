@@ -159,6 +159,7 @@ cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim
 ##' @md
 ##' @export
 cv_apply = function(data, indexer_list, fn, parallel_dim_i=0L, ...) {
+  ## If =data= is 1-D, convert it to an array so it will have non-NULL dim:
   if (is.null(dim(data))) {
     data <- as.array(data)
   }
@@ -168,11 +169,22 @@ cv_apply = function(data, indexer_list, fn, parallel_dim_i=0L, ...) {
   if (is.null(names(indexer_list))) {
     stop ("Indexer types must be specified using names in indexer_list; indexer_list has no names.")
   }
+  ## Use recursive cv_apply_helper to compute the entries of the result:
   result = cv_apply_helper(data, data, indexer_list, fn, parallel_dim_i=parallel_dim_i, ...)
-  if (!is.null(dimnames(result))) {
-    if (is.null(names(dimnames(result)))) {
-      names(dimnames(result)) <- rep("",length(dim(result)))
-    }
+  ## --- Adjust the class and dimnames: ---
+  ## Make sure the result is an array:
+  result <- as.array(result)
+  ## Make sure the dimnames are a list, not NULL:
+  if (is.null(dimnames(result))) {
+    dimnames(result) <- rep(list(NULL), length(dim(result)))
+  }
+  ## Make sure the dimnames names are a character vector, no NULL:
+  if (is.null(names(dimnames(result)))) {
+    names(dimnames(result)) <- rep("",length(dim(result)))
+  }
+  ## If the original input =data= had dimnames names, assign them to the
+  ## corresponding dimensions in the result:
+  if (!is.null(names(dimnames(data)))) {
     names(dimnames(result))[tail(seq_along(dim(result)), length(dim(data)))] <- names(dimnames(data))
   }
   return (result)
