@@ -85,7 +85,7 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
   max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
   n.sims = max.n.sims
 
-  new.dat.sim <- downsample_sim(upsample_sim_inflating_total_weight(new.dat.sim, n.sims), n.sims)
+  new.dat.sim <- downsample_sim(upsample_sim(new.dat.sim, n.sims, TRUE), n.sims)
   ys = new.dat.sim[["ys"]]
   sim.weights = new.dat.sim[["weights"]]
   min.n.out = min(sapply(dat, length))
@@ -216,7 +216,7 @@ twkde.sim = function(## dat, new.dat.sim
   max.n.sims <- match.single.nonna.integer.or.null(max.n.sims)
   n.sims = max.n.sims
 
-  new.dat.sim <- downsample_sim(upsample_sim_inflating_total_weight(new.dat.sim, n.sims), n.sims)
+  new.dat.sim <- downsample_sim(upsample_sim(new.dat.sim, n.sims, TRUE), n.sims)
   ys = new.dat.sim[["ys"]]
   sim.weights = new.dat.sim[["weights"]]
 

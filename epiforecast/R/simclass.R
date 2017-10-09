@@ -537,11 +537,15 @@ shuffle_sim_indices = function(sim.obj) {
 ##' @param sim.obj a sim object
 ##' @param max.n.sims a single non-NA non-negative integer; the inclusive lower
 ##'   bound on the number of simulated curves in the result
+##' @param inflate.weights a single non-NA logical; TRUE indicated that the
+##'   weights be inflated proportionally with the increase in the number of
+##'   simulations; FALSE indicates that the total weight should be preserved
+##'   instead.
 ##' @return a sim object with >= min.n.sims simulated curves; the sum of weights
 ##'   in the result will equal the sum of the results in the input.
 ##' @details Resampling is only performed if the number of simulations needs to
 ##'   change. Any resampling is (necessarily) done with replacement.
-upsample_sim = function(sim.obj, min.n.sims) {
+upsample_sim = function(sim.obj, min.n.sims, inflate.weights) {
   min.n.sims <- match.single.nonna.integer(min.n.sims)
   if (min.n.sims < 0L) {
     stop ("min.n.sims must be a natural number.")
@@ -552,7 +556,12 @@ upsample_sim = function(sim.obj, min.n.sims) {
   } else {
     sample.inds = sample(seq_along(sim.obj$weights), min.n.sims-input.n.sims,
                          prob=sim.obj$weights, replace=TRUE)
-    mean.result.weight = sum(sim.obj[["weights"]])/min.n.sims
+    mean.result.weight =
+      if (inflate.weights) {
+        mean(sim.obj[["weights"]])
+      } else {
+        sum(sim.obj[["weights"]])/min.n.sims
+      }
     result = sim.obj # to include other things besides ys and weights
     result[c("ys","weights")] <- list(
       sim.obj$ys[,c(seq_len(input.n.sims),
