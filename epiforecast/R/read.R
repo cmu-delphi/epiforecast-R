@@ -19,17 +19,31 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
-##' Get index (time) of last non-\code{NA} in a vector
+##' Get index (time) of last non-\code{NA} in a vector or other new.dat.sim
 ##' @export
-get.latest.time = function(new.dat){
-    if(!is.vector(new.dat)) stop("Must enter vector!")
-    if(!any(is.na(new.dat))) stop("no missing values in new.dat! i.e. the new season has been fully obseved!")
+get.latest.time = function(new.dat.sim){
+  new.dat.sim <- match.new.dat.sim(new.dat.sim)
+    ys = new.dat.sim[["ys"]]
+
+    is.na.ys = is.na(ys)
+
+    if (!any(is.na.ys)) {
+        stop("There are no missing values in new.dat.sim, i.e., the new season has been fully observed!")
+    }
+
+    ## check that NA occurrences match between all columns
+    if (ncol(is.na.ys) > 1L && # preoptimization...: no need to check if only 1 trajectory
+        any(xor(is.na.ys[,1], is.na.ys))) {
+        stop ("All trajectories in new.dat.sim must have NA at exactly the same indices.")
+    }
 
     ## Obtain index of non-NA
-    time.of.forecast = max(0L, which(!is.na(new.dat)))
-    
-    if(!all(time.of.forecast < which(is.na(new.dat)))) stop("new.dat should be formatted so that non-NA's are folowed by all NA's")
-    
+    time.of.forecast = max(0L, which(!is.na.ys[,1]))
+
+    if (!all(time.of.forecast < which(is.na.ys[,1]))) {
+        stop("new.dat.sim should be formatted so that non-NA's are followed by all NA's")
+    }
+
     return(time.of.forecast)
 }
 

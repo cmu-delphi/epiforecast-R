@@ -204,11 +204,11 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-    br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = FALSE,
-                      control.list = get_br_control_list(), ...) {
+br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = FALSE,
+                  control.list = get_br_control_list(), ...) {
 
     ## Check input
-    check.list.format(full.dat)
+    ## check.list.format(full.dat)
     n.sims = if (bootstrap) max.n.sims else 1L
 
     ## Update control list with baseline and max.n.sims, because br.smoothedCurve needs this information
@@ -218,33 +218,37 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 
     ## Split into old dat (list) and new dat (vector)
     old.dat = head(full.dat, -1L)
-    new.dat = tail(full.dat, 1L)[[1]]
+    new.dat.sim = tail(full.dat, 1L)[[1]]
+    if (!bootstrap) {
+      new.dat.sim <- match.new.dat.sim(matrixStats::rowWeightedMeans(new.dat.sim[["ys"]], new.dat.sim[["weights"]]))
+    }
     old.season.labels = head(names(full.dat), -1L)
     new.season.label = tail(names(full.dat), 1L)
 
     ## simulate trajectories by bootstrapping old trajectories
-    one.bootstrap = function(old.dat, new.dat, bootstrap = T){
+    one.bootstrap = function(old.dat, new.dat.sim, bootstrap = T){
         bootstrap.inds= sample(x = seq_along(old.dat),
                                size = length(old.dat),
                                replace = TRUE,
                                prob = control.list$prob)
         bootstrap.old.dat = old.dat[bootstrap.inds]
-        bootstrap.full.dat = c(bootstrap.old.dat, list(new.dat))
+        bootstrap.new.dat = new.dat.sim[["ys"]][,sample.int(length(new.dat.sim[["weights"]]),1L,TRUE,new.dat.sim[["weights"]])]
+        bootstrap.full.dat = c(bootstrap.old.dat, list(bootstrap.new.dat))
         names(bootstrap.full.dat)[length(bootstrap.full.dat)] = new.season.label
         br.fitted.curve = br.smoothedCurve(full.dat = bootstrap.full.dat,
                                            control.list = control.list)
-        return(br.fitted.curve) 
+        return(br.fitted.curve)
     }
 
     ## if bootstrap is FALSE, then return the single prediction.
-    ys = replicate(n.sims, one.bootstrap(old.dat,new.dat,bootstrap), simplify="array")
+    ys = replicate(n.sims, one.bootstrap(old.dat,new.dat.sim,bootstrap), simplify="array")
     weights = rep(1/n.sims, n.sims)
 
     ## Bundle into an object of 'sim' class
     sim = list(ys=ys,
                weights=weights,
                old.dat = list(old.dat)[[1]],
-               new.dat = (new.dat),
+               new.dat.sim = (new.dat.sim),
                old.season.labels = (old.season.labels),
                new.season.label = (new.season.label),
                control.list = list(control.list)[[1]])

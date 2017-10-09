@@ -647,7 +647,11 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 10
 
     ## Split into old dat (list) and new dat (vector)
     old.dat = head(full.dat, -1L)
-    new.dat = tail(full.dat, 1L)[[1]]
+    new.dat.sim = match.new.dat.sim(tail(full.dat, 1L)[[1]])
+    ## xxx Using multiple trajectories from a new.dat.sim is too slow (without
+    ## revisiting the Rcpp code); collapse new.dat.sim into a single new.dat
+    ## trajectory:
+    new.dat = matrixStats::rowWeightedMeans(new.dat.sim[["ys"]], new.dat.sim[["weights"]])
     old.season.labels = head(names(full.dat), -1L)
     new.season.label = tail(names(full.dat), 1L)
 
