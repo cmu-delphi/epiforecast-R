@@ -204,7 +204,7 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = FALSE,
+br.sim = function(full.dat, max.n.sims, baseline=0, bootstrap = FALSE,
                   control.list = get_br_control_list(), ...) {
 
     ## Check input
@@ -218,7 +218,7 @@ br.sim = function(full.dat, new.dat.sim, max.n.sims, baseline=0, bootstrap = FAL
 
     ## Split into old dat (list) and new dat (vector)
     old.dat = head(full.dat, -1L)
-    new.dat.sim = tail(full.dat, 1L)[[1]]
+    new.dat.sim = match.new.dat.sim(tail(full.dat, 1L)[[1L]])
     if (!bootstrap) {
       new.dat.sim <- match.new.dat.sim(matrixStats::rowWeightedMeans(new.dat.sim[["ys"]], new.dat.sim[["weights"]]))
     }
