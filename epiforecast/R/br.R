@@ -204,7 +204,7 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-br.sim = function(full.dat, max.n.sims, baseline=0, bootstrap = FALSE,
+br.sim = function(full.dat, max.n.sims=100L, baseline=0, bootstrap = TRUE,
                   control.list = get_br_control_list(), ...) {
 
     ## Check input
@@ -237,12 +237,26 @@ br.sim = function(full.dat, max.n.sims, baseline=0, bootstrap = FALSE,
         names(bootstrap.full.dat)[length(bootstrap.full.dat)] = new.season.label
         br.fitted.curve = br.smoothedCurve(full.dat = bootstrap.full.dat,
                                            control.list = control.list)
+        if (control.list[["model.noisy"]]) {
+          not.in.new.dat = is.na(bootstrap.new.dat)
+          in.new.dat = !not.in.new.dat
+          noise.est = sqrt(mean((bootstrap.new.dat-br.fitted.curve)[in.new.dat]^2))
+          ## pin past values:
+          br.fitted.curve[in.new.dat] <-
+            bootstrap.new.dat[in.new.dat]
+          ## inject noise:
+          br.fitted.curve[not.in.new.dat] <-
+            rnorm(sum(not.in.new.dat),
+                  br.fitted.curve[not.in.new.dat],
+                  noise.est)
+        }
         return(br.fitted.curve)
     }
 
-    ## if bootstrap is FALSE, then return the single prediction.
+    ## if bootstrap is FALSE, then return the single prediction without injecting noise.
     ys = replicate(n.sims, one.bootstrap(old.dat,new.dat.sim,bootstrap), simplify="array")
-    weights = rep(1/n.sims, n.sims)
+    ## weights = rep(1/n.sims, n.sims)*length(old.dat)
+    weights = rep(1, n.sims)
 
     ## Bundle into an object of 'sim' class
     sim = list(ys=ys,

@@ -686,6 +686,10 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 10
 ##' @param smooth logical; if TRUE, past observations and future
 ##'   "pseudo-observations" (predictions) will be smoothed; if FALSE, the
 ##'   observations and pseudo-observations will be returned unsmoothed.
+##' @param model.noisy logical; if TRUE and bootstrapping is enabled, will
+##'   inject noise into future values and pin past observations to the observed
+##'   values; if FALSE or TRUE but used when bootstrapping is disabled, br.sim
+##'   will return the "non-noisy" regression curve
 ##' @param basis type of basis to use. So far only "bs" (B-splines) are
 ##'   implemented.
 ##' @param df the degrees of freedom for the basis. Default is 10.
@@ -715,13 +719,14 @@ eb.sim = function(full.dat, baseline=0, time.of.forecast = NULL, max.n.sims = 10
 ##'   NA, indicates to scale about 0 (regardless of sign).
 ##' @export
 get_br_control_list = function(parent = NULL,
-                               max.n.sims = 20000L,
+                               max.n.sims = 100L,
                                n.out=53L,
                                model = "Basis Regression",
                                max.match.length=NULL,
                                df = 10,
                                w = 1,
                                smooth=TRUE,
+                               model.noisy=TRUE,
                                baseline=0,
                                basis="bs", ## df.to.weight.ratio=1/5,
                                max.scale.factor=3,
