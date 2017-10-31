@@ -248,14 +248,20 @@ eb.createForecasts = function(dat, new.dat,
   sampled.curves.and.log.weights = eb.infer(dat, new.dat, fit.obj, time.of.forecast, control.list)
 
   ys = structure(stats::rnorm(control.list$n.out*control.list$max.n.sims,
-                              sampled.curves.and.log.weights[[1]],
-                              sampled.curves.and.log.weights[[2]]),
+                              sampled.curves.and.log.weights[[1L]],
+                              sampled.curves.and.log.weights[[2L]]),
                  dim=c(control.list$n.out, control.list$max.n.sims))
   ys[seq_len(time.of.forecast),] <- new.dat[seq_len(time.of.forecast)]
 
-  log.weights = sampled.curves.and.log.weights[[3]]
+  log.weights = sampled.curves.and.log.weights[[3L]]
+  scaled.weights = exp(log.weights-max(log.weights))
 
-  sim = list(ys=ys, weights=exp(log.weights-max(log.weights)), sampled.row.major.parms=sampled.curves.and.log.weights[[4]])
+  sim = list(ys=ys,
+             ## ## make total weight equal to length(dat):
+             ## weights=scaled.weights*length(dat)/sum(scaled.weights),
+             ## make total weight equal to length(weights):
+             weights = scaled.weights/mean(scaled.weights),
+             sampled.row.major.parms=sampled.curves.and.log.weights[[4L]])
 
   return (sim)
 }

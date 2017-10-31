@@ -388,7 +388,7 @@ trendfilter.cv = function(x, y, k=2, cv.rule=c("min","1se"), nfolds=5,
 ##'
 ##' @export
 get_eb_control_list = function(parent = NULL,
-                               max.n.sims = 20000L,
+                               max.n.sims = 2000L,
                                peak.time.dist = NULL,
                                x.shift.dist = NULL,
                                x.scale.dist = NULL,
