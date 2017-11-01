@@ -577,3 +577,35 @@ upsample_sim = function(sim.obj, min.n.sims, inflate.weights) {
   }
   return (result)
 }
+
+##' @export
+simplified_simlike = function(fit.model) {
+  UseMethod("simplified_simlike", fit.model)
+}
+
+##' @export
+simplified_simlike.default = function(fit.model) {
+  fit.model
+}
+
+##' @method simplified_simlike sim
+##' @export
+##' @export simplified_simlike.sim
+simplified_simlike.sim = function(fit.model) {
+  sim = fit.model
+  stopifnot(ncol(sim[["ys"]]) == length(sim[["weights"]]))
+  structure(
+    list(
+      ys = sim[["ys"]],
+      weights = sim[["weights"]],
+      control.list = list(
+        model = "simplified",
+        original.model = sim[["control.list"]][["model"]],
+        original.n.sims = length(sim[["weights"]]),
+        original.weight.sum = sum(sim[["weights"]])
+      )
+    ),
+    class = "sim"
+  ) %>>%
+    downsample_sim(20L)
+}
