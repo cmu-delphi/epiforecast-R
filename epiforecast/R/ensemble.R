@@ -134,17 +134,19 @@ uniform_forecast = function(...) {
 ##' @method target_forecast uniform_forecast
 ##' @export
 ##' @export target_forecast.uniform_forecast
-target_forecast.uniform_forecast = function(uniform.forecast, ..., target.name, target.info) {
-  bin.info = target.info[["bin_info_for"]](...)
+target_forecast.uniform_forecast = function(uniform.forecast, ..., target.name, target.spec) {
+  bin.info = target.spec[["bin_info_for"]](...)
   breaks = bin.info[["breaks"]]
   non.na.bin.representatives = breaks[-1L] - 0.5*diff(breaks)
   target.values = c(
     non.na.bin.representatives,
-    get_na_value_or_empty_for_target(target.info, ...)
+    get_na_value_or_empty_for_target(target.spec, ...)
   )
   target.weights = rep(1/length(target.values), length(target.values))
   return (structure(list(target.values = stats::setNames(list(target.values), target.name),
-                         target.weights = target.weights),
+                         target.weights = target.weights,
+                         method.settings = list(uniform.pseudoweight.total=0,smooth.sim.targets=FALSE)
+                         ),
                     class="target_forecast"))
 }
 
@@ -172,3 +174,4 @@ print.uniform_forecast = function(x, ...) {
 ##' @export
 ##' @export c.uniform_forecast
 c.uniform_forecast = c_for_named_lists
+

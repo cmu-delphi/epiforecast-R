@@ -73,7 +73,7 @@ bw.SJnrd0 = function(x) {
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
+twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=1000L) {
   ## extract historical data and future data from full.dat
   dat = head(full.dat, -1L)
   dat <- match.dat(dat)
@@ -117,9 +117,9 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
       }
     }
   }
-  ## weights = rep(1, n.sims)
-  ## sim = list(ys=ys, weights=weights)
-  sim = list(ys=ys, weights=sim.weights)
+  ## todo fix up total weight; maybe estimate at each step average
+  ## sum(weight)/max(weight), multiply the results, take min of it and #sims? or
+  ## something like entropy?
 
   ## Make a dummy control list, containing only model name
   control.list = list(model = "twkde.markovian")
@@ -195,10 +195,9 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) {
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
 ##' @export
-twkde.sim = function(## dat, new.dat.sim
-                     full.dat,
+twkde.sim = function(full.dat,
                      baseline=NA_real_,
-                     max.n.sims=2000L,
+                     max.n.sims=1000L,
                      decay.factor=0.7,
                      diff.decay.factor=0.5,
                      max.shifts=c(rep(10,20),10:1,rep(0,3),1:10,rep(10,10)),
@@ -317,9 +316,9 @@ twkde.sim = function(## dat, new.dat.sim
       }
     }
   }
-  ## ys <- exp(ys) - 0.01
-  ## weights = rep(1, n.sims)
-  ## sim = list(ys=ys, weights=weights)
+  ## todo fix up total weight; maybe estimate at each step average
+  ## sum(weight)/max(weight), multiply the results, take min of it and #sims? or
+  ## something like entropy?  or multiply by mean # of considered shifts?
 
   ## Make a dummy control list, containing only model name
   control.list = list(model = "twkde")

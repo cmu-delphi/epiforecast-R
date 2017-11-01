@@ -66,6 +66,7 @@ Collate:
     'twkde.R'
     'namesp.R'
     'map_join.R'
+    'epiproject.R'
 LinkingTo: Rcpp
 SystemRequirements: C++14
 Suggests:
