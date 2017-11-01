@@ -29,6 +29,10 @@ cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim
              train_inds = lapply(current_dim_seq, function(center_ind) {
                window_inds = center_ind + indexer_val
                window_inds <- window_inds[1L <= window_inds & window_inds <= current_dim_size]
+               if (length(window_inds)==0L) {
+                 stop ("smear argument led to selection of no data")
+               }
+               window_inds
              })
              test_inds = current_dim_seq
              current_dim_outnames = current_dim_inpnames
@@ -53,18 +57,18 @@ cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim
              current_dim_outnames = current_dim_inpnames
            },
            oneahead={
-             test_start_ind = indexer_val
-             if (test_start_ind > current_dim_size) {
-               stop ("oneahead argument greater than corresponding dimension width")
+             test_start_ind = match.single.nonna.integer(indexer_val)
+             if (test_start_ind <= 1L || current_dim_size < test_start_ind) {
+               stop ("oneahead argument outside the index range for the corresponding dimension, or equal to one, resulting in no training data for the first fold")
              }
              test_inds = test_start_ind-1L + seq_len(current_dim_size-test_start_ind+1L)
              train_inds = lapply(test_inds-1L, seq_len)
              current_dim_outnames = current_dim_inpnames[test_inds]
            },
            loo_oneahead={
-             oneahead_start_ind = indexer_val
-             if (oneahead_start_ind > current_dim_size) {
-               stop ("oneahead argument greater than corresponding dimension width")
+             oneahead_start_ind = match.single.nonna.integer(indexer_val)
+             if (oneahead_start_ind <= 2L || current_dim_size < oneahead_start_ind) {
+               stop ("loo_onahead argument outside the index range for the corresponding dimension, or equal to one or two, resulting in no training data for the first fold")
              }
              loo_test_inds = seq_len(oneahead_start_ind-1L)
              loo_train_inds = lapply(loo_test_inds, function(train_out_ind) {
@@ -82,14 +86,17 @@ cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim
            )
     stopifnot(length(train_inds) == length(test_inds))
     current_dim_lapply = if (current_dim_i == parallel_dim_i) {
-                           print("mclapply")
-                           mclapply
+                           print("pbmcapply::pbmclapply")
+                           pbmcapply::pbmclapply
                          } else {
                            lapply
                          }
     subresult.list =
       setNames(current_dim_lapply(seq_along(train_inds), function(indset_i) {
         train_data_inds = as.list(rep(TRUE, length(dim(train_data))))
+        if (length(train_inds[[indset_i]])==0L) {
+          stop ("Some indexing operation resulted in 0 indices.")
+        }
         train_data_inds[[current_dim_i]] <- train_inds[[indset_i]]
         inner_train_data = do.call(`[`, c(list(train_data, drop=FALSE), train_data_inds))
         test_data_inds = as.list(rep(TRUE, length(dim(test_data))))

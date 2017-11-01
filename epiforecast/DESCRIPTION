@@ -29,7 +29,8 @@ Imports:
     lpSolve,
     parallel,
     R.utils,
-    RCurl
+    RCurl,
+    pbmcapply
 Description: Tools for forecasting semi-regular seasonal epidemic curves and
     similar time series. Includes an empirical Bayes approach that forms a prior
     by transforming historical curves, a basis regression approach that balances
@@ -63,6 +64,8 @@ Collate:
     'target_spec.R'
     'todo-by-file.R'
     'twkde.R'
+    'namesp.R'
+    'map_join.R'
 LinkingTo: Rcpp
 SystemRequirements: C++14
 Suggests:
