@@ -71,7 +71,7 @@ ons = function(trajectory, baseline, is.inseason, ...) {
   return (which(is.inseason & next.three.above.baseline)[1L][[1L]])
 }
 
-##' Calculate the onset of a trajectory
+##' Calculate the duration of a trajectory
 ##'
 ##' @param trajectory a vector
 ##' @param baseline the onset threshold
@@ -126,37 +126,74 @@ usa_flu_inseason_flags = function(n.weeks.in.season) {
     return()
 }
 
+time_to_point = function(times, is.inseason, ...) {
+  n.weeks.in.season = length(is.inseason)
+  model.weeks <- time_to_model_week(times, usa.flu.first.week.of.season)
+  epi.weeks <- model_week_to_epi_week(model.weeks, usa.flu.first.week.of.season, n.weeks.in.season)
+  return (epi.weeks)
+}
+## fixme don't hardcode usa.flu.first.week.of.season
+
+time_to_binlabelstart = function(times, is.inseason, ...) {
+  epi.weeks = time_to_point(times, is.inseason, ...)
+  epi.weeks.char = dplyr::coalesce(as.character(epi.weeks), "none")
+}
+
+time_to_binlabelend = function(times, is.inseason, ...) {
+  epi.weeks.ish = 1L+time_to_point(times-1L, is.inseason, ...)
+  epi.weeks.char = dplyr::coalesce(as.character(epi.weeks.ish), "none")
+}
+
+time_from_binlabel = function(epi.weeks.char, is.inseason, ...) {
+  n.weeks.in.season = length(is.inseason)
+  epi.weeks.numeric = as.numeric(dplyr::recode(epi.weeks.char, "none"=NA_character_))
+  epi.weeks.integer = as.integer(epi.weeks.numeric)
+  epi.weeks = if (all(epi.weeks.numeric==epi.weeks.integer)) {
+                epi.weeks.integer
+              } else {
+                epi.weeks.numeric
+              }
+  model.weeks = epi_week_to_model_week(epi.weeks, usa.flu.first.week.of.season, n.weeks.in.season)
+  times = model_week_to_time(model.weeks, usa.flu.first.week.of.season)
+  return (times)
+}
+
+time_from_point = function(epi.weeks, is.inseason, ...) {
+  n.weeks.in.season = length(is.inseason)
+  model.weeks = epi_week_to_model_week(epi.weeks, usa.flu.first.week.of.season, n.weeks.in.season)
+  times = model_week_to_time(model.weeks, usa.flu.first.week.of.season)
+  return (times)
+}
+
 week.unit = list(
   Unit = "week",
-  to_string = function(target.values, is.inseason, ...) {
-    n.weeks.in.season = length(is.inseason)
-    model.weeks <- time_to_model_week(target.values, usa.flu.first.week.of.season)
-    epi.weeks <- model_week_to_epi_week(model.weeks, usa.flu.first.week.of.season, n.weeks.in.season)
-    epi.weeks.char = dplyr::coalesce(as.character(epi.weeks), "none")
-    return (epi.weeks.char)
+  to_binlabelstart = function(target.values, is.inseason, ...) {
+    time_to_binlabelstart(target.values, is.inseason, na.representation="none", ...)
   },
-  from_string = function(epi.weeks.char, is.inseason, ...) {
-    n.weeks.in.season = length(is.inseason)
-    epi.weeks.numeric = as.numeric(dplyr::recode(epi.weeks.char, "none"=NA_character_))
-    epi.weeks.integer = as.integer(epi.weeks.numeric)
-    epi.weeks = if (all(epi.weeks.numeric==epi.weeks.integer)) {
-                  epi.weeks.integer
-                } else {
-                  epi.weeks.numeric
-                }
-    model.weeks = epi_week_to_model_week(epi.weeks, usa.flu.first.week.of.season, n.weeks.in.season)
-    target.values = model_week_to_time(model.weeks, usa.flu.first.week.of.season)
-    return (target.values)
+  to_binlabelend = function(target.values, is.inseason, ...) {
+    time_to_binlabelend(target.values, is.inseason, na.representation="none", ...)
+  },
+  from_binlabelstart = function(binstrings, is.inseason, ...) {
+    time_from_binlabel(binstrings, is.inseason, na.representation="none", ...)
+  },
+  to_point = function(target.values, is.inseason, ...) {
+    time_to_point(target.values, is.inseason, na.representation="none", ...)
+  },
+  from_point = function(points, is.inseason, ...) {
+    time_from_point(points, is.inseason, na.representation="none", ...)
   }
 )
 
 percentage.unit = list(
   Unit = "percent",
-  to_string = as.character,
-  from_string = as.numeric
+  to_binlabelstart = function(x, ...) as.character(x, ...),
+  to_binlabelend = function(x, ...) as.character(x, ...),
+  from_binlabel = function(x, ...) as.numeric(x, ...),
+  to_point = function(x, ...) x,
+  from_point = function(x, ...) as.numeric(x)
 )
 
-flusight2016.onset.target = list(
+flusight2016.onset.target.spec = list(
   Target = "Season onset",
   unit = week.unit,
   for_processed_trajectory = function(processed.trajectory, baseline, is.inseason, ...) {
@@ -187,7 +224,7 @@ flusight2016.onset.target = list(
   }
 )
 
-flusight2016.peak.week.target = list(
+flusight2016.peak.week.target.spec = list(
   Target = "Season peak week",
   unit = week.unit,
   for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
@@ -212,7 +249,7 @@ flusight2016.percentage.bin.info = list(
   rightmost.closed=TRUE, include.na=FALSE
 )
 
-flusight2016.peak.percentage.target = list(
+flusight2016.peak.percentage.target.spec = list(
   Target = "Season peak percentage",
   unit = percentage.unit,
   for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
@@ -223,12 +260,12 @@ flusight2016.peak.percentage.target = list(
   }
 )
 
-flusight2016_percentage_target_for_lookahead = function(lookahead) {
+flusight2016_percentage_target_spec_for_lookahead = function(lookahead) {
   list(
     Target = paste0(lookahead, " wk ahead"),
     unit = percentage.unit,
-    for_processed_trajectory = function(processed.trajectory, target.time.of.forecast, ...) {
-      return (processed.trajectory[[target.time.of.forecast+lookahead]])
+    for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
+      return (processed.trajectory[[forecast.time+lookahead]])
     },
     bin_info_for = function(...) {
       return (flusight2016.percentage.bin.info)
@@ -236,19 +273,34 @@ flusight2016_percentage_target_for_lookahead = function(lookahead) {
   )
 }
 
-flusight2016.targets = list(
-  flusight2016.onset.target,
-  flusight2016.peak.week.target,
-  flusight2016.peak.percentage.target,
-  flusight2016_percentage_target_for_lookahead(1L),
-  flusight2016_percentage_target_for_lookahead(2L),
-  flusight2016_percentage_target_for_lookahead(3L),
-  flusight2016_percentage_target_for_lookahead(4L)
+flusight2016.target.specs = list(
+  flusight2016.onset.target.spec,
+  flusight2016.peak.week.target.spec,
+  flusight2016.peak.percentage.target.spec,
+  flusight2016_percentage_target_spec_for_lookahead(1L),
+  flusight2016_percentage_target_spec_for_lookahead(2L),
+  flusight2016_percentage_target_spec_for_lookahead(3L),
+  flusight2016_percentage_target_spec_for_lookahead(4L)
 ) %>>%
   setNames(sapply(., magrittr::extract2, "Target"))
 
 flusight2016_target_trajectory_preprocessor = function(trajectory) {
-  round(pmax(trajectory, 0), 1L)
+  round(pmin(pmax(trajectory, 0), 100), 1L)
+}
+
+Unit_for_target.spec = function(target.spec) {
+  target.spec[["unit"]][["Unit"]]
+}
+
+bin_representatives_for_target.spec = function(target.spec, voxel.data) {
+  bin.info = do.call(target.spec[["bin_info_for"]], voxel.data[["target.settings"]])
+  bin.representatives = c(
+    bin.info[["break.bin.representatives"]],
+    do.call(get_na_value_or_empty_for_target,
+            c(list(target.spec),
+              voxel.data[["target.settings"]]))
+  )
+  return (bin.representatives)
 }
 
 ## todo names in target list vs. Target in target...

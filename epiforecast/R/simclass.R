@@ -279,7 +279,8 @@ target_forecast.sim = function(mysim,
                                target.fun = target,
                                ## todo make a property of target types?:
                                target_trajectory_preprocessor = function(trajectory) trajectory,
-                               target.value.formatter = identity,
+                               target.spec = NULL,
+                               target_value_formatter = identity,
                                ## todo make a property of forecast types?
                                target.multival.behavior = c("random.val", "closest.to.pred.val"),
                                compute.estimates = TRUE,
@@ -329,7 +330,6 @@ target_forecast.sim = function(mysim,
 
     target.settings = list(
       target_trajectory_preprocessor = target_trajectory_preprocessor,
-      target.value.formatter = target.value.formatter,
       target.multival.behavior = target.multival.behavior,
       ...
     )
@@ -339,6 +339,7 @@ target_forecast.sim = function(mysim,
     return (structure(c(list(settings = settings,
                              target.values = stats::setNames(list(target.values), target.name),
                              target.weights = target.weights,
+                             target_value_formatter = target_value_formatter,
                              target.settings = target.settings),
                         if (compute.estimates) list(estimates = estimates)
                         else list()
@@ -357,7 +358,7 @@ print.target_forecast = function(x, sig.digit = 2L, ...) {
   target.forecast = x
   target.name = names(target.forecast[["target.values"]])
   estimates = target.forecast[["estimates"]]
-  target.value.formatter = target.forecast[["target.settings"]][["target.value.formatter"]]
+  target_value_formatter = target.forecast[["target_value_formatter"]]
 
   ## Print a bunch of things
   cat("Summary for", target.name, ":",fill=TRUE)
@@ -365,11 +366,11 @@ print.target_forecast = function(x, sig.digit = 2L, ...) {
   if (is.null(estimates)) {
     cat("No estimate computations recorded.", fill=TRUE)
   } else {
-    cat("The mean of", target.name, "is", target.value.formatter(round(estimates$mean,sig.digit)), fill=TRUE)
-    cat("The median of", target.name, "is", target.value.formatter(round(estimates$median,sig.digit)), fill=TRUE)
-    cat("And the 0.05, 0.95 quantiles are", target.value.formatter(round(estimates$quantile,sig.digit)), fill=TRUE)
-    cat("And the quartiles are", target.value.formatter(round(estimates$quartile,sig.digit)), fill=TRUE)
-    cat("And the deciles are", target.value.formatter(round(estimates$decile,sig.digit)), fill=TRUE)
+    cat("The mean of", target.name, "is", target_value_formatter(round(estimates$mean,sig.digit)), fill=TRUE)
+    cat("The median of", target.name, "is", target_value_formatter(round(estimates$median,sig.digit)), fill=TRUE)
+    cat("And the 0.05, 0.95 quantiles are", target_value_formatter(round(estimates$quantile,sig.digit)), fill=TRUE)
+    cat("And the quartiles are", target_value_formatter(round(estimates$quartile,sig.digit)), fill=TRUE)
+    cat("And the deciles are", target_value_formatter(round(estimates$decile,sig.digit)), fill=TRUE)
   }
 }
 

@@ -60,7 +60,7 @@ Collate:
     'forecast_type.R'
     'holidays.R'
     'read.R'
-    'target.R'
+    'target_spec.R'
     'todo-by-file.R'
     'twkde.R'
 LinkingTo: Rcpp
