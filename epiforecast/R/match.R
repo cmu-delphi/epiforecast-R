@@ -240,15 +240,27 @@ match.dat = function(dat) {
 ##'
 ##' @export
 match.new.dat.sim = function(new.dat.sim) {
-  if (is.numeric(new.dat.sim) && is.vector(new.dat.sim)) {
+  if (class(new.dat.sim) == "sim") {
+    return (new.dat.sim)
+  } else if (is.numeric(new.dat.sim) && is.vector(new.dat.sim)) {
     ys = as.matrix(new.dat.sim)
     weights = 1
-    sim = list(ys=ys, weights=weights)
+    sim = structure(
+      list(ys=ys, weights=weights,
+           control.list=list(
+             model="single trajectory as sim"
+           )),
+      class="sim")
     return (sim)
   } else if (is.numeric(new.dat.sim) && is.matrix(new.dat.sim)) {
     ys = new.dat.sim
     weights = rep(1/ncol(ys), ncol(ys)) # normalization isn't necessary though
-    sim = list(ys=ys, weights=weights)
+    sim = structure(
+      list(ys=ys, weights=weights,
+           control.list=list(
+             model="trajectory matrix as sim"
+           )),
+      class="sim")
     return (sim)
   } else if (is.list(new.dat.sim)
              && is.numeric(new.dat.sim$ys) && is.matrix(new.dat.sim$ys)
@@ -262,6 +274,13 @@ match.new.dat.sim = function(new.dat.sim) {
       warning("sum(new.dat.sim$weights) < .Machine$double.eps^0.5")
     }
     sim = new.dat.sim
+    sim = structure(
+      c(new.dat.sim,
+        list(control.list=list(
+               model="list with ys & weights as sim"
+             ))
+        ),
+      class="sim")
     return (sim)
   } else {
     stop (sprintf("Argument =%s= must be (a) a numeric vector (a single trajectory), (b) a numeric matrix (cbound trajectories), or (c) a list with $ys a #times by #trajectories matrix with #trajectories >= 1 and each row either all NA or non-NA, and $weights a #trajectories-length numeric vector with entries all >=0.", paste(deparse(match.call()$new.dat.sim), collapse="\n")))
