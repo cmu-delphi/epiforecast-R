@@ -59,18 +59,18 @@ mysim = empirical.trajectories.sim(full.dat)
 plot(mysim)
 
 ## Try BR
-mysim = br.sim(full.dat, max.n.sims=100, bootstrap=T)
+mysim = br.sim(full.dat, max.n.sims=100)
 plot(mysim)
 print(mysim,verbose=TRUE)
 target.forecast = target_forecast(mysim, "pht")
 
 ## Try BR with more simulation settings
 control.list = get_br_control_list(df=5, cv.rule="1se")
-mysim = br.sim(full.dat, max.n.sims=100, bootstrap=T, control.list=control.list)
+mysim = br.sim(full.dat, max.n.sims=100, control.list=control.list)
 plot(mysim)
 print(mysim,verbose=TRUE)
-target.forecast = target_forecast(mysim, "pht", plot.hist=TRUE)
-target.forecast = target_forecast(mysim, "pwk", plot.hist=TRUE)
+target.forecast = target_forecast(mysim, "pht")
+target.forecast = target_forecast(mysim, "pwk")
 
 ## Try Markovian twkde
 mysim = twkde.markovian.sim(full.dat)
@@ -79,3 +79,7 @@ plot(mysim)
 ## Try twkde
 mysim = twkde.sim(full.dat)
 plot(mysim)
+
+## plot(mysim, type="hexagonal")
+## matplot(cbind(sample(head(full.dat,-1L),1L)[[1L]][1:53], mysim$ys[,sample.int(ncol(mysim$ys),1L)][1:53]), type="l")
+## matplot(cbind(rowMeans(dat.to.matrix(head(full.dat,-1L),53L)), matrixStats::rowWeightedMeans(mysim$ys, mysim$weights)[1:53]), type="l")
