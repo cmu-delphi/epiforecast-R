@@ -275,7 +275,11 @@ lastWeekNumber = function(year, owning.wday) {
 
 namedSeason = function(season) {
   season <- match.integer(season)
-  names(season) <- paste0("S", season)
+  if (length(season)==0L) {
+    names(season) <- character(0L)
+  } else {
+    names(season) <- paste0("S", season)
+  }
   return (season)
 }
 
@@ -713,4 +717,19 @@ subtract_epiweek_epiweek = function(epiweek.a, epiweek.b) {
            epiweek_to_sunday(epiweek.b), "days") %>>%
     as.integer(units="days") %>>%
     magrittr::divide_by_int(7L)
+}
+
+season_model.week_to_epiweek = function(season, model.week, first.week.of.season, owning.wday) {
+  yw = seasonModelWeekToYearWeekDF(
+    season, model.week, first.week.of.season, 3L)
+  epiweek = yw[["year"]]*100L + yw[["week"]]
+  return (epiweek)
+}
+
+season_to_Season = function(season, first.week.of.season) {
+  if (first.week.of.season == 1L) {
+    as.character(season)
+  } else {
+    paste0(season,"/",season+1L)
+  }
 }

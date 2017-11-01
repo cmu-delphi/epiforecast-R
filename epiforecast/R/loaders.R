@@ -55,17 +55,27 @@ firstEpiweekOfUniverse = 123401L
 ##' @export
 augmentWeeklyDF = function(df, first.week.of.season=NULL) {
   df <- augmentWeeklyDFWithTimingSynonyms(df, first.week.of.season)
-  if (is.null(first.week.of.season))
-    first.week.of.season <- utils::head(df$week, n=1L)
+  df <- extendAugmentedWeeklyDF(df, first.week.of.season)
+  return (df)
+}
+
+extendAugmentedWeeklyDF = function(df, first.week.of.season=NULL) {
+  if (nrow(df)==0L) {
+    return (df)
+  }
+  if (is.null(first.week.of.season)) {
+    first.week.of.season <- min(df[["model.week"]])
+  }
 
   ## fill in missing weekly data points:
-  last.season = utils::tail(df$season, 1L)
+  from.season = min(df[["season"]])
+  to.season = max(df[["season"]])
   ## season.dates.but.last = seasonDates(utils::head(df$season, 1L), last.season-1, first.week.of.season, 0L,3L)
   ## season.dates.last = structure(
   ##     list(df$date[df$season==last.season]),
   ##     names=names(namedSeason(last.season, first.week.of.season)))
   ## season.dates = c(season.dates.but.last, season.dates.last)
-  season.dates = DatesOfSeason(Seq(utils::head(df$season, 1L), last.season), first.week.of.season, 0L, 3L)
+  season.dates = DatesOfSeason(Seq(from.season, to.season), first.week.of.season, 0L, 3L)
   new.date = do.call(base::c, season.dates) # unlist(season.dates) w/o class change
   inds = match(new.date, df$date)
   df <- do.call(tibble::data_frame, lapply(df, `[`, inds)) # df[inds,] w/ desired NA behavior a/f
@@ -94,7 +104,7 @@ augmentWeeklyDFWithTimingSynonyms = function(df, first.week.of.season=NULL) {
       stop("More than one day of the week is contained in =df$date=.")
     }
     wday = unique(ywwd$wday)
-    if (length(wday)==0)
+    if (length(wday)==0L)
       wday <- 0L
     if ("year" %in% names(df) && !isTRUE(all.equal(df$year, year))) {
       stop("=df$date= appears not to match with =df$year=")
@@ -106,8 +116,8 @@ augmentWeeklyDFWithTimingSynonyms = function(df, first.week.of.season=NULL) {
     df$week <- week
   } else if ("epiweek" %in% names(df) || all(c("year","week") %in% names(df))) {
     if ("epiweek" %in% names(df)) {
-      df$year <- as.integer(substr(df$epiweek, 1L, 4L))
-      df$week <- as.integer(substr(df$epiweek, 5L, 6L))
+      df$year <- as.integer(df[["epiweek"]] %/% 100L)
+      df$week <- as.integer(df[["epiweek"]] %% 100L)
     }
     year = as.integer(df$year)
     week = as.integer(df$week)
@@ -120,8 +130,9 @@ augmentWeeklyDFWithTimingSynonyms = function(df, first.week.of.season=NULL) {
   } else {
     stop("=df= must contain either (a) $year and $week, or (b) $date.")
   }
-  if (is.null(first.week.of.season))
+  if (is.null(first.week.of.season)) {
     first.week.of.season <- utils::head(week, n=1L)
+  }
   ## season.model.week = yearWeekToSeasonModelWeekDF(year, week, first.week.of.season, 3L)
   season.model.week = yearWeekDFToSeasonModelWeekDF(df, first.week.of.season, 3L)
   ## if ("season" %in% names(df) && !isTRUE(all.equal(df$season, season.model.week$season))) {
@@ -132,7 +143,17 @@ augmentWeeklyDFWithTimingSynonyms = function(df, first.week.of.season=NULL) {
   ## }
   df$season <- season.model.week$season
   df$model.week <- season.model.week$model.week
-  df$wday <- wday
+  df$wday <- rep(wday, nrow(df))
+  df$Season <-
+    if (nrow(df)==0L) {
+      character(0L)
+    } else if (first.week.of.season==1L) {
+      as.character(df$season)
+    } else if (length(df$season) == 0L) {
+      character(0L)
+    } else {
+      paste0(df$season,"/",df$season+1L)
+    }
   return (df)
 }
 
@@ -342,18 +363,38 @@ fetchEpidataDF = function(source, area, lag=NULL,
                           first.week.of.season=NULL,
                           first.epiweek=NULL, last.epiweek=NULL,
                           cache.file.prefix=NULL, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE, silent=FALSE) {
-  if (!is.null(lag) && length(lag) > 1) stop("Fetching epidata for multiple lags simultaneously is not supported.")
-  ## todo drop first season if not enough data for specified first week of season
+  df = fetchBasicEpidataDF(source, area, lag=lag,
+                           from.epiweek=first.epiweek, to.epiweek=last.epiweek,
+                           cache.file.prefix=cache.file.prefix,
+                           cache.invalidation.period=cache.invalidation.period,
+                           force.cache.invalidation=force.cache.invalidation,
+                           silent=silent)
 
-  if (is.null(first.epiweek)) first.epiweek <- firstEpiweekOfUniverse
-  if (is.null(last.epiweek)) last.epiweek <- as.integer(format(Sys.Date(),"%Y53"))
+  df <- augmentWeeklyDF(df, first.week.of.season)
+
+  attr(df, "source") <- source
+  attr(df, "area") <- area
+
+  return (df)
+}
+
+fetchBasicEpidataDF = function(source, epigroup, lag=NULL,
+                               from.epiweek=NULL, to.epiweek=NULL,
+                               cache.file.prefix=NULL,
+                               cache.invalidation.period=as.difftime(1L, units="days"),
+                               force.cache.invalidation=FALSE,
+                               silent=FALSE) {
+  if (!is.null(lag) && length(lag) > 1) stop("Fetching epidata for multiple lags simultaneously is not supported.")
+
+  if (is.null(from.epiweek)) from.epiweek <- firstEpiweekOfUniverse
+  if (is.null(to.epiweek)) to.epiweek <- as.integer(format(Sys.Date(),"%Y53"))
 
   fetch.response = fetchUpdatingResource(
     function() {
       if (is.null(lag)) {
-        fetch.response = Epidata[[source]](area, Epidata$range(first.epiweek, last.epiweek))
+        fetch.response = Epidata[[source]](epigroup, Epidata$range(from.epiweek, to.epiweek))
       } else {
-        fetch.response = Epidata[[source]](area, Epidata$range(first.epiweek, last.epiweek), lag=lag)
+        fetch.response = Epidata[[source]](epigroup, Epidata$range(from.epiweek, to.epiweek), lag=lag)
       }
     },
     function(fetch.response) {
@@ -379,12 +420,6 @@ fetchEpidataDF = function(source, area, lag=NULL,
   }))
   if ("release_date" %in% names(df))
     df$release_date <- as.Date(df$release_date)
-
-  df <- augmentWeeklyDF(df, first.week.of.season)
-
-  attr(df, "source") <- source
-  attr(df, "area") <- area
-
   return (df)
 }
 
@@ -539,16 +574,18 @@ fetchEpidataHistoryDF = function(source, area, lags,
   fetchUpdatingResource(
     function() {
       lag.dfs = lapply(lags, function(lag) {
-        fetchEpidataDF(source, area, lag,
-                       first.week.of.season=first.week.of.season,
-                       first.epiweek=first.epiweek, last.epiweek=last.epiweek,
-                       ## cache.file.prefix=paste0(cache.file.prefix,"_lag",lag), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
-                       silent=TRUE)
+        fetchBasicEpidataDF(source, area, lag,
+                            from.epiweek=first.epiweek, to.epiweek=last.epiweek,
+                            ## cache.file.prefix=paste0(cache.file.prefix,"_lag",lag), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
+                            force.cache.invalidation=force.cache.invalidation,
+                            silent=TRUE) %>>%
+          augmentWeeklyDFWithTimingSynonyms(first.week.of.season)
       })
       current.df = fetchEpidataDF(source, area, NULL,
                                   first.week.of.season=first.week.of.season,
                                   first.epiweek=first.epiweek, last.epiweek=last.epiweek,
                                   ## cache.file.prefix=paste0(cache.file.prefix,"_current"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
+                                  force.cache.invalidation=force.cache.invalidation,
                                   silent=TRUE)
       history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
         dplyr::distinct()
@@ -559,8 +596,44 @@ fetchEpidataHistoryDF = function(source, area, lags,
     },
     cache.file.prefix=paste0(cache.file.prefix,"_history"),
     cache.invalidation.period=cache.invalidation.period,
+    force.cache.invalidation=force.cache.invalidation,
     silent=silent
   )
+}
+## todo should build history df's by issue, not lag, to find all data, and to avoid having to involve the current df
+## todo clean up different versions of things...
+
+fetchBasicEpidataHistoryDF = function(source, epigroup, lags,
+                                      from.epiweek=NULL, to.epiweek=NULL,
+                                      cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE,
+                                      silent=FALSE) {
+  fetchUpdatingResource(
+    function() {
+      lag.dfs = lapply(lags, function(lag) {
+        fetchBasicEpidataDF(source, epigroup, lag,
+                            from.epiweek=from.epiweek, to.epiweek=to.epiweek,
+                            ## cache.file.prefix=paste0(cache.file.prefix,"_lag",lag), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
+                            force.cache.invalidation=force.cache.invalidation,
+                            silent=TRUE)
+      })
+      current.df = fetchBasicEpidataDF(source, epigroup, NULL,
+                                       from.epiweek=from.epiweek, to.epiweek=to.epiweek,
+                                       ## cache.file.prefix=paste0(cache.file.prefix,"_current"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
+                                       force.cache.invalidation=force.cache.invalidation,
+                                       silent=TRUE)
+      history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
+        dplyr::distinct()
+      return (history.df)
+    },
+    function(fetch.response) {
+      return ()
+    },
+    cache.file.prefix=paste0(cache.file.prefix,"_history"),
+    cache.invalidation.period=cache.invalidation.period,
+    force.cache.invalidation=force.cache.invalidation,
+    silent=silent
+  ) %>>%
+    augmentWeeklyDFWithTimingSynonyms()
 }
 
 min_NA_highest = function(x) {
@@ -589,12 +662,14 @@ mimicPastDF1 = function(history.df,
                         time.index.colnames=character(0), time.index.limits=list(),
                         nontime.index.colnames=character(0)) {
   history.df <- tibble::as_data_frame(history.df)
+  ## filter out observations for times outside the time limits:
+  time.cmp = rep(0, nrow(history.df))
   for (time.index.i in seq_along(time.index.colnames)) {
-    time.index.colname.i = time.index.colnames[[time.index.i]]
-    time.index.limit.i = time.index.limits[[time.index.i]]
-    history.df <- history.df %>>%
-      dplyr::filter(.[[time.index.colname.i]] <= time.index.limit.i)
+    time.index.colname = time.index.colnames[[time.index.i]]
+    time.index.limit = time.index.limits[[time.index.i]]
+    time.cmp <- 2*time.cmp + sign(history.df[[time.index.colname]] - time.index.limit)
   }
+  history.df <- history.df %>>% dplyr::filter(time.cmp <= 0)
   group.colnames = c(nontime.index.colnames, time.index.colnames)
   available.issues =
     history.df %>>%
@@ -603,6 +678,9 @@ mimicPastDF1 = function(history.df,
     dplyr::group_by_(.dots=group.colnames) %>>%
     ## try to avoid dplyr replacement max (changes type sometimes)
     dplyr::summarize_at(issue.colname, base::max) %>>%
+    ## fixme: when there are no group.colnames and no available issues, this
+    ## summary operation results in one row with a -Inf issue instead of the
+    ## desired zero rows
     dplyr::ungroup()
   future.fillin.for.missing.issues =
     history.df %>>%
@@ -618,6 +696,7 @@ mimicPastDF1 = function(history.df,
     dplyr::ungroup() %>>%
     ## dplyr::arrange_(.dots=group.colnames) %>>%
     dplyr::left_join(history.df, c(group.colnames, issue.colname)) %>>%
+    magrittr::extract(colnames(history.df)) %>>%
     return()
 }
 
@@ -637,7 +716,8 @@ mimicPastDF1 = function(history.df,
 ##'   filtering and grouping some data
 ##' @param time.index.limits list with length matching that of
 ##'   \code{time.index.colnames}; data with time indices above the corresponding
-##'   limits is filtered out this \code{time.index.limit}
+##'   limits is filtered out this \code{time.index.limit}, using lexicographical
+##'   ordering when multiple time indices are specified
 ##' @param additional.group.colnames character vector; names of columns
 ##'   containing any non-time-related observation indices (e.g., locations)
 ##'
@@ -649,7 +729,7 @@ mimicPastEpidataDF1 = function(epidata.history.df, forecast.epiweek) {
   mimicPastDF1(epidata.history.df,
                "issue", forecast.epiweek,
                "epiweek", forecast.epiweek) %>>%
-    augmentWeeklyDF(epidata.history.df[["week"]][[1L]]) %>>%
+    augmentWeeklyDF() %>>%
     return()
 }
 
@@ -707,6 +787,43 @@ mimicPastEpidataDF1 = function(epidata.history.df, forecast.epiweek) {
 ##'
 ##' @export
 mimicPastEpidataDF = mimicPastEpidataDF1
+
+mimicPastHistoryDF = function(history.df,
+                              issue.colname, mimicked.issue,
+                              time.index.colnames=character(0), time.index.limits=list(),
+                              nontime.index.colnames=character(0)) {
+  history.df <- tibble::as_data_frame(history.df)
+  ## filter out observations for times outside the time limits:
+  time.cmp = rep(0, nrow(history.df))
+  for (time.index.i in seq_along(time.index.colnames)) {
+    time.index.colname = time.index.colnames[[time.index.i]]
+    time.index.limit = time.index.limits[[time.index.i]]
+    time.cmp <- 2*time.cmp + sign(history.df[[time.index.colname]] - time.index.limit)
+  }
+  history.df <- history.df %>>% dplyr::filter(time.cmp <= 0)
+  group.colnames = c(nontime.index.colnames, time.index.colnames)
+  available.issues =
+    history.df %>>%
+    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
+    dplyr::filter(.[[issue.colname]] <= mimicked.issue) %>>%
+    {.}
+  future.fillin.for.missing.issues =
+    history.df %>>%
+    dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
+    dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
+    dplyr::group_by_(.dots=group.colnames) %>>%
+    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+    dplyr::ungroup()
+  future.fillin.for.missing.issues %>>%
+    ## remove future fill-in for groups that have actually available issues:
+    dplyr::anti_join(available.issues, group.colnames) %>>%
+    ## combine with the actually available issues:
+    dplyr::bind_rows(available.issues) %>>%
+    ## dplyr::arrange_(.dots=group.colnames) %>>%
+    dplyr::left_join(history.df, c(group.colnames, issue.colname)) %>>%
+    magrittr::extract(colnames(history.df)) %>>%
+    return()
+}
 
 fit.to.oldfit = function(fit) {
   f = lapply(fit, `[[`, "f")
