@@ -23,7 +23,7 @@
 ##' @param weights Numeric vector with elements in [0,1].
 ##' @return Character vector containing color codes.
 make_sim_ys_colors = function(weights){
-    stopifnot(all(weights <= 1 & weights >= 0))
+    stopifnot(all(weights >= 0))
     mycols = c("#E41A1C", "#377EB8", "#4DAF4A")
     myrgbs = col2rgb(mycols[1])
     shades = round(weights/max(weights)*255)
