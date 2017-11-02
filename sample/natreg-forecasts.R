@@ -25,6 +25,7 @@ devtools::load_all("../epiforecast")
 
 ## Set up parallel:
 options(mc.cores=parallel::detectCores()-1L)
+## options(mc.cores=parallel::detectCores()-3L)
 
 ## different location naming schemes:
 fluview.location.epidata.names = c("nat", paste0("hhs",1:10))
@@ -73,7 +74,7 @@ fluview.baseline.df =
                   stringr::str_replace_all("/.*","") %>>%
                   as.integer()) %>>%
   {.}
-fluview.current.l.dfs = fluview.location.epidata.names %>>%
+g.fluview.current.dfs = fluview.location.epidata.names %>>%
   setNames(fluview.location.spreadsheet.names) %>>%
   lapply(function(fluview.location.epidata.name) {
   fetchEpidataDF(
@@ -82,7 +83,7 @@ fluview.current.l.dfs = fluview.location.epidata.names %>>%
     cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_current_",fluview.location.epidata.name))
   )
 })
-fluview.history.l.dfs =
+g.fluview.history.dfs =
   fluview.location.epidata.names %>>%
   setNames(fluview.location.spreadsheet.names) %>>%
   lapply(function(fluview.location.epidata.name) {
@@ -97,7 +98,9 @@ fluview.history.l.dfs =
 epigroup.colname = "Location"
 
 get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
-  current.epidata.history.df = fluview.history.l.dfs[[epigroup]]
+  current.epidata.history.df = g.fluview.history.dfs[[epigroup]][
+    c("season","model.week","epiweek","issue","lag","wili")
+  ]
   issue = season_model.week_to_epiweek(
     season, model.week, usa.flu.first.week.of.season, 3L)
   forward.looking.history.df = mimicPastHistoryDF(
@@ -149,12 +152,12 @@ get_observation_values = function(voxel.data, target_trajectory_preprocessor, ta
   observation.issue = (voxel.data[["season"]]+1L)*100L + 40L
   season = voxel.data[["season"]]
   epigroup = voxel.data[["epigroup"]]
-  ## todo fluview.history.l.dfs as separate argument or curried argument in this
+  ## todo g.fluview.history.dfs as separate argument or curried argument in this
   ## method and get_voxel_data
   ## epidata.df = mimicPastEpidataDF(
-  ##   fluview.history.l.dfs[[epigroup]], observation.issue)
+  ##   g.fluview.history.dfs[[epigroup]], observation.issue)
   ## xxx check that this doesn't change anything:
-  epidata.df = fluview.current.l.dfs[[epigroup]]
+  epidata.df = g.fluview.current.dfs[[epigroup]]
   observed.trajectory = epidata.df %>>%
     {.[["wili"]][.[["season"]]==season]}
   observation.as.target.forecast = target_forecast2(
@@ -189,10 +192,19 @@ backfill_ignorant_backsim = function(voxel.data, signal.name) {
   return (full.dat)
 }
 
-s.retro.seasons = c(2008:2011) %>>%
+signal.name = "wili"
+
+current.issue.sw =
+  g.fluview.current.dfs[[1L]] %>>%
+  dplyr::filter(season == max(season)) %>>%
+  {.[!is.na(.[[signal.name]]),]} %>>%
+  dplyr::filter(model.week == max(model.week)) %>>%
+  dplyr::select(season, model.week)
+
+s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
-w.retro.model.weeks = (40:45) %>>%
+w.retro.model.weeks = (35:78) %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
 g.epigroups = fluview.location.spreadsheet.names %>>%
@@ -203,75 +215,157 @@ b.backcasters = list(
   ignorant=backfill_ignorant_backsim
 ) %>>%
   with_dimnamesnames("Backcaster")
-signal.name = "wili"
 f.forecasters = list(
+  ## "Delphi_DeltaDensity_PackageDefaults"=twkde.sim,
+  ## ## "Delphi_DeltaDensity_200Curves"=function(...) twkde.sim(..., max.n.sims=200L),
+  ## "Basis Regression"=br.sim,
+  ## "Empirical Bayes"=eb.sim,
+  ## ## "Empirical"=empirical.trajectories.sim,
+  ## "Empirical Trajectories"=empirical.trajectories.sim,
+  ## "Empirical Futures"=empirical.futures.sim,
+  ## "Uniform"=uniform_forecast
+  "Delphi_Uniform"=uniform_forecast,
+  "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
+  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
+    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+           control.list=get_eb_control_list(max.match.length=4L))
+  },
+  "Delphi_BasisRegression_PackageDefaults"=br.sim,
   "Delphi_DeltaDensity_PackageDefaults"=twkde.sim,
-  ## "Delphi_DeltaDensity_200Curves"=function(...) twkde.sim(..., max.n.sims=200L),
-  "Basis Regression"=br.sim,
-  "Empirical Bayes"=eb.sim,
-  ## "Empirical"=empirical.trajectories.sim,
-  "Empirical Trajectories"=empirical.trajectories.sim,
-  "Empirical Futures"=empirical.futures.sim,
-  "Uniform"=uniform_forecast
+  "Delphi_MarkovianDeltaDensity_PackageDefaults"=twkde.markovian.sim,
+  "Delphi_EmpiricalFutures_PackageDefaults"=empirical.futures.sim,
+  "Delphi_EmpiricalTrajectories_PackageDefaults"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
 target_trajectory_preprocessor = flusight2016_target_trajectory_preprocessor
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
-f.forecast.types = flusight2016.proxy.forecast.types %>>%
+m.forecast.types = flusight2016.proxy.forecast.types %>>%
   with_dimnamesnames("Type")
 
+## replace_output_with_NULL = function(f) {
+##   return (function(...) {
+##     force(f(...))
+##     return (NULL)
+##   })
+## }
+
+## pbmclapply_no_preschedule = function(...) {
+##   pbmcapply::pbmclapply(..., mc.preschedule=FALSE)
+## }
+
+## pblapply = function(...) {
+##   pbmcapply::pbmclapply(..., mc.cores=1L)
+## }
+
 ## CV input data
-swg.retro.voxel.data = map_join(
-  get_voxel_data,
-  s.retro.seasons, w.retro.model.weeks, g.epigroups,
-  last.losocv.issue,
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/swg.retro.voxel.data/swg.retro.voxel.data"
-)
+print("CV: select available input data")
+swg.retro.voxel.data =
+  tryCatch({
+    map_join(
+      get_voxel_data,
+      s.retro.seasons, w.retro.model.weeks, g.epigroups,
+      last.losocv.issue,
+      cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swg.retro.voxel.data/swg.retro.voxel.data"
+    )
+  },
+  ## issues with parallel package returning long vector results from large runs...
+  error=function(e) {
+    print ("Encountered error preparing voxel data in parallel.  Attempting to read cache files sequentially with no progress bar --- this make take a while.")
+    map_join(
+      get_voxel_data,
+      s.retro.seasons, w.retro.model.weeks, g.epigroups,
+      last.losocv.issue,
+      lapply_variant=lapply,
+      cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swg.retro.voxel.data/swg.retro.voxel.data"
+    )
+  })
+## swg.retro.voxel.data = map_join(
+##   get_voxel_data,
+##   s.retro.seasons, w.retro.model.weeks, g.epigroups,
+##   last.losocv.issue,
+##   lapply_variant=pbmclapply_no_preschedule,
+##   cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swg.retro.voxel.data/swg.retro.voxel.data"
+## )
 ## xxx this (retro voxel data) is going to consume a bunch of memory...
 
 ## CV backcasts
+print("CV: generate backcasts")
 swgb.retro.full.dats = map_join(
   get_backcast,
   swg.retro.voxel.data, signal.name, b.backcasters,
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/swgb.retro.full.dats/swgb.retro.full.dats"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swgb.retro.full.dats/swgb.retro.full.dats"
 )
 
 ## CV forecasts as target_multicast objects:
+print("CV: generate component forecasts")
 swgbf.retro.component.target.multicasts = map_join(
   target_multicast,
   swg.retro.voxel.data, swgb.retro.full.dats, f.forecasters,
   target_trajectory_preprocessor,
   no_join(t.target.specs),
-  no_join(f.forecast.types),
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"
+  no_join(m.forecast.types),
+  ## lapply_variant=pbmcapply::pbmclapply,
+  ## lapply_variant=pbmclapply_no_preschedule,
+  ## lapply_variant = lapply,
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"
 )
+## xxx loading from many cache files is slow; reduce # of cache files?
 
 ## CV forecasts as forecast.value's:
+## swgtmbf.retro.component.forecast.values =
+##   swgbf.retro.component.target.multicasts %>>%
+##   ## first, get forecast.value's in swgbf.tm format:
+##   map_join(f=`[[`, "forecast.values") %>>%
+##   ## un-nest lists to get swgbftm format:
+##   map_join(f=`[[`,
+##            named_arrayvec_to_name_arrayvec(t.target.specs),
+##            named_arrayvec_to_name_arrayvec(m.forecast.types)
+##            ) %>>%
+##   ## permute dimension order to get desired swgtmbf format:
+##   aperm(c(1:3,6:7,4:5))
+## swgbf.tm.retro.component.forecast.values =
+##   map_join(swgbf.retro.component.target.multicasts,
+##            f=`[[`, "forecast.values",
+##            lapply_variant=lapply)
+## tmswgbf.retro.component.forecast.values =
+##   swgbf.tm.retro.component.forecast.values %>>%
+##   simplify2array() %>>%
+##   {
+##     original = .
+##     dim(.) <- c(dim(original)[1:2], dim(swgbf.retro.component.target.multicasts))
+##     dimnames(.) <- c(dimnames(original)[1:2], dimnames(swgbf.retro.component.target.multicasts))
+##     .
+##   }
+## swgtmbf.retro.component.forecast.values =
+##   aperm(tmswgbf.retro.component.forecast.values,
+##         c(3:5,1:2,6:7))
 swgtmbf.retro.component.forecast.values =
-  swgbf.retro.component.target.multicasts %>>%
-  ## first, get forecast.value's in swgbf.tm format:
-  map_join(f=`[[`, "forecast.values") %>>%
-  ## un-nest lists to get swgbftm format:
-  map_join(f=`[[`,
-           named_arrayvec_to_name_arrayvec(t.target.specs),
-           named_arrayvec_to_name_arrayvec(f.forecast.types)
-           ) %>>%
-  ## permute dimension order to get desired swgtmbf format:
-  aperm(c(1:3,6:7,4:5))
+  map_join(swgbf.retro.component.target.multicasts,
+           f=`[[`, "forecast.values",
+           lapply_variant=lapply) %>>%
+  simplify2array() %>>%
+  {
+    original = .
+    dim(.) <- c(dim(original)[1:2], dim(swgbf.retro.component.target.multicasts))
+    dimnames(.) <- c(dimnames(original)[1:2], dimnames(swgbf.retro.component.target.multicasts))
+    .
+  } %>>%
+  aperm(c(3:5,1:2,6:7))
 
 ## Observations we use for CV evaluation:
+print("CV: find observation values")
 swgtm.retro.observation.values = map_join(
   get_observation_values,
   swg.retro.voxel.data,
-  target_trajectory_preprocessor, t.target.specs, f.forecast.types,
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/swgtm.retro.observation.values/swgtm.retro.observation.values"
+  target_trajectory_preprocessor, t.target.specs, m.forecast.types,
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swgtm.retro.observation.values/swgtm.retro.observation.values"
 )
 
 ## Specify portions of cv_apply indexer lists corresponding to model week,
 ## epigroup, target:
 e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
-  "constant-weights" = list(all=NULL, all=NULL, all=NULL),
+  ## "constant-weights" = list(all=NULL, all=NULL, all=NULL),
   "target-based" = list(all=NULL, all=NULL, each=NULL),
   "target-3time-based" = list(smear=-1:1, all=NULL, each=NULL),
   "target-9time-based" = list(smear=-4:4, all=NULL, each=NULL)
@@ -292,50 +386,69 @@ e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists =
   }, e.ensemble.partial.weighting.scheme.wgt.indexer.lists)
 
 ## Calculate CV ensemble weights:
-
+print("CV: fit weightsets")
+## get_ensemble_weightset(swgtmbf.retro.component.forecast.values,
+##                        swgtm.retro.observation.values,
+##                        m.forecast.types,
+##                        e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists[[1L]])
 ## e.retro.ensemble.weightsets = lapply(
-##   retro.ensemble.weighting.scheme.swgtmbf.indexer.lists,
+##   e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists,
 ##   function(weighting.scheme.indexer.list) {
 ##     get_ensemble_weightset(swgtmbf.retro.component.forecast.values,
 ##                            swgtm.retro.observation.values,
-##                            f.forecast.types,
+##                            m.forecast.types,
 ##                            weighting.scheme.indexer.list)
 ##   }
-## ) %>>% with_dimnamesnames(dimnamesnamesp(ensemble.partial.weighting.scheme.wgt.indexer.lists))
+## ) %>>% with_dimnamesnames(dimnamesnamesp(e.ensemble.partial.weighting.scheme.wgt.indexer.lists))
 e.retro.ensemble.weightsets = map_join(
   function(weighting.scheme.indexer.list) {
     get_ensemble_weightset(swgtmbf.retro.component.forecast.values,
                            swgtm.retro.observation.values,
-                           f.forecast.types,
+                           m.forecast.types,
                            weighting.scheme.indexer.list)
   },
   e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/e.retro.ensemble.weightsets/e.retro.ensemble.weightsets"
+  lapply_variant=lapply,
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/e.retro.ensemble.weightsets/e.retro.ensemble.weightsets"
 )
 
-## Calculate CV ensemble forecasts as forecast.value's
-swgtme.retro.ensemble.forecast.values = pbmcapply::pbmclapply(
-  e.retro.ensemble.weightsets,
-  function(weightset) {
-    map_join(
-      `*`,
-      swgtmbf.retro.component.forecast.values, weightset
-    ) %>>% apply(1:5, Reduce, f=function(x,y) {
-      dplyr::coalesce(x+y, x, y)
-    })
-  }) %>>%
-  simplify2array() %>>%
-  {names(dimnames(.))[[6L]] <- dimnamesnamesp(e.retro.ensemble.weightsets); .}
+## ## Calculate CV ensemble forecasts as forecast.value's
+## print("CV: generate ensemble forecasts")
+swgtme.retro.ensemble.forecast.values.file = file.path("~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swgtme.retro.ensemble.forecast.values.rds")
+swgtme.retro.ensemble.forecast.values =
+  if (file.exists(swgtme.retro.ensemble.forecast.values.file)) {
+    readRDS(swgtme.retro.ensemble.forecast.values.file)
+  } else {
+    pbmcapply::pbmclapply(
+                 e.retro.ensemble.weightsets,
+                 function(weightset) {
+                   map_join(
+                     `*`,
+                     swgtmbf.retro.component.forecast.values, weightset,
+                     lapply_variant=lapply
+                   ) %>>% apply(1:5, Reduce, f=function(x,y) {
+                     ## dplyr::coalesce(x+y, x, y)
+                     rowSums(cbind(x,y),na.rm=TRUE)
+                   })
+                 }) %>>%
+      simplify2array() %>>%
+      {names(dimnames(.))[[6L]] <- dimnamesnamesp(e.retro.ensemble.weightsets); .}
+  }
+if (!file.exists(swgtme.retro.ensemble.forecast.values.file)) {
+  saveRDS(swgtme.retro.ensemble.forecast.values, swgtme.retro.ensemble.forecast.values.file)
+}
+## todo use mclapply in map_join above instead of pbmclapply over ensembles...
+## but broke before; need to avoid memory duplication issues
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.retro.ensemble.target.multicasts.file = "~/files/nosync/forecasts/flusight-tiny-run/swge.retro.ensemble.target.multicasts"
+swge.retro.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swge.retro.ensemble.target.multicasts.rds"
 swge.retro.ensemble.target.multicasts =
   if (file.exists(swge.retro.ensemble.target.multicasts.file)) {
     readRDS(swge.retro.ensemble.target.multicasts.file)
   } else {
     apply(swgtme.retro.ensemble.forecast.values, c(1:3,6L),
           function(tm.forecast.values) {
-          list(forecast.values=tm.forecast.values)
+            list(forecast.values=tm.forecast.values)
           })
   }
 if (!file.exists(swge.retro.ensemble.target.multicasts.file)) {
@@ -345,29 +458,42 @@ if (!file.exists(swge.retro.ensemble.target.multicasts.file)) {
 ## target_multicast_percent_plot(swge.retro.ensemble.target.multicasts[[1L]],
 ##                               swg.retro.voxel.data[[1L]],
 ##                               t.target.specs,
-##                               f.forecast.types)
+##                               m.forecast.types)
 
+print("Analysis: calculate CV evaluations")
 swgtmbf.retro.component.evaluations = map_join(
   get_evaluation,
-  swgtmbf.retro.component.forecast.values, swgtm.retro.observation.values, f.forecast.types
-) %>>%
-  {mode(.) <- "numeric"; .}
+  swgtmbf.retro.component.forecast.values, swgtm.retro.observation.values, m.forecast.types
+)
+mode(swgtmbf.retro.component.evaluations) <- "numeric"
 
 swgtme.retro.ensemble.evaluations = map_join(
   get_evaluation,
-  swgtme.retro.ensemble.forecast.values, swgtm.retro.observation.values, f.forecast.types
-) %>>%
-  {mode(.) <- "numeric"; .}
+  swgtme.retro.ensemble.forecast.values, swgtm.retro.observation.values, m.forecast.types
+)
+mode(swgtme.retro.ensemble.evaluations) <- "numeric"
 
-## apply(swgtmbf.retro.component.evaluations, 5:7, mean, na.rm=TRUE)
-apply(swgtmbf.retro.component.evaluations, c(5L,7L), mean, na.rm=TRUE)
-apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
+## ## apply(swgtmbf.retro.component.evaluations, 5:7, mean, na.rm=TRUE)
+## apply(swgtmbf.retro.component.evaluations, c(5L,7L), mean, na.rm=TRUE)
+## apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
+
+## apply(swgtmbf.retro.component.evaluations[(2003:2009)%>>%paste0("/",.+1L),,,,,,,drop=FALSE],
+##       c(5L,7L), mean, na.rm=TRUE)
+## apply(swgtme.retro.ensemble.evaluations[(2003:2009)%>>%paste0("/",.+1L),,,,,,drop=FALSE],
+##       5:6, mean, na.rm=TRUE)
+
+## apply(swgtmbf.retro.component.evaluations, c(7L,4:5), mean, na.rm=TRUE)
+## apply(swgtme.retro.ensemble.evaluations, c(6L,4:5), mean, na.rm=TRUE)
+
+## apply(swgtme.retro.ensemble.evaluations, c(1,4:5), mean, na.rm=TRUE)
+
+## todo another level of stacking?  ensemble of ensembles?
 
 ## swbf.retro.forecast.spreadsheets = map_join(
 ##   target_multicast_epigroup_forecast_table,
 ##   swgbf.retro.component.target.multicasts,
 ##   swg.retro.voxel.data,
-##   no_join(t.target.specs), no_join(f.forecast.types)
+##   no_join(t.target.specs), no_join(m.forecast.types)
 ## ) %>>%
 ##   apply(c(1:2,4:5), dplyr::bind_rows)
 
@@ -399,13 +525,6 @@ apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
 ## identical(spreadsheet.to.check %>>% dplyr::select(-Value),
 ##           spreadsheet.template %>>% dplyr::select(-Value))
 
-current.issue.sw =
-  fluview.current.l.dfs[[1L]] %>>%
-  dplyr::filter(season == max(season)) %>>%
-  {.[!is.na(.[[signal.name]]),]} %>>%
-  dplyr::filter(model.week == max(model.week)) %>>%
-  dplyr::select(season, model.week)
-
 s.prospective.seasons = current.issue.sw[["season"]] %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
@@ -413,24 +532,27 @@ w.prospective.model.weeks = current.issue.sw[["model.week"]] %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
 
+print("Current season: select available data")
 swg.prospective.voxel.data = map_join(
   get_voxel_data,
   s.prospective.seasons, w.prospective.model.weeks, g.epigroups,
   last.losocv.issue)
 
+print("Current season: generate backcasts")
 swgb.prospective.full.dats = map_join(
   get_backcast,
   swg.prospective.voxel.data, signal.name, b.backcasters,
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/swgb.prospective.full.dats/swgb.prospective.full.dats"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swgb.prospective.full.dats/swgb.prospective.full.dats"
 )
 
+print("Current season: generate component forecasts")
 swgbf.prospective.component.target.multicasts = map_join(
   target_multicast,
   swg.prospective.voxel.data, swgb.prospective.full.dats, f.forecasters,
   target_trajectory_preprocessor,
   no_join(t.target.specs),
-  no_join(f.forecast.types),
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/swgbf.prospective.component.target.multicasts/swgbf.prospective.component.target.multicasts"
+  no_join(m.forecast.types),
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swgbf.prospective.component.target.multicasts/swgbf.prospective.component.target.multicasts"
 )
 
 swgtmbf.prospective.component.forecast.values =
@@ -440,7 +562,7 @@ swgtmbf.prospective.component.forecast.values =
   ## un-nest lists to get swgbftm format:
   map_join(f=`[[`,
            named_arrayvec_to_name_arrayvec(t.target.specs),
-           named_arrayvec_to_name_arrayvec(f.forecast.types)
+           named_arrayvec_to_name_arrayvec(m.forecast.types)
            ) %>>%
   ## permute dimension order to get desired swgtmbf format:
   aperm(c(1:3,6:7,4:5))
@@ -455,17 +577,19 @@ e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists =
       )
   }, e.ensemble.partial.weighting.scheme.wgt.indexer.lists)
 
+print("Current season: fit ensemble weightsets")
 e.prospective.ensemble.weightsets = map_join(
   function(weighting.scheme.indexer.list) {
     get_ensemble_weightset(swgtmbf.retro.component.forecast.values,
                            swgtm.retro.observation.values,
-                           f.forecast.types,
+                           m.forecast.types,
                            weighting.scheme.indexer.list)
   },
   e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-  cache.prefix="~/files/nosync/forecasts/flusight-tiny-run/e.prospective.ensemble.weightsets/e.prospective.ensemble.weightsets"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-natreg-run/e.prospective.ensemble.weightsets/e.prospective.ensemble.weightsets"
 )
 
+print("Current season: generate ensemble forecasts")
 swgtme.prospective.ensemble.forecast.values = lapply(
   e.prospective.ensemble.weightsets,
   function(weightset) {
@@ -481,7 +605,7 @@ swgtme.prospective.ensemble.forecast.values = lapply(
 ## indexers
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/forecasts/flusight-tiny-run/swge.prospective.ensemble.target.multicasts"
+swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swge.prospective.ensemble.target.multicasts"
 swge.prospective.ensemble.target.multicasts =
   if (file.exists(swge.prospective.ensemble.target.multicasts.file)) {
     readRDS(swge.prospective.ensemble.target.multicasts.file)
@@ -495,57 +619,216 @@ if (!file.exists(swge.prospective.ensemble.target.multicasts.file)) {
   saveRDS(swge.prospective.ensemble.target.multicasts, swge.prospective.ensemble.target.multicasts.file)
 }
 
+## Output prospective forecast spreadsheets, plots:
+save_spreadsheets =
+  function(target.multicasts,
+           voxel.data,
+           t.target.specs, m.forecast.types,
+           spreadsheet.dir
+           ) {
+    spreadsheets = map_join(
+      target_multicast_epigroup_forecast_table,
+      target.multicasts,
+      voxel.data,
+      no_join(t.target.specs), no_join(m.forecast.types),
+      progress.output=FALSE
+    ) %>>%
+      apply(setdiff(seq_len(ndimp(.)), 3L), dplyr::bind_rows)
+    spreadsheet.names =
+      dimnames(spreadsheets) %>>%
+      expand.grid() %>>%
+      {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
+      as.character() %>>%
+      stringr::str_replace_all("/","-") %>>%
+      structure(
+        dim=dim(spreadsheets),
+        dimnames=dimnames(spreadsheets)
+      )
+    if (!dir.exists(spreadsheet.dir)) {
+      dir.create(spreadsheet.dir, recursive=TRUE)
+    }
+    invisible(map_join(
+      function(spreadsheet, spreadsheet.name) {
+        filepath = file.path(spreadsheet.dir, paste0(spreadsheet.name,".csv"))
+        print(filepath)
+        write.csv(spreadsheet, filepath)
+        NULL
+      },
+      spreadsheets, spreadsheet.names,
+      lapply_variant=lapply,
+      progress.output=FALSE
+    ))
+  }
+
+save_linlog_plots =
+  function(target_multicast_linlog_plotter,
+           target.multicasts,
+           voxel.data,
+           t.target.specs, m.forecast.types,
+           linlog.plot.dir
+           ) {
+    linlog.plots = map_join(
+      target_multicast_linlog_plotter,
+      target.multicasts,
+      voxel.data,
+      no_join(t.target.specs), no_join(m.forecast.types),
+      progress.output=FALSE
+    )
+    linlog.plot.names =
+      dimnames(linlog.plots) %>>%
+      expand.grid() %>>%
+      {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
+      as.character() %>>%
+      stringr::str_replace_all("/","-") %>>%
+      structure(
+        dim=dim(linlog.plots),
+        dimnames=dimnames(linlog.plots)
+      )
+    if (!dir.exists(linlog.plot.dir)) {
+      dir.create(linlog.plot.dir, recursive=TRUE)
+    }
+    invisible(map_join(
+      function(linlog.plot, linlog.plot.name) {
+        filepath = file.path(linlog.plot.dir, paste0(linlog.plot.name,".pdf"))
+        print(filepath)
+        ggplot2::ggsave(filepath, linlog.plot + ggplot2::ggtitle(linlog.plot.name))
+        NULL
+      },
+      linlog.plots, linlog.plot.names,
+      lapply_variant=lapply,
+      progress.output=FALSE
+    ))
+  }
+
+save_spreadsheets(
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
+)
+
+save_linlog_plots(
+  target_multicast_week_plot,
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
+)
+
+save_linlog_plots(
+  target_multicast_percent_plot,
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
+)
+
+save_spreadsheets(
+  swge.prospective.ensemble.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
+)
+
+save_linlog_plots(
+  target_multicast_week_plot,
+  swge.prospective.ensemble.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-week"
+)
+
+save_linlog_plots(
+  target_multicast_percent_plot,
+  swge.prospective.ensemble.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-percent"
+)
+
+save_spreadsheets(
+  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-spreadsheets"
+)
+
+save_linlog_plots(
+  target_multicast_week_plot,
+  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-week"
+)
+
+save_linlog_plots(
+  target_multicast_percent_plot,
+  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-percent"
+)
+
 ## target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L]],
 ##                               swg.prospective.voxel.data[[1L]],
 ##                               t.target.specs,
-##                               f.forecast.types)
+##                               m.forecast.types)
 
 ## target_multicast_percent_plot(swgbf.prospective.component.target.multicasts[[1L,1L,1L,1L,"Uniform"]],
 ##                               swg.prospective.voxel.data[[1L]],
 ##                               t.target.specs,
-##                               f.forecast.types)
+##                               m.forecast.types)
 
 ## target_multicast_percent_plot(swgbf.prospective.component.target.multicasts[[1L,1L,1L,1L,"Empirical Trajectories"]],
 ##                               swg.prospective.voxel.data[[1L]],
 ##                               t.target.specs,
-##                               f.forecast.types)
+##                               m.forecast.types)
 
 ## target_multicast_percent_plot(swgbf.prospective.component.target.multicasts[[1L,1L,1L,1L,"Empirical Futures"]],
 ##                               swg.prospective.voxel.data[[1L]],
 ##                               t.target.specs,
-##                               f.forecast.types)
+##                               m.forecast.types)
 
 ## target_multicast_percent_plot(swgbf.prospective.component.target.multicasts[[1L,1L,1L,1L,"Empirical Bayes"]],
 ##                               swg.prospective.voxel.data[[1L]],
 ##                               t.target.specs,
-##                               f.forecast.types)
+##                               m.forecast.types)
 
-target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"constant-weights"]],
-                              swg.prospective.voxel.data[[1L]],
-                              t.target.specs,
-                              f.forecast.types)
+## target_multicast_percent_plot(swgbf.prospective.component.target.multicasts[[1L,1L,1L,1L,"Delphi_DeltaDensity_PackageDefaults"]],
+##                               swg.prospective.voxel.data[[1L]],
+##                               t.target.specs,
+##                               m.forecast.types)
 
-target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"target-based"]],
-                              swg.prospective.voxel.data[[1L]],
-                              t.target.specs,
-                              f.forecast.types)
+## target_multicast_percent_plot(swgbf.prospective.component.target.multicasts[[1L,1L,1L,1L,"Basis Regression"]],
+##                               swg.prospective.voxel.data[[1L]],
+##                               t.target.specs,
+##                               m.forecast.types)
 
-target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"target-3time-based"]],
-                              swg.prospective.voxel.data[[1L]],
-                              t.target.specs,
-                              f.forecast.types)
+## target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"constant-weights"]],
+##                               swg.prospective.voxel.data[[1L]],
+##                               t.target.specs,
+##                               m.forecast.types)
 
-target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"target-9time-based"]],
-                              swg.prospective.voxel.data[[1L]],
-                              t.target.specs,
-                              f.forecast.types)
+## target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"target-based"]],
+##                               swg.prospective.voxel.data[[1L]],
+##                               t.target.specs,
+##                               m.forecast.types)
 
+## target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"target-3time-based"]],
+##                               swg.prospective.voxel.data[[1L]],
+##                               t.target.specs,
+##                               m.forecast.types)
+
+## target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L,1L,"target-9time-based"]],
+##                               swg.prospective.voxel.data[[1L]],
+##                               t.target.specs,
+##                               m.forecast.types)
 
 ## swe.retro.forecast.spreadsheets = map_join(
 ##   target_multicast_epigroup_forecast_table,
 ##   swge.prospective.ensemble.target.multicasts,
 ##   swg.prospective.voxel.data,
-##   no_join(t.target.specs), no_join(f.forecast.types)
+##   no_join(t.target.specs), no_join(m.forecast.types)
 ## ) %>>%
 ##   apply(c(1:2,4:5), dplyr::bind_rows)
 
@@ -572,3 +855,8 @@ target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L,1L
 ## fixme EB weight sum is too large
 ## fixme smooth sim targets with a Laplace kernel? or a spike + slab type --- can inflate bw to make up for mass on spike?
 ## fixme should adjust dimension ordering... for col major feel
+## todo deal with parallel-related memory issues --- duplicate swg.voxel.data...
+## todo work on speed getting voxel data --- possible to avoid storage?
+## xxx consider just basing everything on filesystem contracts... no need to hold everything in memory
+## fixme try to solve memory issues with mclapply env's? require interaction with disk?
+## todo weighted cv_apply smearing schemes (boxcar kernel -> other kernels)

@@ -58,15 +58,16 @@ Collate:
     'empirical.trajectories.R'
     'simclass.R'
     'ensemble.R'
+    'namesp.R'
+    'map_join.R'
+    'epiproject.R'
     'forecast_type.R'
+    'get_completed_fluview_state_df.R'
     'holidays.R'
     'read.R'
     'target_spec.R'
     'todo-by-file.R'
     'twkde.R'
-    'namesp.R'
-    'map_join.R'
-    'epiproject.R'
 LinkingTo: Rcpp
 SystemRequirements: C++14
 Suggests:
