@@ -86,8 +86,8 @@ cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim
            )
     stopifnot(length(train_inds) == length(test_inds))
     current_dim_lapply = if (current_dim_i == parallel_dim_i) {
-                           print("pbmcapply::pbmclapply")
-                           pbmcapply::pbmclapply
+                           print("parallel::mclapply")
+                           parallel::mclapply
                          } else {
                            lapply
                          }

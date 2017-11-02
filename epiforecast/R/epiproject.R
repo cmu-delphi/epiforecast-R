@@ -70,7 +70,8 @@ target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_
     no_join(voxel.data),
     target_trajectory_preprocessor, target.specs,
     no_join(simlike),
-    lapply_variant=lapply
+    lapply_variant=lapply,
+    progress.output=FALSE
   )
   target.forecasts <- map_join(
     function(target.forecast) {
@@ -88,7 +89,8 @@ target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_
     forecast_value2,
     no_join(voxel.data),
     target.specs, forecast.types, target.forecasts,
-    lapply_variant=lapply
+    lapply_variant=lapply,
+    progress.output=FALSE
   )
   structure(
     c(#voxel.data[c("season","model.week","epigroup","issue")],
@@ -122,7 +124,7 @@ EWnone_to_MWplus1 = function(EWnone, n.weeks.in.season) {
   EW_NA_to_MWplus1(EW_NA, n.weeks.in.season)
 }
 
-target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data, t.target.specs, f.forecast.types) {
+target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
   epigroup.forecast.table = map_join(
     function(forecast.type, target.spec, voxel.data, forecast.value) {
       subspreadsheet =
@@ -134,17 +136,19 @@ target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data
       subspreadsheet <- subspreadsheet[c(epigroup.colname,subspreadsheet.previous.colnames)]
       subspreadsheet
     },
-    f.forecast.types, t.target.specs, no_join(voxel.data),
+    m.forecast.types, t.target.specs, no_join(voxel.data),
     target.multicast[["forecast.values"]],
-    lapply_variant=lapply) %>>%
+    lapply_variant=lapply,
+    progress.output=FALSE
+  ) %>>%
     dplyr::bind_rows()
   return (epigroup.forecast.table)
 }
 
-target_multicast_week_plot = function(target.multicast, voxel.data, t.target.specs, f.forecast.types) {
+target_multicast_week_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
   n.weeks.in.season = length(voxel.data[["target.settings"]][["is.inseason"]])
   ##
-  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, f.forecast.types)
+  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types)
   ##
   epigroup.forecast.table %>>%
     dplyr::filter(Type == "Bin", Unit == "week") %>>%
@@ -165,8 +169,8 @@ target_multicast_week_plot = function(target.multicast, voxel.data, t.target.spe
     ggplot2::geom_line()
 }
 
-target_multicast_percent_plot = function(target.multicast, voxel.data, t.target.specs, f.forecast.types) {
-  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, f.forecast.types)
+target_multicast_percent_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
+  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types)
   ##
   epigroup.forecast.table %>>%
     dplyr::filter(Type == "Bin", Unit == "percent") %>>%
@@ -193,7 +197,7 @@ get_ensemble_weightset = function(swgtmbf.forecast.values, swgtm.observation.val
     swgtmbf.forecast.values,
     weighting.scheme.indexer.list,
     function(train, test) {
-      fallback.method.index = "ignorant.Uniform"
+      fallback.method.index = "ignorant.Delphi_Uniform"
       instance.method.forecast.values.listmat =
         R.utils::wrap(train, list(1:5,6:7))
       instance.observation.values.list =

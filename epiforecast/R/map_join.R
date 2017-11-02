@@ -55,7 +55,8 @@ NULL
 ##' @export
 map_join_ = function(f, arraylike.args,
                      eltname.mismatch.behavior=c("error","intersect"),
-                     lapply_variant=pbmcapply::pbmclapply, shuffle=TRUE,
+                     lapply_variant=parallel::mclapply, shuffle=TRUE,
+                     progress.output=TRUE,
                      cache.prefix=NULL) {
   f <- match.fun(f)
   eltname.mismatch.behavior <- match.arg(eltname.mismatch.behavior)
@@ -138,7 +139,12 @@ map_join_ = function(f, arraylike.args,
     } else {
       seq_len(prod(index.dimension.lengths))
     }
-  result = lapply_variant(perm, function(result.elt.i) {
+  length.perm = length(perm)
+  result = lapply_variant(seq_along(perm), function(job.i) {
+    result.elt.i = perm[[job.i]]
+    if (progress.output && job.i == signif(job.i, 1L)) {
+      print(paste0(job.i,"/",length.perm))
+    }
     indices = stats::setNames(as.vector(arrayInd(result.elt.i, index.dimension.lengths)), names(index.dimension.lengths))
     cache.file =
       if (is.null(cache.prefix)) {
@@ -166,7 +172,6 @@ map_join_ = function(f, arraylike.args,
             arraylike.arg = arraylike.args[[arraylike.arg.i]]
             arraylike.arg.indices =
               indices[result.to.arg.dimension.maps[[arraylike.arg.i]]]
-            ## todo invent.scalars parameter
             arg =
               if (ndimp(arraylike.arg) == 0L) {
                 stopifnot(class(arraylike.arg)=="no_join")
@@ -237,13 +242,15 @@ map_join_ = function(f, arraylike.args,
 ##' @export
 map_join = function(f, ...,
                     eltname.mismatch.behavior=c("error","intersect"),
-                    lapply_variant=pbmcapply::pbmclapply, shuffle=TRUE,
+                    lapply_variant=parallel::mclapply, shuffle=TRUE,
+                    progress.output=TRUE,
                     cache.prefix=NULL) {
   arraylike.args = list(...)
   eltname.mismatch.behavior <- match.arg(eltname.mismatch.behavior)
   map_join_(f, arraylike.args,
             eltname.mismatch.behavior=eltname.mismatch.behavior,
             lapply_variant=lapply_variant, shuffle=shuffle,
+            progress.output=progress.output,
             cache.prefix=cache.prefix)
 }
 
@@ -262,3 +269,4 @@ no_join = function(x) {
 
 ## todo make map_join work with data.frame inputs as well?
 ## todo side effect only variant
+## todo check intersect behavior --- are the correct things actually selected and lined up?
