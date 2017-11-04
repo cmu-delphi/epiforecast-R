@@ -621,58 +621,91 @@ if (!file.exists(swge.prospective.ensemble.target.multicasts.file)) {
 
 ## Output prospective forecast spreadsheets, plots:
 save_spreadsheets =
-  function(target.multicasts,
-           voxel.data,
+  function(swg_.target.multicasts,
+           swg.voxel.data,
            t.target.specs, m.forecast.types,
-           spreadsheet.dir
-           ) {
-    spreadsheets = map_join(
-      target_multicast_epigroup_forecast_table,
-      target.multicasts,
-      voxel.data,
-      no_join(t.target.specs), no_join(m.forecast.types),
-      progress.output=FALSE
-    ) %>>%
-      apply(setdiff(seq_len(ndimp(.)), 3L), dplyr::bind_rows)
-    spreadsheet.names =
-      dimnames(spreadsheets) %>>%
-      expand.grid() %>>%
-      {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
-      as.character() %>>%
-      stringr::str_replace_all("/","-") %>>%
-      structure(
-        dim=dim(spreadsheets),
-        dimnames=dimnames(spreadsheets)
-      )
-    if (!dir.exists(spreadsheet.dir)) {
-      dir.create(spreadsheet.dir, recursive=TRUE)
-    }
-    invisible(map_join(
-      function(spreadsheet, spreadsheet.name) {
-        filepath = file.path(spreadsheet.dir, paste0(spreadsheet.name,".csv"))
-        print(filepath)
-        write.csv(spreadsheet, filepath)
+           spreadsheet.dir,
+           subpath_or_NULL_for_save = function(swg.voxel.data,s,w,...) {
+             spreadsheet.name = paste(s,w,...,sep=".") %>>%
+               stringr::str_replace_all("/","-")
+             paste0(spreadsheet.name,".csv")
+           }) {
+    ## spreadsheets = map_join(
+    ##   target_multicast_epigroup_forecast_table,
+    ##   swg_.target.multicasts,
+    ##   swg.voxel.data,
+    ##   no_join(t.target.specs), no_join(m.forecast.types)
+    ## ) %>>%
+    ##   apply(setdiff(seq_len(ndimp(.)), 3L), dplyr::bind_rows)
+    ## spreadsheet.names =
+    ##   dimnames(spreadsheets) %>>%
+    ##   expand.grid() %>>%
+    ##   {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
+    ##   as.character() %>>%
+    ##   stringr::str_replace_all("/","-") %>>%
+    ##   structure(
+    ##     dim=dim(spreadsheets),
+    ##     dimnames=dimnames(spreadsheets)
+    ##   )
+    ## if (!dir.exists(spreadsheet.dir)) {
+    ##   dir.create(spreadsheet.dir, recursive=TRUE)
+    ## }
+    ## invisible(map_join(
+    ##   function(spreadsheet, spreadsheet.name) {
+    ##     filepath = file.path(spreadsheet.dir, paste0(spreadsheet.name,".csv"))
+    ##     print(filepath)
+    ##     readr::write_csv(spreadsheet, filepath)
+    ##     NULL
+    ##   },
+    ##   spreadsheets, spreadsheet.names,
+    ##   lapply_variant=lapply,
+    ##   progress.output=FALSE
+    ## ))
+    invisible(map_join_(
+      ## iterate over non-epigroup dimensions, flipping s and w for ordering purposes:
+      ## arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[-3L],
+      ## f=function(s,w,...) {
+      arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[c(2L,1L,Seq(4L,ndimp(swg_.target.multicasts)))],
+      f=function(w,s,...) {
+        print(paste(s,w,...,sep="."))
+        subpath = subpath_or_NULL_for_save(swg.voxel.data[s,w,,drop=FALSE], s,w,...)
+        print(subpath)
+        if (!is.null(subpath)) {
+          ## get corresponding epigroup forecast tables and bind them together:
+          spreadsheet =
+            map_join(
+              target_multicast_epigroup_forecast_table,
+              swg_.target.multicasts[s,w,,...,drop=FALSE],
+              swg.voxel.data[s,w,,drop=FALSE],
+              no_join(t.target.specs), no_join(m.forecast.types),
+              lapply_variant=lapply,
+              progress.output=FALSE
+            ) %>>%
+            dplyr::bind_rows()
+          filepath = file.path(spreadsheet.dir, subpath)
+          dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
+          if (!dir.exists(dir)) {
+            dir.create(dir)
+          }
+          ## print(filepath)
+          readr::write_csv(spreadsheet, filepath)
+        }
         NULL
-      },
-      spreadsheets, spreadsheet.names,
-      lapply_variant=lapply,
-      progress.output=FALSE
-    ))
+      }, lapply_variant=lapply, shuffle=FALSE, progress.output=FALSE))
   }
 
 save_linlog_plots =
   function(target_multicast_linlog_plotter,
-           target.multicasts,
-           voxel.data,
+           swg_.target.multicasts,
+           swg.voxel.data,
            t.target.specs, m.forecast.types,
            linlog.plot.dir
            ) {
     linlog.plots = map_join(
       target_multicast_linlog_plotter,
-      target.multicasts,
-      voxel.data,
-      no_join(t.target.specs), no_join(m.forecast.types),
-      progress.output=FALSE
+      swg_.target.multicasts,
+      swg.voxel.data,
+      no_join(t.target.specs), no_join(m.forecast.types)
     )
     linlog.plot.names =
       dimnames(linlog.plots) %>>%
@@ -699,6 +732,49 @@ save_linlog_plots =
       progress.output=FALSE
     ))
   }
+
+collab.ensemble.dir = "~/files/nosync/collaborative-ensemble-submission-2"
+if (!dir.exists(collab.ensemble.dir)) {
+  dir.create(collab.ensemble.dir)
+}
+save_spreadsheets(swgbf.retro.component.target.multicasts,
+                  swg.retro.voxel.data,
+                  t.target.specs, m.forecast.types,
+                  collab.ensemble.dir,
+                  function(swg.voxel.data,s,w,...) {
+                    season = swg.voxel.data[[s,w,1L]][["season"]]
+                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
+                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
+                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
+                      sprintf("%s/EW%02d-%d-%s.csv", ..2, week, year, ..2)
+                    }
+                  })
+save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based"],
+                  swg.retro.voxel.data,
+                  t.target.specs, m.forecast.types,
+                  collab.ensemble.dir,
+                  function(swg.voxel.data,s,w,...) {
+                    season = swg.voxel.data[[s,w,1L]][["season"]]
+                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
+                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
+                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
+                      sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
+                    }
+                  })
+
+save_spreadsheets(
+  swgbf.retro.component.target.multicasts,
+  swg.retro.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/collaborative-ensemble-superset"
+)
+
+save_spreadsheets(
+  swge.retro.ensemble.target.multicasts,
+  swg.retro.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/collaborative-ensemble-superset"
+)
 
 save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
@@ -860,3 +936,7 @@ save_linlog_plots(
 ## xxx consider just basing everything on filesystem contracts... no need to hold everything in memory
 ## fixme try to solve memory issues with mclapply env's? require interaction with disk?
 ## todo weighted cv_apply smearing schemes (boxcar kernel -> other kernels)
+
+## todo tiny subset run to do some testing and development on
+
+## fixme table verification

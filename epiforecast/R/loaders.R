@@ -699,6 +699,8 @@ mimicPastDF1 = function(history.df,
     magrittr::extract(colnames(history.df)) %>>%
     return()
 }
+## todo version for CV
+## todo this is slow.  Preprocess history DF with issue range in which an observation is revealed?  Check when issue/lag can be NA --- is it just for the NA padding or does epidata ever return these (e.g., in the current DF?)
 
 ##' Mimic a past version of a dataset using (partial) history data
 ##'

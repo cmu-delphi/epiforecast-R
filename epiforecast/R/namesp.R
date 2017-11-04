@@ -114,3 +114,9 @@ with_dimnames = function(arraylike, dimnames) {
 named_arrayvec_to_name_arrayvec = function(arrayvec) {
   with_dimnames(names(arrayvec), dimnames(arrayvec))
 }
+
+named_array_to_name_arrayvecs = function(named.array) {
+  dimnamesp(named.array) %>>%
+    Map(f=vector_as_named_array, names(.)) %>>%
+    unname()
+}
