@@ -38,14 +38,16 @@ fluview.epigroup.name.mapping =
               c("American Samoa", "Commonwealth of the Northern Mariana Islands", "District of Columbia", "Guam", "Puerto Rico", "Virgin Islands", "Chicago", "Los Angeles", "New York City")
           ) %>>%
   dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX")) %>>%
+  ## fixme JFK shouldn't have been here; but maybe we should predict everything
+  ## with data available and filter the resulting spreadsheet; e.g., add FL
   dplyr::filter(in.spreadsheet) %>>%
   dplyr::arrange(name)
-fluview.location.epidata.names = tolower(fluview.epigroup.name.mapping[["abbreviation"]])
-fluview.location.spreadsheet.names = fluview.epigroup.name.mapping[["name"]]
+fluview.all.location.epidata.names = tolower(fluview.epigroup.name.mapping[["abbreviation"]])
+fluview.all.location.spreadsheet.names = fluview.epigroup.name.mapping[["name"]]
 
 ## Load in the epidata (takes a while):
-g.fluview.current.dfs = fluview.location.epidata.names %>>%
-  setNames(fluview.location.spreadsheet.names) %>>%
+fluview.all.current.dfs = fluview.all.location.epidata.names %>>%
+  setNames(fluview.all.location.spreadsheet.names) %>>%
   lapply(function(fluview.location.epidata.name) {
     print(fluview.location.epidata.name)
     get_completed_fluview_state_df(fluview.location.epidata.name, usa.flu.first.week.of.season) %>>%
@@ -68,6 +70,14 @@ g.fluview.current.dfs = fluview.location.epidata.names %>>%
         .
       }
   })
+selected.location.inds =
+  sapply(fluview.all.current.dfs,
+         function(df) median(df[["num_providers"]], na.rm=TRUE)) %>>%
+  {which(. > median(.))}
+fluview.location.epidata.names = fluview.all.location.epidata.names[selected.location.inds]
+fluview.location.spreadsheet.names = fluview.all.location.spreadsheet.names[selected.location.inds]
+g.fluview.current.dfs =
+  fluview.all.current.dfs[fluview.location.spreadsheet.names ]
 g.fluview.history.dfs =
   g.fluview.current.dfs
 ## fluview.location.epidata.names %>>%
@@ -184,12 +194,10 @@ current.issue.sw =
   dplyr::filter(model.week == max(model.week)) %>>%
   dplyr::select(season, model.week)
 
-## s.retro.seasons = seq.int(2010L,current.issue.sw[["season"]]-1L) %>>%
-s.retro.seasons = 2010:2011 %>>%
+s.retro.seasons = seq.int(2010L,current.issue.sw[["season"]]-1L) %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
-## w.retro.model.weeks = (35:78) %>>%
-w.retro.model.weeks = 43L %>>%
+w.retro.model.weeks = (35:78) %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
 g.epigroups = fluview.location.spreadsheet.names %>>%
@@ -251,7 +259,7 @@ swg.retro.voxel.data =
       get_voxel_data,
       s.retro.seasons, w.retro.model.weeks, g.epigroups,
       last.losocv.issue,
-      cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swg.retro.voxel.data/swg.retro.voxel.data"
+      cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swg.retro.voxel.data/swg.retro.voxel.data"
     )
   },
   ## issues with parallel package returning long vector results from large runs...
@@ -262,7 +270,7 @@ swg.retro.voxel.data =
       s.retro.seasons, w.retro.model.weeks, g.epigroups,
       last.losocv.issue,
       lapply_variant=lapply,
-      cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swg.retro.voxel.data/swg.retro.voxel.data"
+      cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swg.retro.voxel.data/swg.retro.voxel.data"
     )
   })
 ## swg.retro.voxel.data = map_join(
@@ -270,7 +278,7 @@ swg.retro.voxel.data =
 ##   s.retro.seasons, w.retro.model.weeks, g.epigroups,
 ##   last.losocv.issue,
 ##   lapply_variant=pbmclapply_no_preschedule,
-##   cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swg.retro.voxel.data/swg.retro.voxel.data"
+##   cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swg.retro.voxel.data/swg.retro.voxel.data"
 ## )
 ## xxx this (retro voxel data) is going to consume a bunch of memory...
 
@@ -279,7 +287,7 @@ print("CV: generate backcasts")
 swgb.retro.full.dats = map_join(
   get_backcast,
   swg.retro.voxel.data, signal.name, b.backcasters,
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swgb.retro.full.dats/swgb.retro.full.dats"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swgb.retro.full.dats/swgb.retro.full.dats"
 )
 
 ## CV forecasts as target_multicast objects:
@@ -293,7 +301,7 @@ swgbf.retro.component.target.multicasts = map_join(
   ## lapply_variant=pbmcapply::pbmclapply,
   ## lapply_variant=pbmclapply_no_preschedule,
   ## lapply_variant = lapply,
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"
 )
 ## xxx loading from many cache files is slow; reduce # of cache files?
 
@@ -344,7 +352,7 @@ swgtm.retro.observation.values = map_join(
   get_observation_values,
   swg.retro.voxel.data,
   target_trajectory_preprocessor, t.target.specs, m.forecast.types,
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swgtm.retro.observation.values/swgtm.retro.observation.values"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swgtm.retro.observation.values/swgtm.retro.observation.values"
 )
 
 ## Specify portions of cv_apply indexer lists corresponding to model week,
@@ -396,26 +404,31 @@ e.retro.ensemble.weightsets = map_join(
   },
   e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists,
   lapply_variant=lapply,
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/e.retro.ensemble.weightsets/e.retro.ensemble.weightsets"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/e.retro.ensemble.weightsets/e.retro.ensemble.weightsets"
 )
 
 ## ## Calculate CV ensemble forecasts as forecast.value's
 ## print("CV: generate ensemble forecasts")
-swgtme.retro.ensemble.forecast.values.file = file.path("~/files/nosync/epiforecast-epiproject/flusight-state-run/swgtme.retro.ensemble.forecast.values.rds")
+swgtme.retro.ensemble.forecast.values.file = file.path("~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swgtme.retro.ensemble.forecast.values.rds")
 swgtme.retro.ensemble.forecast.values =
   if (file.exists(swgtme.retro.ensemble.forecast.values.file)) {
     readRDS(swgtme.retro.ensemble.forecast.values.file)
   } else {
-    pbmcapply::pbmclapply(
+    parallel::mclapply(
                  e.retro.ensemble.weightsets,
                  function(weightset) {
                    map_join(
-                     `*`,
+                     ## `*`, # bad if only non-NA's are 0-weighted
+                     function(forecast.value, weight) {
+                       if (weight == 0) {
+                         weight <- NA
+                       }
+                       weight * forecast.value
+                     },
                      swgtmbf.retro.component.forecast.values, weightset,
-                     lapply_variant=lapply
+                     lapply_variant=lapply, progress.output=FALSE
                    ) %>>% apply(1:5, Reduce, f=function(x,y) {
-                     ## dplyr::coalesce(x+y, x, y)
-                     rowSums(cbind(x,y),na.rm=TRUE)
+                     dplyr::coalesce(x+y, x, y)
                    })
                  }) %>>%
       simplify2array() %>>%
@@ -424,11 +437,11 @@ swgtme.retro.ensemble.forecast.values =
 if (!file.exists(swgtme.retro.ensemble.forecast.values.file)) {
   saveRDS(swgtme.retro.ensemble.forecast.values, swgtme.retro.ensemble.forecast.values.file)
 }
-## todo use mclapply in map_join above instead of pbmclapply over ensembles...
+## todo use mclapply in map_join above instead of mclapply over ensembles...
 ## but broke before; need to avoid memory duplication issues
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.retro.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-state-run/swge.retro.ensemble.target.multicasts.rds"
+swge.retro.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swge.retro.ensemble.target.multicasts.rds"
 swge.retro.ensemble.target.multicasts =
   if (file.exists(swge.retro.ensemble.target.multicasts.file)) {
     readRDS(swge.retro.ensemble.target.multicasts.file)
@@ -532,7 +545,7 @@ print("Current season: generate backcasts")
 swgb.prospective.full.dats = map_join(
   get_backcast,
   swg.prospective.voxel.data, signal.name, b.backcasters,
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swgb.prospective.full.dats/swgb.prospective.full.dats"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swgb.prospective.full.dats/swgb.prospective.full.dats"
 )
 
 print("Current season: generate component forecasts")
@@ -542,7 +555,7 @@ swgbf.prospective.component.target.multicasts = map_join(
   target_trajectory_preprocessor,
   no_join(t.target.specs),
   no_join(m.forecast.types),
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/swgbf.prospective.component.target.multicasts/swgbf.prospective.component.target.multicasts"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swgbf.prospective.component.target.multicasts/swgbf.prospective.component.target.multicasts"
 )
 
 swgtmbf.prospective.component.forecast.values =
@@ -576,7 +589,7 @@ e.prospective.ensemble.weightsets = map_join(
                            weighting.scheme.indexer.list)
   },
   e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-state-run/e.prospective.ensemble.weightsets/e.prospective.ensemble.weightsets"
+  cache.prefix="~/files/nosync/epiforecast-epiproject/flusight-high-state-run/e.prospective.ensemble.weightsets/e.prospective.ensemble.weightsets"
 )
 
 print("Current season: generate ensemble forecasts")
@@ -603,7 +616,7 @@ swgtme.prospective.ensemble.forecast.values = lapply(
 ## indexers
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-state-run/swge.prospective.ensemble.target.multicasts"
+swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swge.prospective.ensemble.target.multicasts"
 swge.prospective.ensemble.target.multicasts =
   if (file.exists(swge.prospective.ensemble.target.multicasts.file)) {
     readRDS(swge.prospective.ensemble.target.multicasts.file)
@@ -735,7 +748,7 @@ save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/spreadsheets"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/spreadsheets"
 )
 
 save_linlog_plots(
@@ -743,7 +756,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/linlog.plots-week"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-week"
 )
 
 save_linlog_plots(
@@ -751,14 +764,14 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/linlog.plots-percent"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-percent"
 )
 
 save_spreadsheets(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/spreadsheets"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/spreadsheets"
 )
 
 save_linlog_plots(
@@ -766,7 +779,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/linlog.plots-week"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-week"
 )
 
 save_linlog_plots(
@@ -774,14 +787,14 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/linlog.plots-percent"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-percent"
 )
 
 save_spreadsheets(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/stat-spreadsheets"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-spreadsheets"
 )
 
 save_linlog_plots(
@@ -789,7 +802,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/stat-linlog.plots-week"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-linlog.plots-week"
 )
 
 save_linlog_plots(
@@ -797,7 +810,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-state-run/stat-linlog.plots-percent"
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-linlog.plots-percent"
 )
 
 ## target_multicast_percent_plot(swge.prospective.ensemble.target.multicasts[[1L]],
@@ -899,3 +912,5 @@ save_linlog_plots(
 ## todo remove Season onset target
 ## todo high states
 ## todo rename this file to reflect that it is for low states
+
+## fixme modularize these scripts.  there is duplication within and between...
