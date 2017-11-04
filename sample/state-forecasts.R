@@ -447,12 +447,15 @@ if (!file.exists(swge.retro.ensemble.target.multicasts.file)) {
 ##                               t.target.specs,
 ##                               m.forecast.types)
 
+gc()
 print("Analysis: calculate CV evaluations")
 swgtmbf.retro.component.evaluations = map_join(
   get_evaluation,
   swgtmbf.retro.component.forecast.values, swgtm.retro.observation.values, m.forecast.types
 )
 mode(swgtmbf.retro.component.evaluations) <- "numeric"
+## fixme sometimes this results in errors due to NULL's appearing in the
+## evaluations, but re-running the evaluations seems to work... memory issues? gc beforehand?
 
 swgtme.retro.ensemble.evaluations = map_join(
   get_evaluation,
@@ -581,10 +584,18 @@ swgtme.prospective.ensemble.forecast.values = lapply(
   e.prospective.ensemble.weightsets,
   function(weightset) {
     map_join(
-      `*`,
+      ## `*`, # bad if only non-NA's are 0-weighted
+      function(forecast.value, weight) {
+        if (weight == 0) {
+          weight <- NA
+        }
+        weight * forecast.value
+      },
       swgtmbf.prospective.component.forecast.values, weightset,
       eltname.mismatch.behavior="intersect"
-    ) %>>% apply(1:5, Reduce, f=`+`)
+    ) %>>% apply(1:5, Reduce, f=function(x,y) {
+      dplyr::coalesce(x+y, x, y)
+    })
   }) %>>%
   simplify2array() %>>%
   {names(dimnames(.))[[6L]] <- dimnamesnamesp(e.prospective.ensemble.weightsets); .}

@@ -419,16 +419,21 @@ swgtme.retro.ensemble.forecast.values =
   if (file.exists(swgtme.retro.ensemble.forecast.values.file)) {
     readRDS(swgtme.retro.ensemble.forecast.values.file)
   } else {
-    pbmcapply::pbmclapply(
+    parallel::mclapply(
                  e.retro.ensemble.weightsets,
                  function(weightset) {
                    map_join(
-                     `*`,
+                     ## `*`, # bad if only non-NA's are 0-weighted
+                     function(forecast.value, weight) {
+                       if (weight == 0) {
+                         weight <- NA
+                       }
+                       weight * forecast.value
+                     },
                      swgtmbf.retro.component.forecast.values, weightset,
-                     lapply_variant=lapply
+                     lapply_variant=lapply, progress.output=FALSE
                    ) %>>% apply(1:5, Reduce, f=function(x,y) {
-                     ## dplyr::coalesce(x+y, x, y)
-                     rowSums(cbind(x,y),na.rm=TRUE)
+                     dplyr::coalesce(x+y, x, y)
                    })
                  }) %>>%
       simplify2array() %>>%
@@ -437,7 +442,7 @@ swgtme.retro.ensemble.forecast.values =
 if (!file.exists(swgtme.retro.ensemble.forecast.values.file)) {
   saveRDS(swgtme.retro.ensemble.forecast.values, swgtme.retro.ensemble.forecast.values.file)
 }
-## todo use mclapply in map_join above instead of pbmclapply over ensembles...
+## todo use mclapply in map_join above instead of mclapply over ensembles...
 ## but broke before; need to avoid memory duplication issues
 
 ## Calculate CV ensemble forecasts as target.multicasts
@@ -460,12 +465,15 @@ if (!file.exists(swge.retro.ensemble.target.multicasts.file)) {
 ##                               t.target.specs,
 ##                               m.forecast.types)
 
+gc()
 print("Analysis: calculate CV evaluations")
 swgtmbf.retro.component.evaluations = map_join(
   get_evaluation,
   swgtmbf.retro.component.forecast.values, swgtm.retro.observation.values, m.forecast.types
 )
 mode(swgtmbf.retro.component.evaluations) <- "numeric"
+## fixme sometimes this results in errors due to NULL's appearing in the
+## evaluations, but re-running the evaluations seems to work... memory issues? gc beforehand?
 
 swgtme.retro.ensemble.evaluations = map_join(
   get_evaluation,
@@ -474,8 +482,8 @@ swgtme.retro.ensemble.evaluations = map_join(
 mode(swgtme.retro.ensemble.evaluations) <- "numeric"
 
 ## ## apply(swgtmbf.retro.component.evaluations, 5:7, mean, na.rm=TRUE)
-## apply(swgtmbf.retro.component.evaluations, c(5L,7L), mean, na.rm=TRUE)
-## apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.evaluations, c(5L,7L), mean, na.rm=TRUE)
+apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
 
 ## apply(swgtmbf.retro.component.evaluations[(2003:2009)%>>%paste0("/",.+1L),,,,,,,drop=FALSE],
 ##       c(5L,7L), mean, na.rm=TRUE)
@@ -594,10 +602,18 @@ swgtme.prospective.ensemble.forecast.values = lapply(
   e.prospective.ensemble.weightsets,
   function(weightset) {
     map_join(
-      `*`,
+      ## `*`, # bad if only non-NA's are 0-weighted
+      function(forecast.value, weight) {
+        if (weight == 0) {
+          weight <- NA
+        }
+        weight * forecast.value
+      },
       swgtmbf.prospective.component.forecast.values, weightset,
       eltname.mismatch.behavior="intersect"
-    ) %>>% apply(1:5, Reduce, f=`+`)
+    ) %>>% apply(1:5, Reduce, f=function(x,y) {
+      dplyr::coalesce(x+y, x, y)
+    })
   }) %>>%
   simplify2array() %>>%
   {names(dimnames(.))[[6L]] <- dimnamesnamesp(e.prospective.ensemble.weightsets); .}
