@@ -619,7 +619,6 @@ swgtme.prospective.ensemble.forecast.values = lapply(
 ## indexers
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/swge.prospective.ensemble.target.multicasts"
 swge.prospective.ensemble.target.multicasts =
   apply(swgtme.prospective.ensemble.forecast.values, c(1:3,6L),
         function(tm.forecast.values) {

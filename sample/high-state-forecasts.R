@@ -619,19 +619,11 @@ swgtme.prospective.ensemble.forecast.values = lapply(
 ## indexers
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/swge.prospective.ensemble.target.multicasts"
 swge.prospective.ensemble.target.multicasts =
-  if (file.exists(swge.prospective.ensemble.target.multicasts.file)) {
-    readRDS(swge.prospective.ensemble.target.multicasts.file)
-  } else {
-    apply(swgtme.prospective.ensemble.forecast.values, c(1:3,6L),
-          function(tm.forecast.values) {
+  apply(swgtme.prospective.ensemble.forecast.values, c(1:3,6L),
+        function(tm.forecast.values) {
           list(forecast.values=tm.forecast.values)
-          })
-  }
-if (!file.exists(swge.prospective.ensemble.target.multicasts.file)) {
-  saveRDS(swge.prospective.ensemble.target.multicasts, swge.prospective.ensemble.target.multicasts.file)
-}
+        })
 
 ## Output prospective forecast spreadsheets, plots:
 save_spreadsheets =
