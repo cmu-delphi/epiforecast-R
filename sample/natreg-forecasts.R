@@ -621,19 +621,11 @@ swgtme.prospective.ensemble.forecast.values = lapply(
 ## indexers
 
 ## Calculate CV ensemble forecasts as target.multicasts
-swge.prospective.ensemble.target.multicasts.file = "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/swge.prospective.ensemble.target.multicasts"
 swge.prospective.ensemble.target.multicasts =
-  if (file.exists(swge.prospective.ensemble.target.multicasts.file)) {
-    readRDS(swge.prospective.ensemble.target.multicasts.file)
-  } else {
-    apply(swgtme.prospective.ensemble.forecast.values, c(1:3,6L),
-          function(tm.forecast.values) {
+  apply(swgtme.prospective.ensemble.forecast.values, c(1:3,6L),
+        function(tm.forecast.values) {
           list(forecast.values=tm.forecast.values)
-          })
-  }
-if (!file.exists(swge.prospective.ensemble.target.multicasts.file)) {
-  saveRDS(swge.prospective.ensemble.target.multicasts, swge.prospective.ensemble.target.multicasts.file)
-}
+        })
 
 ## Output prospective forecast spreadsheets, plots:
 save_spreadsheets =
@@ -646,37 +638,6 @@ save_spreadsheets =
                stringr::str_replace_all("/","-")
              paste0(spreadsheet.name,".csv")
            }) {
-    ## spreadsheets = map_join(
-    ##   target_multicast_epigroup_forecast_table,
-    ##   swg_.target.multicasts,
-    ##   swg.voxel.data,
-    ##   no_join(t.target.specs), no_join(m.forecast.types)
-    ## ) %>>%
-    ##   apply(setdiff(seq_len(ndimp(.)), 3L), dplyr::bind_rows)
-    ## spreadsheet.names =
-    ##   dimnames(spreadsheets) %>>%
-    ##   expand.grid() %>>%
-    ##   {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
-    ##   as.character() %>>%
-    ##   stringr::str_replace_all("/","-") %>>%
-    ##   structure(
-    ##     dim=dim(spreadsheets),
-    ##     dimnames=dimnames(spreadsheets)
-    ##   )
-    ## if (!dir.exists(spreadsheet.dir)) {
-    ##   dir.create(spreadsheet.dir, recursive=TRUE)
-    ## }
-    ## invisible(map_join(
-    ##   function(spreadsheet, spreadsheet.name) {
-    ##     filepath = file.path(spreadsheet.dir, paste0(spreadsheet.name,".csv"))
-    ##     print(filepath)
-    ##     readr::write_csv(spreadsheet, filepath)
-    ##     NULL
-    ##   },
-    ##   spreadsheets, spreadsheet.names,
-    ##   lapply_variant=lapply,
-    ##   progress.output=FALSE
-    ## ))
     invisible(map_join_(
       ## iterate over non-epigroup dimensions, flipping s and w for ordering purposes:
       ## arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[-3L],
@@ -687,24 +648,26 @@ save_spreadsheets =
         subpath = subpath_or_NULL_for_save(swg.voxel.data[s,w,,drop=FALSE], s,w,...)
         print(subpath)
         if (!is.null(subpath)) {
-          ## get corresponding epigroup forecast tables and bind them together:
-          spreadsheet =
-            map_join(
-              target_multicast_epigroup_forecast_table,
-              swg_.target.multicasts[s,w,,...,drop=FALSE],
-              swg.voxel.data[s,w,,drop=FALSE],
+          filepath = file.path(spreadsheet.dir, subpath)
+          if (!file.exists(filepath)) {
+            ## get corresponding epigroup forecast tables and bind them together:
+            spreadsheet =
+              map_join(
+                target_multicast_epigroup_forecast_table,
+                swg_.target.multicasts[s,w,,...,drop=FALSE],
+                swg.voxel.data[s,w,,drop=FALSE],
               no_join(t.target.specs), no_join(m.forecast.types),
               lapply_variant=lapply,
               progress.output=FALSE
-            ) %>>%
-            dplyr::bind_rows()
-          filepath = file.path(spreadsheet.dir, subpath)
-          dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
-          if (!dir.exists(dir)) {
-            dir.create(dir)
+              ) %>>%
+              dplyr::bind_rows()
+            dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
+            if (!dir.exists(dir)) {
+              dir.create(dir)
+            }
+            ## print(filepath)
+            readr::write_csv(spreadsheet, filepath)
           }
-          ## print(filepath)
-          readr::write_csv(spreadsheet, filepath)
         }
         NULL
       }, lapply_variant=lapply, shuffle=FALSE, progress.output=FALSE))
@@ -749,14 +712,14 @@ save_linlog_plots =
     ))
   }
 
-collab.ensemble.dir = "~/files/nosync/collaborative-ensemble-submission-2"
-if (!dir.exists(collab.ensemble.dir)) {
-  dir.create(collab.ensemble.dir)
+collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-submission-2"
+if (!dir.exists(collab.ensemble.retro.dir)) {
+  dir.create(collab.ensemble.retro.dir)
 }
 save_spreadsheets(swgbf.retro.component.target.multicasts,
                   swg.retro.voxel.data,
                   t.target.specs, m.forecast.types,
-                  collab.ensemble.dir,
+                  collab.ensemble.retro.dir,
                   function(swg.voxel.data,s,w,...) {
                     season = swg.voxel.data[[s,w,1L]][["season"]]
                     year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
@@ -765,10 +728,10 @@ save_spreadsheets(swgbf.retro.component.target.multicasts,
                       sprintf("%s/EW%02d-%d-%s.csv", ..2, week, year, ..2)
                     }
                   })
-save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based"],
+save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
                   swg.retro.voxel.data,
                   t.target.specs, m.forecast.types,
-                  collab.ensemble.dir,
+                  collab.ensemble.retro.dir,
                   function(swg.voxel.data,s,w,...) {
                     season = swg.voxel.data[[s,w,1L]][["season"]]
                     year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
@@ -778,19 +741,34 @@ save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based"]
                     }
                   })
 
-save_spreadsheets(
-  swgbf.retro.component.target.multicasts,
-  swg.retro.voxel.data,
-  t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/collaborative-ensemble-superset"
-)
-
-save_spreadsheets(
-  swge.retro.ensemble.target.multicasts,
-  swg.retro.voxel.data,
-  t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/collaborative-ensemble-superset"
-)
+collab.ensemble.prospective.dir = "~/files/nosync/cdc-flusight-ensemble/model-forecasts/real-time-component-models/"
+if (!dir.exists(collab.ensemble.prospective.dir)) {
+  dir.create(collab.ensemble.prospective.dir)
+}
+save_spreadsheets(swgbf.prospective.component.target.multicasts,
+                  swg.prospective.voxel.data,
+                  t.target.specs, m.forecast.types,
+                  collab.ensemble.prospective.dir,
+                  function(swg.voxel.data,s,w,...) {
+                    season = swg.voxel.data[[s,w,1L]][["season"]]
+                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
+                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
+                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
+                      sprintf("%s/EW%02d-%d-%s.csv", ..2, week, year, ..2)
+                    }
+                  })
+save_spreadsheets(swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
+                  swg.prospective.voxel.data,
+                  t.target.specs, m.forecast.types,
+                  collab.ensemble.prospective.dir,
+                  function(swg.voxel.data,s,w,...) {
+                    season = swg.voxel.data[[s,w,1L]][["season"]]
+                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
+                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
+                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
+                      sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
+                    }
+                  })
 
 save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
@@ -956,3 +934,4 @@ save_linlog_plots(
 ## todo tiny subset run to do some testing and development on
 
 ## fixme table verification
+## fixme empirical distribution is using target's baseline with empirical curves again instead of pairing baselines and curves

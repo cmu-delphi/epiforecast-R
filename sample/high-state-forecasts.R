@@ -480,6 +480,9 @@ mode(swgtme.retro.ensemble.evaluations) <- "numeric"
 apply(swgtmbf.retro.component.evaluations, c(5L,7L), mean, na.rm=TRUE)
 apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
 
+apply(swgtmbf.retro.component.evaluations, c(4:5,7L), mean, na.rm=TRUE)
+apply(swgtme.retro.ensemble.evaluations, 4:6, mean, na.rm=TRUE)
+
 ## apply(swgtmbf.retro.component.evaluations[(2003:2009)%>>%paste0("/",.+1L),,,,,,,drop=FALSE],
 ##       c(5L,7L), mean, na.rm=TRUE)
 ## apply(swgtme.retro.ensemble.evaluations[(2003:2009)%>>%paste0("/",.+1L),,,,,,drop=FALSE],
@@ -641,37 +644,6 @@ save_spreadsheets =
                stringr::str_replace_all("/","-")
              paste0(spreadsheet.name,".csv")
            }) {
-    ## spreadsheets = map_join(
-    ##   target_multicast_epigroup_forecast_table,
-    ##   swg_.target.multicasts,
-    ##   swg.voxel.data,
-    ##   no_join(t.target.specs), no_join(m.forecast.types)
-    ## ) %>>%
-    ##   apply(setdiff(seq_len(ndimp(.)), 3L), dplyr::bind_rows)
-    ## spreadsheet.names =
-    ##   dimnames(spreadsheets) %>>%
-    ##   expand.grid() %>>%
-    ##   {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
-    ##   as.character() %>>%
-    ##   stringr::str_replace_all("/","-") %>>%
-    ##   structure(
-    ##     dim=dim(spreadsheets),
-    ##     dimnames=dimnames(spreadsheets)
-    ##   )
-    ## if (!dir.exists(spreadsheet.dir)) {
-    ##   dir.create(spreadsheet.dir, recursive=TRUE)
-    ## }
-    ## invisible(map_join(
-    ##   function(spreadsheet, spreadsheet.name) {
-    ##     filepath = file.path(spreadsheet.dir, paste0(spreadsheet.name,".csv"))
-    ##     print(filepath)
-    ##     readr::write_csv(spreadsheet, filepath)
-    ##     NULL
-    ##   },
-    ##   spreadsheets, spreadsheet.names,
-    ##   lapply_variant=lapply,
-    ##   progress.output=FALSE
-    ## ))
     invisible(map_join_(
       ## iterate over non-epigroup dimensions, flipping s and w for ordering purposes:
       ## arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[-3L],
@@ -682,24 +654,26 @@ save_spreadsheets =
         subpath = subpath_or_NULL_for_save(swg.voxel.data[s,w,,drop=FALSE], s,w,...)
         print(subpath)
         if (!is.null(subpath)) {
-          ## get corresponding epigroup forecast tables and bind them together:
-          spreadsheet =
-            map_join(
-              target_multicast_epigroup_forecast_table,
-              swg_.target.multicasts[s,w,,...,drop=FALSE],
-              swg.voxel.data[s,w,,drop=FALSE],
+          filepath = file.path(spreadsheet.dir, subpath)
+          if (!file.exists(filepath)) {
+            ## get corresponding epigroup forecast tables and bind them together:
+            spreadsheet =
+              map_join(
+                target_multicast_epigroup_forecast_table,
+                swg_.target.multicasts[s,w,,...,drop=FALSE],
+                swg.voxel.data[s,w,,drop=FALSE],
               no_join(t.target.specs), no_join(m.forecast.types),
               lapply_variant=lapply,
               progress.output=FALSE
-            ) %>>%
-            dplyr::bind_rows()
-          filepath = file.path(spreadsheet.dir, subpath)
-          dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
-          if (!dir.exists(dir)) {
-            dir.create(dir)
+              ) %>>%
+              dplyr::bind_rows()
+            dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
+            if (!dir.exists(dir)) {
+              dir.create(dir)
+            }
+            ## print(filepath)
+            readr::write_csv(spreadsheet, filepath)
           }
-          ## print(filepath)
-          readr::write_csv(spreadsheet, filepath)
         }
         NULL
       }, lapply_variant=lapply, shuffle=FALSE, progress.output=FALSE))
