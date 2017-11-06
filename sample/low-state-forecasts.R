@@ -28,7 +28,6 @@ options(mc.cores=parallel::detectCores()-1L)
 ## options(mc.cores=parallel::detectCores()-3L)
 
 ## different location naming schemes:
-## fixme add in all missing "states"
 fluview.epigroup.name.mapping =
   tibble::tibble(
             abbreviation =
@@ -37,10 +36,11 @@ fluview.epigroup.name.mapping =
             name = state.name %>>%
               c("American Samoa", "Commonwealth of the Northern Mariana Islands", "District of Columbia", "Guam", "Puerto Rico", "Virgin Islands", "Chicago", "Los Angeles", "New York City")
           ) %>>%
-  dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX")) %>>%
+  dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX","JFK")) %>>%
+  dplyr::mutate(in.first.training = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX")) %>>%
   ## fixme JFK shouldn't have been here; but maybe we should predict everything
   ## with data available and filter the resulting spreadsheet; e.g., add FL
-  dplyr::filter(in.spreadsheet) %>>%
+  dplyr::filter(in.first.training) %>>%
   dplyr::arrange(name)
 fluview.all.location.epidata.names = tolower(fluview.epigroup.name.mapping[["abbreviation"]])
 fluview.all.location.spreadsheet.names = fluview.epigroup.name.mapping[["name"]]
@@ -233,6 +233,7 @@ f.forecasters = list(
 target_trajectory_preprocessor = flusight2016_target_trajectory_preprocessor
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
+## fixme remove Season onset
 m.forecast.types = flusight2016.proxy.forecast.types %>>%
   with_dimnamesnames("Type")
 

@@ -820,7 +820,13 @@ save_spreadsheets(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-spreadsheets"
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-spreadsheets",
+  function(swg.voxel.data,s,w,...) {
+    season = swg.voxel.data[[s,w,1L]][["season"]]
+    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
+    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
+    sprintf("EW%02d-%s-%s.csv", week, "Delphi-Stat", Sys.Date())
+  }
 )
 
 save_linlog_plots(
