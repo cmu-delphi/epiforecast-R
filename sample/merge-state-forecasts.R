@@ -122,7 +122,7 @@ map_join_(
     if (!dir.exists(out.dir)) {
       dir.create(out.dir, recursive=TRUE)
     }
-    out.filename = sprintf("EW%02d-%s-%s.csv", week, "Delphi-Stat", Sys.Date())
+    out.filename = sprintf("EW%02d-%s-StateILI-%s.csv", week, "Delphi-Stat", Sys.Date())
     readr::write_csv(combined.df, file.path(out.dir, out.filename))
     NULL
   },
