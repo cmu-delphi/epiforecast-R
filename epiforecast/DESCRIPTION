@@ -42,6 +42,7 @@ License: GPL-2
 RoxygenNote: 6.0.1
 Collate: 
     'RcppExports.R'
+    'backcasters.R'
     'match.R'
     'utils.R'
     'br.R'

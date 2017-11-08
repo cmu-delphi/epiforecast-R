@@ -244,3 +244,87 @@ get_ensemble_weightset = function(swgtmbf.forecast.values, swgtm.observation.val
 get_evaluation = function(forecast.value, observation.value, forecast.type) {
   forecast.type[["evaluate_forecast_value"]](forecast.value, observation.value)
 }
+
+save_spreadsheets =
+  function(swg_.target.multicasts,
+           swg.voxel.data,
+           t.target.specs, m.forecast.types,
+           spreadsheet.dir,
+           subpath_or_NULL_for_save = function(swg.voxel.data,s,w,...) {
+             spreadsheet.name = paste(s,w,...,sep=".") %>>%
+               stringr::str_replace_all("/","-")
+             paste0(spreadsheet.name,".csv")
+           }) {
+    invisible(map_join_(
+      ## iterate over non-epigroup dimensions, flipping s and w for ordering purposes:
+      ## arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[-3L],
+      ## f=function(s,w,...) {
+      arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[c(2L,1L,Seq(4L,ndimp(swg_.target.multicasts)))],
+      f=function(w,s,...) {
+        print(paste(s,w,...,sep="."))
+        subpath = subpath_or_NULL_for_save(swg.voxel.data[s,w,,drop=FALSE], s,w,...)
+        print(subpath)
+        if (!is.null(subpath)) {
+          filepath = file.path(spreadsheet.dir, subpath)
+          if (!file.exists(filepath)) {
+            ## get corresponding epigroup forecast tables and bind them together:
+            spreadsheet =
+              map_join(
+                target_multicast_epigroup_forecast_table,
+                swg_.target.multicasts[s,w,,...,drop=FALSE],
+                swg.voxel.data[s,w,,drop=FALSE],
+              no_join(t.target.specs), no_join(m.forecast.types),
+              lapply_variant=lapply,
+              progress.output=FALSE
+              ) %>>%
+              dplyr::bind_rows()
+            dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
+            if (!dir.exists(dir)) {
+              dir.create(dir)
+            }
+            ## print(filepath)
+            readr::write_csv(spreadsheet, filepath)
+          }
+        }
+        NULL
+      }, lapply_variant=lapply, shuffle=FALSE, progress.output=FALSE))
+  }
+
+save_linlog_plots =
+  function(target_multicast_linlog_plotter,
+           swg_.target.multicasts,
+           swg.voxel.data,
+           t.target.specs, m.forecast.types,
+           linlog.plot.dir
+           ) {
+    linlog.plots = map_join(
+      target_multicast_linlog_plotter,
+      swg_.target.multicasts,
+      swg.voxel.data,
+      no_join(t.target.specs), no_join(m.forecast.types)
+    )
+    linlog.plot.names =
+      dimnames(linlog.plots) %>>%
+      expand.grid() %>>%
+      {do.call(paste, c(as.list(.), list(sep=".")))} %>>%
+      as.character() %>>%
+      stringr::str_replace_all("/","-") %>>%
+      structure(
+        dim=dim(linlog.plots),
+        dimnames=dimnames(linlog.plots)
+      )
+    if (!dir.exists(linlog.plot.dir)) {
+      dir.create(linlog.plot.dir, recursive=TRUE)
+    }
+    invisible(map_join(
+      function(linlog.plot, linlog.plot.name) {
+        filepath = file.path(linlog.plot.dir, paste0(linlog.plot.name,".pdf"))
+        print(filepath)
+        ggplot2::ggsave(filepath, linlog.plot + ggplot2::ggtitle(linlog.plot.name))
+        NULL
+      },
+      linlog.plots, linlog.plot.names,
+      lapply_variant=lapply,
+      progress.output=FALSE
+    ))
+  }
