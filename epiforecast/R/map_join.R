@@ -22,6 +22,147 @@
 ##' @include namesp.R
 NULL
 
+##' @export
+array_proxy = function(prefix, original.dimnamesp, indices.into.original) {
+  ## xxx avoid storing indices.into.original?
+  ## original.named.dimp = sapply(original.dimnamesp, length)
+  ## indices.into.original = array(seq_len(prod(original.named.dimp)), original.named.dimp)
+  dimnames(indices.into.original) <- original.dimnamesp
+  structure(
+    list(prefix=prefix,
+         original.dimnamesp=original.dimnamesp,
+         indices.into.original=indices.into.original),
+    class="array_proxy"
+  )
+}
+
+##' @method print array_proxy
+##' @export
+##' @export print.array_proxy
+print.array_proxy = function(x,...) {
+  x.impl = unclass(x)
+  original.dimnamesp = x.impl[["original.dimnamesp"]]
+  current.dimnamesp = dimnamesp(x.impl[["indices.into.original"]])
+  cat("array_proxy with filepath pattern ")
+  cat(paste0(x.impl[["prefix"]],paste(names(x.impl[["original.dimnamesp"]]),collapse=".")))
+  cat("\nOriginal dimnamesp:\n")
+  print(original.dimnamesp)
+  cat("Current dimnamesp:")
+  if (identical(original.dimnamesp, current.dimnamesp)) {
+    cat(" same as original\n")
+  } else {
+    cat("\n")
+    print(current.dimnamesp)
+  }
+  cat("Current length: ")
+  cat(length(x.impl[["indices.into.original"]]))
+  cat("\nFirst few (up to six) indices into original:\n")
+  print(x.impl[["indices.into.original"]][seq_len(min(6L, length(x.impl[["indices.into.original"]])))])
+}
+
+##' @method dim array_proxy
+##' @export
+##' @export dim.array_proxy
+dim.array_proxy = function(x) {
+  x.impl = unclass(x)
+  return (dim(x.impl[["indices.into.original"]]))
+}
+
+##' @method dim<- array_proxy
+##' @export
+##' @export dim<-.array_proxy
+`dim<-.array_proxy` = function(x, value) {
+  x.impl = unclass(x)
+  dim(x.impl[["indices.into.original"]]) <- value
+  structure(x.impl, class="array_proxy")
+}
+
+##' @method dimnames array_proxy
+##' @export
+##' @export dimnames.array_proxy
+dimnames.array_proxy = function(x) {
+  x.impl = unclass(x)
+  return (dimnames(x.impl[["indices.into.original"]]))
+}
+
+##' @method dimnames<- array_proxy
+##' @export
+##' @export dimnames<-.array_proxy
+`dimnames<-.array_proxy` = function(x, value) {
+  x.impl = unclass(x)
+  dimnames(x.impl[["indices.into.original"]]) <- value
+  structure(x.impl, class="array_proxy")
+}
+
+##' @method [ array_proxy
+##' @export
+##' @export [.array_proxy
+`[.array_proxy` = function(x, ...) {
+  result = unclass(x)
+  result[["indices.into.original"]] = result[["indices.into.original"]][...]
+  class(result) <- "array_proxy"
+  return (result)
+}
+
+##' @method [<- array_proxy
+##' @export
+##' @export [<-.array_proxy
+`[<-.array_proxy` = function(x, ..., value) {
+  stop ("Assignment to an array_proxy is forbidden.")
+}
+
+##' @method [[ array_proxy
+##' @export
+##' @export [[.array_proxy
+`[[.array_proxy` = function(x, ...) {
+  x.impl = unclass(x)
+  index = x.impl[["indices.into.original"]][[...]]
+  array.ind = arrayInd(index, sapply(x.impl[["original.dimnamesp"]], length))
+  ## xxx pre-compute and save original.named.dimp?
+  array.char.ind = mapply(`[[`, x.impl[["original.dimnamesp"]], array.ind)
+  array.char.ind <- gsub("/","-",array.char.ind)
+  filepath = paste0(x.impl[["prefix"]],".",paste(array.char.ind, collapse="."),".rds")
+  result = readRDS(filepath)
+  return (result)
+}
+
+##' @method [[<- array_proxy
+##' @export
+##' @export [[<-.array_proxy
+`[[<-.array_proxy` = function(x, ..., value) {
+  stop ("Assignment to an array_proxy is forbidden.")
+}
+
+##' @method as.list array_proxy
+##' @export
+##' @export as.list.array_proxy
+as.list.array_proxy = function(X, FUN, ...) {
+  stop ("as.list.array_proxy is disabled; storing results in a list may result in high memory usage.")
+}
+
+##' @method as.vector array_proxy
+##' @export
+##' @export as.vector.array_proxy
+as.vector.array_proxy = function(X, FUN, ...) {
+  stop ("as.vector.array_proxy is not implemented; storing results in a vector may result in high memory usage.")
+}
+
+##' @method length array_proxy
+##' @export
+##' @export length.array_proxy
+length.array_proxy = function(x) {
+  x.impl = unclass(x)
+  length(x.impl[["indices.into.original"]])
+}
+
+##' @method names array_proxy
+##' @export
+##' @export names.array_proxy
+names.array_proxy = function(x) {
+  x.impl = unclass(x)
+  names(x.impl[["indices.into.original"]])
+}
+
 ##' Map a function over the natural (Cartesian/other) join of array-like objects
 ##'
 ##' @param f the function to map
@@ -57,9 +198,13 @@ map_join_ = function(f, arraylike.args,
                      eltname.mismatch.behavior=c("stop","intersect"),
                      lapply_variant=parallel::mclapply, shuffle=TRUE,
                      show.progress=TRUE,
-                     cache.prefix=NULL) {
+                     cache.prefix=NULL,
+                     use.proxy=FALSE) {
   f <- match.fun(f)
   eltname.mismatch.behavior <- match.arg(eltname.mismatch.behavior)
+  if (is.null(cache.prefix) && use.proxy) {
+    stop ("Can only use a filesystem proxy if cache.prefix is specified (non-NULL).")
+  }
   cache.dir =
     if (is.null(cache.prefix)) {
       NULL
@@ -163,7 +308,11 @@ map_join_ = function(f, arraylike.args,
       }
     subresult =
       if (!is.null(cache.file) && file.exists(cache.file)) {
-        readRDS(cache.file)
+        if (use.proxy) {
+          NULL
+        } else {
+          readRDS(cache.file)
+        }
       } else {
         args =
           arraylike.args %>>%
@@ -187,8 +336,15 @@ map_join_ = function(f, arraylike.args,
         }
         computed.subresult
       }
-    subresult
+    if (use.proxy) {
+      job.i
+    } else {
+      subresult
+    }
   })
+  if (use.proxy) {
+    mode(result) <- "integer"
+  }
   if (shuffle) {
     result[perm] <- result
   }
@@ -197,6 +353,9 @@ map_join_ = function(f, arraylike.args,
     dimnames(result) <- index.dnp
   } else {
     result <- result[[1L]]
+  }
+  if (use.proxy) {
+    result <- array_proxy(cache.prefix, dimnamesp(result), result)
   }
   return (result)
 }
@@ -244,14 +403,16 @@ map_join = function(f, ...,
                     eltname.mismatch.behavior=c("stop","intersect"),
                     lapply_variant=parallel::mclapply, shuffle=TRUE,
                     show.progress=TRUE,
-                    cache.prefix=NULL) {
+                    cache.prefix=NULL,
+                    use.proxy=FALSE) {
   arraylike.args = list(...)
   eltname.mismatch.behavior <- match.arg(eltname.mismatch.behavior)
   map_join_(f, arraylike.args,
             eltname.mismatch.behavior=eltname.mismatch.behavior,
             lapply_variant=lapply_variant, shuffle=shuffle,
             show.progress=show.progress,
-            cache.prefix=cache.prefix)
+            cache.prefix=cache.prefix,
+            use.proxy=use.proxy)
 }
 
 ##' Mark an array-like or other argument to be used like a constant/scalar in \code{\link{map_join}}

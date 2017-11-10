@@ -7,7 +7,8 @@ swg.retro.voxel.data =
       get_voxel_data,
       s.retro.seasons, w.retro.model.weeks, g.epigroups,
       last.losocv.issue,
-      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data")
+      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data"),
+      use.proxy=TRUE
     )
   },
   ## issues with parallel package returning long vector results from large runs...
@@ -18,7 +19,8 @@ swg.retro.voxel.data =
       s.retro.seasons, w.retro.model.weeks, g.epigroups,
       last.losocv.issue,
       lapply_variant=lapply,
-      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data")
+      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data"),
+      use.proxy=TRUE
     )
   })
 ## swg.retro.voxel.data = map_join(
@@ -50,7 +52,8 @@ swgbf.retro.component.target.multicasts = map_join(
   ## lapply_variant=pbmcapply::pbmclapply,
   ## lapply_variant=pbmclapply_no_preschedule,
   ## lapply_variant = lapply,
-  cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts")
+  cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"),
+  use.proxy=TRUE
 )
 ## xxx loading from many cache files is slow; reduce # of cache files?
 
