@@ -240,7 +240,7 @@ map_join(
   swgtmbf.prospective.component.forecast.values[1L,1L,1L,"Season onset",,,,drop=FALSE],
   e.prospective.ensemble.weightsets[[1L]],
   eltname.mismatch.behavior="intersect",
-  lapply_variant=lapply, progress.output=FALSE
+  lapply_variant=lapply, show.progress=FALSE
 ) %>>%
   {old=.; dim(.) <- dim(old)[5:7]; dimnames(.) <- dimnames(old)[5:7]; .} %>>%
   dimnames()

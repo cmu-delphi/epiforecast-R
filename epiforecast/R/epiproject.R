@@ -71,7 +71,7 @@ target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_
     target_trajectory_preprocessor, target.specs,
     no_join(simlike),
     lapply_variant=lapply,
-    progress.output=FALSE
+    show.progress=FALSE
   )
   target.forecasts <- map_join(
     function(target.forecast) {
@@ -90,7 +90,7 @@ target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_
     no_join(voxel.data),
     target.specs, forecast.types, target.forecasts,
     lapply_variant=lapply,
-    progress.output=FALSE
+    show.progress=FALSE
   )
   structure(
     c(#voxel.data[c("season","model.week","epigroup","issue")],
@@ -139,7 +139,7 @@ target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data
     m.forecast.types, t.target.specs, no_join(voxel.data),
     target.multicast[["forecast.values"]],
     lapply_variant=lapply,
-    progress.output=FALSE
+    show.progress=FALSE
   ) %>>%
     dplyr::bind_rows()
   return (epigroup.forecast.table)
@@ -351,7 +351,7 @@ save_spreadsheets =
                 swg.voxel.data[s,w,,drop=FALSE],
               no_join(t.target.specs), no_join(m.forecast.types),
               lapply_variant=lapply, shuffle=FALSE,
-              progress.output=FALSE
+              show.progress=FALSE
               ) %>>%
               dplyr::bind_rows()
             dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir
@@ -363,7 +363,7 @@ save_spreadsheets =
           }
         }
         NULL
-      }, lapply_variant=lapply, shuffle=FALSE, progress.output=FALSE))
+      }, lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE))
   }
 
 save_linlog_plots =
@@ -401,7 +401,7 @@ save_linlog_plots =
       },
       linlog.plots, linlog.plot.names,
       lapply_variant=lapply, shuffle=FALSE,
-      progress.output=FALSE
+      show.progress=FALSE
     ))
   }
 
@@ -436,6 +436,6 @@ save_weighting_linlog_plots =
       named_array_to_name_arrayvecs(swg.voxel.data)[[3L]],
       t.target.specs %>>% named_arrayvec_to_name_arrayvec(),
       lapply_variant=lapply, shuffle=FALSE,
-      progress.output=FALSE
+      show.progress=FALSE
     )
   }

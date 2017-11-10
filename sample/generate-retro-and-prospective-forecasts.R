@@ -123,7 +123,7 @@ swgtme.retro.ensemble.forecast.values =
                        weight * forecast.value
                      },
                      swgtmbf.retro.component.forecast.values, weightset,
-                     lapply_variant=lapply, progress.output=FALSE
+                     lapply_variant=lapply, show.progress=FALSE
                    ) %>>% apply(1:5, Reduce, f=function(x,y) {
                      dplyr::coalesce(x+y, x, y)
                    })

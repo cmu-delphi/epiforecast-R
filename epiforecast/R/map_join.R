@@ -56,7 +56,7 @@ NULL
 map_join_ = function(f, arraylike.args,
                      eltname.mismatch.behavior=c("stop","intersect"),
                      lapply_variant=parallel::mclapply, shuffle=TRUE,
-                     progress.output=TRUE,
+                     show.progress=TRUE,
                      cache.prefix=NULL) {
   f <- match.fun(f)
   eltname.mismatch.behavior <- match.arg(eltname.mismatch.behavior)
@@ -142,7 +142,7 @@ map_join_ = function(f, arraylike.args,
   length.perm = length(perm)
   result = lapply_variant(seq_along(perm), function(job.i) {
     result.elt.i = perm[[job.i]]
-    if (progress.output && job.i == signif(job.i, 1L)) {
+    if (show.progress && job.i == signif(job.i, 1L)) {
       print(paste0(job.i,"/",length.perm))
     }
     indices = stats::setNames(as.vector(arrayInd(result.elt.i, index.dimension.lengths)), names(index.dimension.lengths))
@@ -243,14 +243,14 @@ map_join_ = function(f, arraylike.args,
 map_join = function(f, ...,
                     eltname.mismatch.behavior=c("stop","intersect"),
                     lapply_variant=parallel::mclapply, shuffle=TRUE,
-                    progress.output=TRUE,
+                    show.progress=TRUE,
                     cache.prefix=NULL) {
   arraylike.args = list(...)
   eltname.mismatch.behavior <- match.arg(eltname.mismatch.behavior)
   map_join_(f, arraylike.args,
             eltname.mismatch.behavior=eltname.mismatch.behavior,
             lapply_variant=lapply_variant, shuffle=shuffle,
-            progress.output=progress.output,
+            show.progress=show.progress,
             cache.prefix=cache.prefix)
 }
 
