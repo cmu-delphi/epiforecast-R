@@ -313,3 +313,11 @@ save_linlog_plots(
   t.target.specs, m.forecast.types,
   "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-linlog.plots-percent"
 )
+
+save_weighting_linlog_plots(
+  e.prospective.ensemble.weightsets[["target-and-9time-based"]],
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-weighting-plots"
+)

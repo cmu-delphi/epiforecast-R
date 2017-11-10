@@ -54,7 +54,7 @@ NULL
 ##' @seealso no_join
 ##' @export
 map_join_ = function(f, arraylike.args,
-                     eltname.mismatch.behavior=c("error","intersect"),
+                     eltname.mismatch.behavior=c("stop","intersect"),
                      lapply_variant=parallel::mclapply, shuffle=TRUE,
                      progress.output=TRUE,
                      cache.prefix=NULL) {
@@ -92,7 +92,7 @@ map_join_ = function(f, arraylike.args,
         ## no previous arg with this dimension; make dimension with these eltnames
         index.dnp[[dimension.name]] <- dimension.eltnames
       } else if (length(existing.eltnames) != length(dimension.eltnames)) {
-        if (eltname.mismatch.behavior == "error" ||
+        if (eltname.mismatch.behavior == "stop" ||
             eltname.mismatch.behavior == "intersect" &&
             (all(existing.eltnames=="") ||
              all(dimension.eltnames==""))
@@ -112,7 +112,7 @@ map_join_ = function(f, arraylike.args,
           ## no need to do anything; should use existing eltnames
         } else {
           ## eltnames's don't match, and not because one was actually not named.
-          if (eltname.mismatch.behavior == "error") {
+          if (eltname.mismatch.behavior == "stop") {
             stop (sprintf('dimnames associated with dimension named "%s" do not match.  Associated dimnames in arg %d (namep\'d "%s") (dimension %d): %s.  Previous associated dimnames: %s.',
                           dimension.name, arraylike.arg.i, arraylike.arg.name, arg.dimension.i, paste(utils::capture.output(dput(dimension.eltnames)), collapse=" "), paste(utils::capture.output(dput(existing.eltnames)), collapse=" ")))
           } else if (eltname.mismatch.behavior == "intersect") {
@@ -241,7 +241,7 @@ map_join_ = function(f, arraylike.args,
 ##' @rdname map_join
 ##' @export
 map_join = function(f, ...,
-                    eltname.mismatch.behavior=c("error","intersect"),
+                    eltname.mismatch.behavior=c("stop","intersect"),
                     lapply_variant=parallel::mclapply, shuffle=TRUE,
                     progress.output=TRUE,
                     cache.prefix=NULL) {
@@ -267,6 +267,139 @@ no_join = function(x) {
   structure(list(x), class="no_join")
 }
 
+extract_partial_= function(arraylike, index.sets,
+                           dimension.missing.behavior=c("stop", "ignore"),
+                           index.set.mismatch.behavior=c("stop", "intersect"),
+                           drop=FALSE) {
+  dimension.missing.behavior <- match.arg(dimension.missing.behavior)
+  index.set.mismatch.behavior <- match.arg(index.set.mismatch.behavior)
+  ## Handle cases where there are multiple index.set's for the same dimension:
+  index_set_concord =
+    switch(index.set.mismatch.behavior,
+           stop=function(dimension.index.sets) {
+             unique.dimension.index.sets = unique(dimension.index.sets)
+             if (length(unique.dimension.index.sets) != 1L) {
+               if (length(unique(sapply(unique.dimension.index.sets, class))) != 1L) {
+                 stop ("Multiple classes of index sets provided for the same dimension; not supported.")
+               } else {
+                 stop ("Multiple index sets provided for the same dimension, but they are not all the same.")
+               }
+             }
+             unique.dimension.index.sets[[1L]]
+           },
+           intersect=function(dimension.index.sets) {
+             if (length(unique(sapply(dimension.index.sets, class))) != 1L) {
+                 stop ("Multiple classes of index sets provided for the same dimension; not supported.")
+             }
+             Reduce(intersect, dimension.index.sets)
+           },
+           stop ("Unrecognized value of index.set.mismatch.behavior.")
+           )
+  simple.index.sets =
+    split(index.sets, names(index.sets)) %>>%
+    lapply(index_set_concord)
+  dnp = dimnamesp(arraylike)
+  extract.index.args = rep(list(TRUE), length(dnp))
+  matched.dimension.is = match(names(simple.index.sets), names(dnp))
+  if (any(is.na(matched.dimension.is))) {
+    if (dimension.missing.behavior=="stop") {
+      stop ("Dimension name specified in index.sets not present in dimnames(arraylike).")
+    } else if (dimension.missing.behavior=="ignore") {
+      retain.simple.index.set = !is.na(matched.dimension.is )
+      simple.index.sets <- simple.index.sets[retain.simple.index.set]
+      matched.dimension.is <- matched.dimension.is[retain.simple.index.set]
+    } else {
+      stop ("Unrecognized value for dimension.missing.behavior.")
+    }
+  }
+  extract.index.args[match(names(simple.index.sets), names(dnp))] <- simple.index.sets
+  do.call(`[`, c(list(arraylike), extract.index.args, list(drop=drop)))
+}
+## library("pipeR")
+## array(1:24,2:4) %>>%
+##   with_dimnames(list(A=letters[1:2], B=NULL, C=NULL)) %>>%
+##   extract_partial_(list(A="a",B=2:3,B=2:3))
+## array(1:24,2:4) %>>%
+##   with_dimnames(list(A=letters[1:2], B=NULL, C=NULL)) %>>%
+##   extract_partial_(list(A="a",B=2:3,B=1:2), index.set.mismatch.behavior="intersect")
+## array(1:24,2:4) %>>%
+##   with_dimnames(list(A=letters[1:2], B=NULL, C=NULL)) %>>%
+##   extract_partial_(list(A="a",B=2:3,D=1), dimension.missing.behavior="ignore")
+
+extract_along_= function(arraylike, along.arraylikes) {
+  index.sets = dplyr::combine(lapply(along.arraylikes, dimnamesp))
+  if (any(sapply(index.set, function(index.set) {
+    all(index.set=="")
+  }))) {
+    stop ("All dimensions of along.arraylikes must be nontrivially named.")
+  }
+  return (extract_partial_(arraylike, index.sets))
+}
+
+select_dims = function(arraylike, dimensions,
+                       select.behavior=c("retain", "drop"),
+                       dimension.missing.behavior=c("stop", "ignore")) {
+  select.behavior <- match.arg(select.behavior)
+  dimension.missing.behavior <- match.arg(dimension.missing.behavior)
+  if (is.character(dimensions)) {
+    dimensions <- match(dimensions, dimnamesnamesp(arraylike))
+    if (any(is.na(dimensions))) {
+      if (dimension.missing.behavior=="stop") {
+        stop ("Dimension name specified not present in dimnamesnamesp(arraylike).")
+      } else if (dimension.missing.behavior=="ignore") {
+        dimensions <- dimensions[!is.na(dimensions)]
+      } else {
+        stop ("Unrecognized value for dimension.missing.behavior.")
+      }
+    }
+  } else if (is.logical(dimensions)) {
+    dimensions <- which(dimensions)
+  } else if (is.numeric(dimensions)){
+    if (any(is.na(dimensions) | ! dimensions %in% seq_len(ndimp(arraylike)))) {
+      stop ("All numeric dimension indices must be in seq_len(ndimp(arraylike)).")
+    }
+  } else {
+    stop ("Unsupported class for argument =dimensions=.")
+  }
+  dimensions <- unique(dimensions)
+  drop.dimensions =
+    switch(select.behavior,
+           retain=setdiff(seq_len(ndimp(arraylike)), dimensions),
+           drop=dimensions,
+           stop ("Unrecognized value for select.behavior."))
+  if (any(dimp(arraylike)[drop.dimensions] != 1L)) {
+    stop ("All dimensions to drop must be of size 1.")
+  }
+  original = arraylike
+  new.dimp =
+    if (length(drop.dimensions) == 0L) {
+      dimp(original)
+    } else {
+      dim(original)[-drop.dimensions]
+    }
+  if (length(new.dimp) == 0L) {
+    dim(arraylike) <- NULL
+  } else {
+    dim(arraylike) <- new.dimp
+    if (length(drop.dimensions) == 0L) {
+      dimnames(arraylike) <- dimnamesp(original)
+    } else {
+      dimnames(arraylike) <- dimnamesp(original)[-drop.dimensions]
+    }
+    if (select.behavior == "retain") {
+      arraylike <- aperm(arraylike, order(dimensions))
+    }
+  }
+  return (arraylike)
+}
+## select_dims(
+##   with_dimnamesnames(structure(1, dim=rep(1,5)), letters[1:5])
+## , letters[c(1,3,2,4,5)]) %>>%
+##   dimnamesnamesp()
+
 ## todo make map_join work with data.frame inputs as well?
 ## todo side effect only variant
+## todo multiple-cache version + special output class reading from cache rather than storing in memory
 ## todo check intersect behavior --- are the correct things actually selected and lined up?
+## todo convenience variants of this for small vs. large operations?
+## todo shorthand for . %>% apply(., seq_len(ndimp(.)), f, ...) plus special case for dim-less things? (and/or for vapply)

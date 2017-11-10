@@ -145,48 +145,98 @@ target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data
   return (epigroup.forecast.table)
 }
 
+multi_spreadsheet_linlog_plot = function(multi.spreadsheet, binlabel_to_x, point_to_x, group.colname, weight.colname=NULL) {
+  multi.spreadsheet %>>%
+    dplyr::filter(Type == "Bin") %>>%
+    dplyr::mutate_at(dplyr::vars(Bin_start_incl, Bin_end_notincl), binlabel_to_x) %>>%
+    dplyr::mutate(Scale = "Linear") %>>%
+    dplyr::bind_rows(dplyr::mutate(., Value=log(Value), Scale="Log")) %>>%
+    ggplot2::ggplot(ggplot2::aes_string(
+                               x="Bin_start_incl", y="Value",
+                               size=weight.colname,
+                               colour=group.colname, fill=group.colname, group=group.colname)) +
+    ggplot2::facet_grid(Scale ~ ., scales="free_y") +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(
+               ggplot2::aes(x=Value, y=0),
+               multi.spreadsheet %>>%
+               dplyr::filter(Type == "Point") %>>%
+               dplyr::mutate(Value = point_to_x(Value)) %>>%
+               {.}
+             ) +
+    ggplot2::scale_size(range=c(1,3)) +
+    ggplot2::theme(legend.position=c(1,1), legend.justification=c(1,1))
+}
+
 target_multicast_week_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
   n.weeks.in.season = length(voxel.data[["target.settings"]][["is.inseason"]])
   ##
   epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types)
   ##
   epigroup.forecast.table %>>%
-    dplyr::filter(Type == "Bin", Unit == "week") %>>%
-    dplyr::mutate_at(dplyr::vars(Bin_start_incl, Bin_end_notincl), EWnone_to_MWplus1, n.weeks.in.season) %>>%
-    dplyr::mutate(Scale = "Linear") %>>%
-    dplyr::bind_rows(dplyr::mutate(., Value=log(Value), Scale="Log")) %>>%
-    ggplot2::ggplot(ggplot2::aes(x=Bin_start_incl, y=Value,
-                                 colour=Target, fill=Target, group=Target)) +
-    ggplot2::facet_grid(Scale ~ ., scales="free_y") +
-    ggplot2::geom_point(
-               ggplot2::aes(x=Value, y=0),
-               epigroup.forecast.table %>>%
-               dplyr::filter(Type == "Point", Unit == "week") %>>%
-               dplyr::mutate(Value = EW_NA_to_MWplus1(Value, n.weeks.in.season)) %>>%
-               {.}
-             ) +
-    ggplot2::theme(legend.position=c(1,1), legend.justification=c(1,1)) +
-    ggplot2::geom_line()
+    dplyr::filter(Unit == "week") %>>%
+    multi_spreadsheet_linlog_plot(
+      function(binlabel) {
+        binlabel %>>% EWnone_to_MWplus1(n.weeks.in.season)
+      },
+      function(point) {
+        point %>>% EW_NA_to_MWplus1(n.weeks.in.season)
+      },
+      "Target")
 }
 
 target_multicast_percent_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
   epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types)
   ##
   epigroup.forecast.table %>>%
-    dplyr::filter(Type == "Bin", Unit == "percent") %>>%
-    dplyr::mutate_at(dplyr::vars(Bin_start_incl, Bin_end_notincl), as.numeric) %>>%
-    dplyr::mutate(Scale = "Linear") %>>%
-    dplyr::bind_rows(dplyr::mutate(., Value=log(Value), Scale = "Log")) %>>%
-    ggplot2::ggplot(ggplot2::aes(x=Bin_start_incl, y=Value,
-                                 colour=Target, fill=Target, group=Target)) +
-    ggplot2::facet_grid(Scale ~ ., scales="free_y") +
-    ggplot2::geom_point(
-               ggplot2::aes(x=Value, y=0),
-               epigroup.forecast.table %>>%
-               dplyr::filter(Type == "Point", Unit == "percent")
-             ) +
-    ggplot2::theme(legend.position=c(1,1), legend.justification=c(1,1)) +
-    ggplot2::geom_line()
+    dplyr::filter(Unit == "percent") %>>%
+    multi_spreadsheet_linlog_plot(as.numeric,
+                                 identity,
+                                 "Target")
+}
+
+target_multicast_combined_target_plot = function(target.multicasts, voxel.data, t.target.specs, m.forecast.types, plot.Target, Mtm.weights=NULL) {
+  n.weeks.in.season = length(voxel.data[["target.settings"]][["is.inseason"]])
+  Unit = t.target.specs[[plot.Target]][["unit"]][["Unit"]]
+  if (Unit == "week") {
+    binlabel_to_x = function(binlabel) {
+      binlabel %>>% EWnone_to_MWplus1(n.weeks.in.season)
+    }
+    point_to_x = function(point) {
+      point %>>% EW_NA_to_MWplus1(n.weeks.in.season)
+    }
+  } else if (Unit == "percent") {
+    binlabel_to_x = as.numeric
+    point_to_x = identity
+  } else {
+    stop ("Missing or unrecognized Unit.")
+  }
+  target.spreadsheet =
+    lapply(target.multicasts,
+           target_multicast_epigroup_forecast_table,
+           voxel.data, t.target.specs, m.forecast.types) %>>%
+    dplyr::bind_rows(.id="Model") %>>%
+    {
+      if (is.null(Mtm.weights)) {
+        .
+      } else {
+        . %>>%
+          dplyr::left_join(
+                   reshape2::melt(Mtm.weights, value.name="weight") %>>%
+                   dplyr::mutate_if(is.factor, as.character)
+                 , by=c("Model","Target","Type")) %>>%
+          dplyr::bind_rows(
+                   . %>>%
+                   dplyr::group_by_(.dots=colnames(.)[!colnames(.) %in% c("Model","Value","weight")]) %>>%
+                   dplyr::summarize(Value=weighted.mean(Value, weight)) %>>%
+                   dplyr::ungroup() %>>%
+                   dplyr::mutate(Model="Selected Ensemble", weight=1)
+                 )
+      }
+    } %>>%
+    dplyr::filter(Target == plot.Target)
+  multi_spreadsheet_linlog_plot(target.spreadsheet, binlabel_to_x, point_to_x, "Model",
+                                if (is.null(Mtm.weights)) NULL else "weight")
 }
 
 get_ensemble_weightset = function(swgtmbf.forecast.values, swgtm.observation.values, forecast.types, weighting.scheme.indexer.list) {
@@ -241,6 +291,32 @@ get_ensemble_weightset = function(swgtmbf.forecast.values, swgtm.observation.val
     {.}
 }
 
+ensemble_and_components_linlog_plot = function(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target) {
+  swgbf.component.target.multicasts.slice = swgbf.component.target.multicasts[s,w,g,,,drop=FALSE]
+  bftm.weights = weightset %>>%
+    extract_partial_(c(dimnames(swgbf.component.target.multicasts.slice),
+                       Target=Target,
+                       dimnames(m.forecast.types)),
+                     dimension.missing.behavior="ignore") %>>%
+    select_dims(c("Backcaster","Forecaster","Target","Type"))
+  bMtm.weights = bftm.weights
+  names(dimnames(bMtm.weights))[[2L]] <- "Model"
+  Mtm.weights = select_dims(bMtm.weights, 1L, "drop")
+  plt = target_multicast_combined_target_plot(
+    swgbf.component.target.multicasts.slice %>>% select_dims("Forecaster"),
+    voxel.data,
+    t.target.specs, m.forecast.types,
+    Target,
+    Mtm.weights
+  ) +
+    ggplot2::theme(legend.position="right")
+  tbl = weights %>>%
+    {structure(sprintf("%0.02f",.), dim=dim(.), dimnames=dimnames(.))} %>>%
+    R.utils::wrap(list(1:2,3:4)) %>>%
+    gridExtra::tableGrob()
+  gridExtra::grid.arrange(plt, tbl, heights=c(2,1))
+}
+
 get_evaluation = function(forecast.value, observation.value, forecast.type) {
   forecast.type[["evaluate_forecast_value"]](forecast.value, observation.value)
 }
@@ -274,7 +350,7 @@ save_spreadsheets =
                 swg_.target.multicasts[s,w,,...,drop=FALSE],
                 swg.voxel.data[s,w,,drop=FALSE],
               no_join(t.target.specs), no_join(m.forecast.types),
-              lapply_variant=lapply,
+              lapply_variant=lapply, shuffle=FALSE,
               progress.output=FALSE
               ) %>>%
               dplyr::bind_rows()
@@ -324,7 +400,40 @@ save_linlog_plots =
         NULL
       },
       linlog.plots, linlog.plot.names,
-      lapply_variant=lapply,
+      lapply_variant=lapply, shuffle=FALSE,
       progress.output=FALSE
     ))
+  }
+
+save_weighting_linlog_plots =
+  function(weighset,
+           swgbf.component.target.multicasts,
+           swg.voxel.data,
+           t.target.specs, m.forecast.types,
+           plot.dir
+           ) {
+    if (!dir.exists(plot.dir)) {
+      dir.create(plot.dir, recursive=TRUE)
+    }
+    swgt.plots = map_join(
+      function(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target) {
+        filename = paste0("weighting_linlog_",paste(s,w,g,Target,sep=".")) %>>%
+          stringr::str_replace_all("/","-")
+        filepath = file.path(plot.dir, filename)
+        print(filepath)
+        pdf(filepath, width=10, height=10)
+        ensemble_and_components_linlog_plot(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target)
+        dev.off()
+      },
+      no_join(weightset),
+      no_join(swgbf.component.target.multicasts),
+      swg.voxel.data,
+      no_join(t.target.specs), no_join(m.forecast.types),
+      named_array_to_name_arrayvecs(swg.voxel.data)[[1L]],
+      named_array_to_name_arrayvecs(swg.voxel.data)[[2L]],
+      named_array_to_name_arrayvecs(swg.voxel.data)[[3L]],
+      t.target.specs %>>% named_arrayvec_to_name_arrayvec(),
+      lapply_variant=lapply, shuffle=FALSE,
+      progress.output=FALSE
+    )
   }
