@@ -291,7 +291,7 @@ get_ensemble_weightset = function(swgtmbf.forecast.values, swgtm.observation.val
     {.}
 }
 
-ensemble_and_components_linlog_plot = function(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target) {
+ensemble_and_components_linlog_grob = function(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target) {
   swgbf.component.target.multicasts.slice = swgbf.component.target.multicasts[s,w,g,,,drop=FALSE]
   bftm.weights = weightset %>>%
     extract_partial_(c(dimnames(swgbf.component.target.multicasts.slice),
@@ -310,11 +310,11 @@ ensemble_and_components_linlog_plot = function(weightset, swgbf.component.target
     Mtm.weights
   ) +
     ggplot2::theme(legend.position="right")
-  tbl = weights %>>%
+  tbl = bftm.weights %>>%
     {structure(sprintf("%0.02f",.), dim=dim(.), dimnames=dimnames(.))} %>>%
     R.utils::wrap(list(1:2,3:4)) %>>%
     gridExtra::tableGrob()
-  gridExtra::grid.arrange(plt, tbl, heights=c(2,1))
+  gridExtra::arrangeGrob(ggplot2::ggplotGrob(plt), tbl, heights=c(2,1))
 }
 
 get_evaluation = function(forecast.value, observation.value, forecast.type) {
@@ -406,7 +406,7 @@ save_linlog_plots =
   }
 
 save_weighting_linlog_plots =
-  function(weighset,
+  function(weightset,
            swgbf.component.target.multicasts,
            swg.voxel.data,
            t.target.specs, m.forecast.types,
@@ -417,12 +417,14 @@ save_weighting_linlog_plots =
     }
     swgt.plots = map_join(
       function(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target) {
-        filename = paste0("weighting_linlog_",paste(s,w,g,Target,sep=".")) %>>%
+        filename = paste0("weighting_linlog_",paste(s,w,g,Target,sep="."),".pdf") %>>%
           stringr::str_replace_all("/","-")
         filepath = file.path(plot.dir, filename)
         print(filepath)
-        pdf(filepath, width=10, height=10)
-        ensemble_and_components_linlog_plot(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target)
+        pdf(filepath, width=10, height=10, onefile=FALSE) # onefile=FALSE makes this work via ssh
+        grob = ensemble_and_components_linlog_grob(weightset, swgbf.component.target.multicasts, voxel.data, t.target.specs, m.forecast.types, s,w,g, Target)
+        grid::grid.newpage()
+        grid::grid.draw(grob)
         dev.off()
       },
       no_join(weightset),

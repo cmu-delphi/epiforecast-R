@@ -315,7 +315,7 @@ save_linlog_plots(
 )
 
 save_weighting_linlog_plots(
-  e.prospective.ensemble.weightsets[["target-and-9time-based"]],
+  e.prospective.ensemble.weightsets[["target-9time-based"]],
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
