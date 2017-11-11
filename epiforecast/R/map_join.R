@@ -44,7 +44,7 @@ print.array_proxy = function(x,...) {
   original.dimnamesp = x.impl[["original.dimnamesp"]]
   current.dimnamesp = dimnamesp(x.impl[["indices.into.original"]])
   cat("array_proxy with filepath pattern ")
-  cat(paste0(x.impl[["prefix"]],paste(names(x.impl[["original.dimnamesp"]]),collapse=".")))
+  cat(paste0(x.impl[["prefix"]],".",paste(names(x.impl[["original.dimnamesp"]]),collapse=".")))
   cat("\nOriginal dimnamesp:\n")
   print(original.dimnamesp)
   cat("Current dimnamesp:")
@@ -343,6 +343,7 @@ map_join_ = function(f, arraylike.args,
     }
   })
   if (use.proxy) {
+    ## xxx if there are errors, they are lost here...
     mode(result) <- "integer"
   }
   if (shuffle) {
