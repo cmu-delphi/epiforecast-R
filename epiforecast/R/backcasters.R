@@ -2,9 +2,13 @@
 backfill_ignorant_backsim = function(voxel.data, signal.name) {
   old.dat = voxel.data[["epidata.df"]] %>>%
     dplyr::filter(season != voxel.data[["season"]]) %>>%
-    dplyr::group_by(season) %>>%
-    {.[!any(is.na(.[[signal.name]])),]} %>>%
-    dplyr::ungroup() %>>%
+    split(.[["season"]]) %>>%
+    magrittr::extract(
+                sapply(., function(season.df) {
+                  !any(is.na(season.df[[signal.name]]))
+                })
+              ) %>>%
+    dplyr::bind_rows() %>>%
     {split(.[[signal.name]], .[["Season"]])}
   new.dat = voxel.data[["epidata.df"]] %>>%
     dplyr::filter(season == voxel.data[["season"]]) %>>%
