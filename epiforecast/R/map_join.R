@@ -337,7 +337,7 @@ map_join_ = function(f, arraylike.args,
         computed.subresult
       }
     if (use.proxy) {
-      job.i
+      result.elt.i
     } else {
       subresult
     }
