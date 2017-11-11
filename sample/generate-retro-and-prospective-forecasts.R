@@ -23,14 +23,6 @@ swg.retro.voxel.data =
       use.proxy=TRUE
     )
   })
-## swg.retro.voxel.data = map_join(
-##   get_voxel_data,
-##   s.retro.seasons, w.retro.model.weeks, g.epigroups,
-##   last.losocv.issue,
-##   lapply_variant=pbmclapply_no_preschedule,
-##   cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data")
-## )
-## xxx this (retro voxel data) is going to consume a bunch of memory...
 
 ## CV backcasts
 print("CV: generate backcasts")
@@ -49,8 +41,6 @@ swgbf.retro.component.target.multicasts = map_join(
   target_trajectory_preprocessor,
   no_join(t.target.specs),
   no_join(m.forecast.types),
-  ## lapply_variant=pbmcapply::pbmclapply,
-  ## lapply_variant=pbmclapply_no_preschedule,
   ## lapply_variant = lapply,
   cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"),
   use.proxy=TRUE

@@ -83,7 +83,8 @@ target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_
       target.forecast
     },
     target.forecasts,
-    lapply_variant=lapply
+    lapply_variant=lapply, shuffle=FALSE,
+    show.progress=FALSE
   )
   forecast.values = map_join(
     forecast_value2,
