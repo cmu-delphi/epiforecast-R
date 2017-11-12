@@ -67,6 +67,62 @@ fluview.first.two.current.dfs = fluview.all.location.epidata.names %>>%
         .
       }
   })
+fluview.location.epidata.names = fluview.all.location.epidata.names[1:2]
+fluview.location.spreadsheet.names = fluview.all.location.spreadsheet.names[1:2]
+g.fluview.current.dfs =
+  fluview.first.two.current.dfs[fluview.location.spreadsheet.names ]
+g.fluview.history.dfs =
+  g.fluview.current.dfs
+
+get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
+  current.epidata.history.df = g.fluview.history.dfs[[epigroup]][
+    c("season","model.week","epiweek","issue","lag","wili")
+  ]
+  issue = season_model.week_to_epiweek(
+    season, model.week, usa.flu.first.week.of.season, 3L)
+  forward.looking.history.df = mimicPastHistoryDF(
+    current.epidata.history.df,
+    "issue", issue,
+    "epiweek", issue)
+  losocv.extra.history.df = mimicPastHistoryDF(
+    current.epidata.history.df,
+    "issue", last.losocv.issue,
+    "epiweek", last.losocv.issue) %>>%
+    {.[.[["season"]] > season,]}
+  epidata.history.df =
+    dplyr::bind_rows(losocv.extra.history.df, forward.looking.history.df)
+  forward.looking.epidata.df = mimicPastEpidataDF(
+    forward.looking.history.df, issue
+  )
+  losocv.extra.epidata.df = mimicPastEpidataDF(
+    losocv.extra.history.df, last.losocv.issue
+  )
+  epidata.df =
+    dplyr::bind_rows(losocv.extra.epidata.df, forward.looking.epidata.df)
+  baseline = 0
+  n.weeks.in.season = lastWeekNumber(season, 3L)
+  is.inseason = usa_flu_inseason_flags(n.weeks.in.season)
+  forecast.time = model_week_to_time(
+    model.week, usa.flu.first.week.of.season)
+  return (list(
+    season = season,
+    model.week = model.week,
+    epigroup = epigroup,
+    issue = issue,
+    epidata.df = epidata.df,
+    epidata.history.df = epidata.history.df,
+    baseline = baseline,
+    target.settings = list(
+      baseline = baseline,
+      is.inseason = is.inseason,
+      forecast.time = forecast.time
+    ),
+    ## todo move to setting/task/dataset?:
+    first.week.of.season = usa.flu.first.week.of.season
+  ))
+}
+
+signal.name = "wili" # xxx should use "ili" rather than "wili" (above as well)
 
 current.issue.sw =
   fluview.first.two.current.dfs[[1L]] %>>%
@@ -80,6 +136,10 @@ s.prospective.seasons = current.issue.sw[["season"]] %>>%
 w.prospective.model.weeks = current.issue.sw[["model.week"]] %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
+g.epigroups = fluview.all.location.spreadsheet.names[1:2] %>>%
+  stats::setNames(.) %>>%
+  with_dimnamesnames("Location")
+last.losocv.issue = 201739L
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
 m.forecast.types = flusight2016.proxy.forecast.types %>>%
@@ -126,7 +186,7 @@ map_join_(
     readr::write_csv(combined.df, file.path(out.dir, out.filename))
     NULL
   },
-  lapply_variant=lapply, shuffle=FALSE, progress.output=FALSE)
+  lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE)
 
 ## spreadsheet.to.check = map.join.df.result[[1L]] %>>% readr::type_convert()
 ## spreadsheet.template = readr::read_csv("~/files/nosync/epiforecast-epiproject/stateili_submission_template_1718_v3.csv")
