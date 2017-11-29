@@ -233,18 +233,6 @@ epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-ru
 source("generate-retro-and-prospective-forecasts.R")
 
 ## Output prospective forecast spreadsheets, plots:
-map_join(
-  function(forecast.value, weight) {
-    weight
-  },
-  swgtmbf.prospective.component.forecast.values[1L,1L,1L,"Season onset",,,,drop=FALSE],
-  e.prospective.ensemble.weightsets[[1L]],
-  eltname.mismatch.behavior="intersect",
-  lapply_variant=lapply, show.progress=FALSE
-) %>>%
-  {old=.; dim(.) <- dim(old)[5:7]; dimnames(.) <- dimnames(old)[5:7]; .} %>>%
-  dimnames()
-
 collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-submission-2"
 if (!dir.exists(collab.ensemble.retro.dir)) {
   dir.create(collab.ensemble.retro.dir)

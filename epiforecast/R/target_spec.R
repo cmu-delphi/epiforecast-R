@@ -181,6 +181,9 @@ week.unit = list(
   },
   from_point = function(points, is.inseason, ...) {
     time_from_point(points, is.inseason, na.representation="none", ...)
+  },
+  shift_for_smoothing = function(target.values, ...) {
+    target.values + 0.5
   }
 )
 
@@ -190,7 +193,10 @@ percentage.unit = list(
   to_binlabelend = function(x, ...) as.character(x, ...),
   from_binlabel = function(x, ...) as.numeric(x, ...),
   to_point = function(x, ...) x,
-  from_point = function(x, ...) as.numeric(x)
+  from_point = function(x, ...) as.numeric(x),
+  shift_for_smoothing = function(x, ...) {
+    x + 0.05
+  }
 )
 
 flusight2016.onset.target.spec = list(

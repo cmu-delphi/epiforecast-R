@@ -200,17 +200,18 @@ distr.logscore.forecast.type = list(
     if (smooth.sim.targets) {
       ## separate out non-NA target values and weights:
       na.bin.weight = sum(target.weights[target.value.is.na])
-      non.na.target.values = target.values[!target.value.is.na]
+      non.na.target.values.original = target.values[!target.value.is.na]
+      non.na.target.values.to.smooth = target.spec[["unit"]][["shift_for_smoothing"]](non.na.target.values.original)
       non.na.target.weights = target.weights[!target.value.is.na]
       ## bandwidth estimate for weighted data (density by default ignores the
       ## weights in the bandwidth estimate):
-      bw = weighted.bw.nrd0ish(non.na.target.values, non.na.target.weights)
+      bw = weighted.bw.nrd0ish(non.na.target.values.to.smooth, non.na.target.weights)
       ## kernel density estimate at function-determined points (=ks= package has
       ## a nice interface, but uses =KernSmooth::dpik= by default for bandwidth
       ## selection, which, like the default for =density=, ignores weights, and
       ## needs settings specified to avoid issues when a lot of target weight is
       ## highly concentrated on a single target value; and produces segfaults):
-      pdf.fit = stats::density(non.na.target.values,
+      pdf.fit = stats::density(non.na.target.values.to.smooth,
                                bw=bw,
                                weights=non.na.target.weights %>>%
                                  magrittr::divide_by(sum(.)))
