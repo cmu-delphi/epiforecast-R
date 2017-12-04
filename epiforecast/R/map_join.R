@@ -288,7 +288,7 @@ map_join_ = function(f, arraylike.args,
   result = lapply_variant(seq_along(perm), function(job.i) {
     result.elt.i = perm[[job.i]]
     if (show.progress && job.i == signif(job.i, 1L)) {
-      print(paste0(job.i,"/",length.perm))
+      print(paste0(job.i,"/",length.perm," ",Sys.time()))
     }
     indices = stats::setNames(as.vector(arrayInd(result.elt.i, index.dimension.lengths)), names(index.dimension.lengths))
     cache.file =
