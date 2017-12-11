@@ -200,7 +200,7 @@ twkde.sim = function(full.dat,
                      max.n.sims=1000L,
                      decay.factor=0.7,
                      diff.decay.factor=0.5,
-                     max.shifts=c(rep(10,20),10:1,rep(0,3),1:10,rep(10,10)),
+                     max.shifts=c(rep(10L,10L),10:1,rep(0L,3L),1:10,rep(10L,20L)),
                      shift.decay.factor = 0.7,
                      tradeoff.weights=c(0.5, 0.25, 0.25, 0.5)) {
   ## extract historical data and future data from full.dat
