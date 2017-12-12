@@ -103,7 +103,8 @@ g.nowcast.current.dfs = fluview.location.epidata.names %>>%
     first.week.of.season=usa.flu.first.week.of.season,
     cache.file.prefix=file.path(epidata.cache.dir,paste0("nowcast_",fluview.location.epidata.name))
   ) %>>%
-    dplyr::mutate(issue = add_epiweek_integer(epiweek, -nowcast.lead))
+    dplyr::mutate(issue = add_epiweek_integer(epiweek, -nowcast.lead)) %>>%
+    dplyr::mutate(lag = epiweek - issue)
 })
 
 epigroup.colname = "Location"
@@ -169,11 +170,11 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
     ## epidata.history.df = epidata.history.df,
     ## nowcast.df = nowcast.df,
     epidata.dfs = list(
-      fluview=fluview.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
+      fluview=epidata.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
       nowcast=nowcast.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag))
     ),
     epidata.history.dfs = list(
-      fluview=fluview.history.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
+      fluview=epidata.history.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
       nowcast=nowcast.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag))
     ),
     baseline = baseline,
@@ -232,9 +233,9 @@ g.epigroups = fluview.location.spreadsheet.names %>>%
   with_dimnamesnames("Location")
 last.losocv.issue = 201039L
 b.backcasters = list(
-  ignorant=backfill_ignorant_backsim#,
-  ## quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
-  ## quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
+  ignorant=backfill_ignorant_backsim,
+  quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
+  quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
