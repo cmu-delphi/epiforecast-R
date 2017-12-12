@@ -314,11 +314,11 @@ b.backcasters = list(
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
   "Delphi_Uniform"=uniform_forecast,
-  "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
-  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
-    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
-           control.list=get_eb_control_list(max.match.length=4L))
-  },
+  ## "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
+  ## "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
+  ##   eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+  ##          control.list=get_eb_control_list(max.match.length=4L))
+  ## },
   "Delphi_BasisRegression_PackageDefaults"=br.sim,
   "Delphi_DeltaDensity_RealignWindows"=function(full.dat, baseline=0, max.n.sims=1000L) {
     twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims, max.shifts=c(rep(10L,1L),10:1,rep(0L,3L),1:10,rep(10L,7L)))
