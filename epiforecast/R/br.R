@@ -99,13 +99,13 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
     b = splines::bs(x, df=df)
     ytil = y                # On obs time points, just use current y
     zmat = matrix(0,n,ns-1) # On unobs time points, use past data
-  
+
     ## Creating pseudo-observations from past seasons
     for (i in (1:(ns-1))) {
       yp = full.dat[[i]]
       xp = seq_along(yp)
       yp = approx(xp,yp,xout=x,rule=2)$y
-  
+
       if (length(obs) > 0 && scale.method != "none") {
         ## fixme negative scale factors
         ## Scale past signals to have the right max value on the
@@ -130,17 +130,17 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
           scale.factor <- max(1/max.scale.factor, min(max.scale.factor, scale.factor))
           yp[ii] <- (yp[ii]-baseline) * scale.factor + baseline
         }
-  
+
         ## Shift past signals to have the right arg max on the obs time points:
         del = which.max(y[obs])-which.max(yp[obs])
         yp = approx(x+del,yp,xout=x,rule=2)$y
       }
-  
+
       zmat[,i] = yp
     }
     z = rowMeans(zmat)
     ytil[-obs] = z[-obs]
-  
+
     ## Don't smooth in weird cases that cv.glmnet cannot handle.
     if (!smooth) return (ytil)
     if (any(is.na(ytil))) { warning("any(is.na(ytil))")  }
@@ -168,7 +168,8 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
     if (any(result>100)) {
       warning("any(result>100)")
       if (any(ytil>100))
-        stop("any(ytil>100)")
+        ## stop("any(ytil>100)")
+        warning("any(ytil>100)")
       return (ytil)
     }
 
