@@ -24,11 +24,23 @@ swg.retro.voxel.data =
     )
   })
 
+## Version of the above grouped by season and model week (an array of arrays of objects):
+sw.g.retro.voxel.data = map_join(
+  function(swg.array, s,w) {
+    swg.array[s,w,,drop=FALSE] %>>%
+      select_dims(1:2, "drop") # drop s & w dimensions, but keep g dimension even if size 1
+  },
+  no_join(swg.retro.voxel.data),
+  named_arrayvec_to_name_arrayvec(s.retro.seasons),
+  named_arrayvec_to_name_arrayvec(w.retro.model.weeks),
+  lapply_variant=lapply, show.progress=FALSE
+)
+
 ## CV backcasts
 print("CV: generate backcasts")
 swgb.retro.full.dats = map_join(
   get_backcast,
-  swg.retro.voxel.data, signal.name, b.backcasters,
+  swg.retro.voxel.data, sw.g.retro.voxel.data, source.name, signal.name, b.backcasters,
   cache.prefix=file.path(epiproject.cache.dir,"swgb.retro.full.dats/swgb.retro.full.dats")
 )
 
@@ -153,6 +165,7 @@ swgtmbf.retro.component.evaluations = map_join(
   swgtmbf.retro.component.forecast.values, swgtm.retro.observation.values, m.forecast.types
 )
 mode(swgtmbf.retro.component.evaluations) <- "numeric"
+saveRDS(swgtmbf.retro.component.evaluations, file.path(epiproject.cache.dir,"swgtmbf.retro.component.evaluations.rds"))
 ## fixme sometimes this results in errors due to NULL's appearing in the
 ## evaluations, but re-running the evaluations seems to work... memory issues? gc beforehand?
 
@@ -161,10 +174,11 @@ swgtme.retro.ensemble.evaluations = map_join(
   swgtme.retro.ensemble.forecast.values, swgtm.retro.observation.values, m.forecast.types
 )
 mode(swgtme.retro.ensemble.evaluations) <- "numeric"
+saveRDS(swgtme.retro.ensemble.evaluations, file.path(epiproject.cache.dir,"swgtme.retro.ensemble.evaluations.rds"))
 
 ## ## apply(swgtmbf.retro.component.evaluations, 5:7, mean, na.rm=TRUE)
-apply(swgtmbf.retro.component.evaluations, c(5L,7L), mean, na.rm=TRUE)
-apply(swgtme.retro.ensemble.evaluations, 5:6, mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.evaluations, c(7L,5L), mean, na.rm=TRUE)
+apply(swgtme.retro.ensemble.evaluations, 6:5, mean, na.rm=TRUE)
 
 ## apply(swgtmbf.retro.component.evaluations[(2003:2009)%>>%paste0("/",.+1L),,,,,,,drop=FALSE],
 ##       c(5L,7L), mean, na.rm=TRUE)
@@ -228,11 +242,24 @@ swg.prospective.voxel.data = map_join(
   s.prospective.seasons, w.prospective.model.weeks, g.epigroups,
   last.losocv.issue)
 
+## Version of the above grouped by season and model week (an array of arrays of objects):
+sw.g.prospective.voxel.data = map_join(
+  function(swg.array, s,w) {
+    swg.array[s,w,,drop=FALSE] %>>%
+      select_dims(1:2, "drop") # drop s & w dimensions, but keep g dimension even if size 1
+  },
+  no_join(swg.prospective.voxel.data),
+  named_arrayvec_to_name_arrayvec(s.prospective.seasons),
+  named_arrayvec_to_name_arrayvec(w.prospective.model.weeks),
+  lapply_variant=lapply, show.progress=FALSE
+)
+
 print("Current season: generate backcasts")
 swgb.prospective.full.dats = map_join(
   get_backcast,
-  swg.prospective.voxel.data, signal.name, b.backcasters,
-  cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats/swgb.prospective.full.dats")
+  swg.prospective.voxel.data, sw.g.prospective.voxel.data, source.name, signal.name, b.backcasters,
+  cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats/swgb.prospective.full.dats"),
+  lapply_variant=lapply
 )
 
 print("Current season: generate component forecasts")

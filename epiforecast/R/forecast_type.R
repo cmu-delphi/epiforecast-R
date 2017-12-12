@@ -360,3 +360,5 @@ forecast_value = function(target.spec, forecast.type, target.forecast, label.bin
       target.forecast[["method.settings"]])
   )
 }
+
+## xxx Are break.bin.representatives used for labeling? If not, they can be shifted and the shift_for_smoothing functions can be removed.

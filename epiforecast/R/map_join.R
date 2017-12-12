@@ -99,7 +99,7 @@ dimnames.array_proxy = function(x) {
 ##' @export [.array_proxy
 `[.array_proxy` = function(x, ...) {
   result = unclass(x)
-  result[["indices.into.original"]] = result[["indices.into.original"]][...]
+  result[["indices.into.original"]] <- result[["indices.into.original"]][...]
   class(result) <- "array_proxy"
   return (result)
 }
@@ -161,6 +161,16 @@ length.array_proxy = function(x) {
 names.array_proxy = function(x) {
   x.impl = unclass(x)
   names(x.impl[["indices.into.original"]])
+}
+
+##' @method aperm array_proxy
+##' @export
+##' @export aperm.array_proxy
+aperm.array_proxy = function(a, perm, ...) {
+  result = unclass(a)
+  result[["indices.into.original"]] <- aperm(result[["indices.into.original"]], perm, ...)
+  class(result) <- "array_proxy"
+  return (result)
 }
 
 ##' Map a function over the natural (Cartesian/other) join of array-like objects

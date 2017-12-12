@@ -94,6 +94,17 @@ g.fluview.history.dfs =
       cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_",fluview.location.epidata.name))
     )
   })
+nowcast.lead = 1L
+g.nowcast.current.dfs = fluview.location.epidata.names %>>%
+  setNames(fluview.location.spreadsheet.names) %>>%
+  lapply(function(fluview.location.epidata.name) {
+  fetchEpidataDF(
+    "nowcast", fluview.location.epidata.name,
+    first.week.of.season=usa.flu.first.week.of.season,
+    cache.file.prefix=file.path(epidata.cache.dir,paste0("nowcast_",fluview.location.epidata.name))
+  ) %>>%
+    dplyr::mutate(issue = add_epiweek_integer(epiweek, -nowcast.lead))
+})
 
 epigroup.colname = "Location"
 
@@ -101,6 +112,7 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   current.epidata.history.df = g.fluview.history.dfs[[epigroup]][
     c("season","model.week","epiweek","issue","lag","wili")
   ]
+  current.nowcast.df = g.nowcast.current.dfs[[epigroup]]
   issue = season_model.week_to_epiweek(
     season, model.week, usa.flu.first.week.of.season, 3L)
   forward.looking.history.df = mimicPastHistoryDF(
@@ -122,6 +134,21 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   )
   epidata.df =
     dplyr::bind_rows(losocv.extra.epidata.df, forward.looking.epidata.df)
+  forward.looking.nowcast.df = mimicPastDF(
+    current.nowcast.df,
+    "issue", issue,
+    "epiweek", add_epiweek_integer(issue, nowcast.lead)
+  ) %>>%
+    augmentWeeklyDF()
+  losocv.extra.nowcast.df = mimicPastDF(
+    current.nowcast.df,
+    "issue", last.losocv.issue,
+    "epiweek", add_epiweek_integer(last.losocv.issue, nowcast.lead)
+  ) %>>%
+    {.[.[["season"]] > season,]} %>>%
+    augmentWeeklyDF()
+  nowcast.df =
+    dplyr::bind_rows(losocv.extra.nowcast.df, forward.looking.nowcast.df)
   baseline = fluview.baseline.df %>>%
     dplyr::filter(Location == epigroup) %>>%
     mimicPastDF("season", season, nontime.index.colnames="Location") %>>%
@@ -137,6 +164,7 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
     issue = issue,
     epidata.df = epidata.df,
     epidata.history.df = epidata.history.df,
+    nowcast.df = nowcast.df,
     baseline = baseline,
     target.settings = list(
       baseline = baseline,
@@ -233,7 +261,7 @@ epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-ru
 source("generate-retro-and-prospective-forecasts.R")
 
 ## Output prospective forecast spreadsheets, plots:
-collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-submission-2"
+collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-submission-3"
 if (!dir.exists(collab.ensemble.retro.dir)) {
   dir.create(collab.ensemble.retro.dir)
 }

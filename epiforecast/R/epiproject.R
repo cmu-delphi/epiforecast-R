@@ -24,9 +24,11 @@
 ##' @include namesp.R
 NULL
 
-get_backcast = function(voxel.data, signal.name, backcaster) {
+## get_backcast = function(voxel.data, signal.name, backcaster) {
+get_backcast = function(voxel.data, g.voxel.data, source.name, signal.name, backcaster) {
   set.seed(42L)
-  backcaster(voxel.data, signal.name)
+  ## backcaster(voxel.data, signal.name)
+  backcaster(voxel.data, g.voxel.data, source.name, signal.name)
 }
 
 get_forecast = function(voxel.data, full.dat, forecaster) {

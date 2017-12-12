@@ -33,6 +33,10 @@ NULL
 ##' @export
 pwk = function(trajectory, is.inseason=rep_len(TRUE, length(trajectory)), ...) {
   if (any(is.inseason & is.na(trajectory))) {
+    print(is.inseason)
+    print(trajectory)
+    print(length(is.inseason))
+    print(length(trajectory))
     stop ("In-season NA elements are not allowed when calculating =pwk=.")
   }
   return (which(is.inseason & trajectory==max(trajectory[is.inseason])))
@@ -122,6 +126,15 @@ usa_flu_inseason_flags = function(n.weeks.in.season) {
     time_to_model_week(usa.flu.first.week.of.season) %>>%
     model_week_to_epi_week(usa.flu.first.week.of.season, n.weeks.in.season) %>>%
     dplyr::between(21L, 39L) %>>%
+    magrittr::not() %>>%
+    return()
+}
+
+flusurv_inseason_flags = function(n.weeks.in.season) {
+  seq_len(n.weeks.in.season) %>>%
+    time_to_model_week(usa.flu.first.week.of.season) %>>%
+    model_week_to_epi_week(usa.flu.first.week.of.season, n.weeks.in.season) %>>%
+    dplyr::between(18L, 39L) %>>%
     magrittr::not() %>>%
     return()
 }
@@ -292,6 +305,66 @@ flusight2016.target.specs = list(
 
 flusight2016_target_trajectory_preprocessor = function(trajectory) {
   round(pmin(pmax(trajectory, 0), 100), 1L)
+}
+
+flusurv2017.age.group.percentage.bin.infos = c(
+  "Overall"=130L,
+  "0-4 yr"=130L,
+  "5-17 yr"=130L,
+  "18-49 yr"=130L,
+  "50-64 yr"=130L,
+  "65+ yr"=600L
+) %>>%
+  lapply(function(max.bin.start.times.ten) {
+    list(
+      breaks=c(0:max.bin.start.times.ten/10, 100),
+      break.bin.representatives = 0:max.bin.start.times.ten/10,
+      rightmost.closed=TRUE, include.na=FALSE
+    )
+  })
+
+flusurv2017.peak.week.target.spec = flusight2016.peak.week.target.spec
+
+flusurv2017.peak.percentage.target.spec = list(
+  Target = "Season peak percentage",
+  unit = percentage.unit,
+  for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
+    return (pht(processed.trajectory, is.inseason, ...))
+  },
+  bin_info_for = function(age.group, ...) {
+    return (flusurv2017.age.group.percentage.bin.infos[[age.group]])
+  }
+)
+
+flusurv2017_percentage_target_spec_for_lookahead = function(lookahead) {
+  list(
+    Target = paste0(lookahead, " wk ahead"),
+    unit = percentage.unit,
+    for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
+      return (processed.trajectory[[forecast.time+lookahead]])
+    },
+    bin_info_for = function(age.group, ...) {
+      return (flusurv2017.age.group.percentage.bin.infos[[age.group]])
+    }
+  )
+}
+
+flusurv2017.target.specs = list(
+  flusurv2017.peak.week.target.spec,
+  flusurv2017.peak.percentage.target.spec,
+  flusurv2017_percentage_target_spec_for_lookahead(1L),
+  flusurv2017_percentage_target_spec_for_lookahead(2L),
+  flusurv2017_percentage_target_spec_for_lookahead(3L),
+  flusurv2017_percentage_target_spec_for_lookahead(4L)
+) %>>%
+  setNames(sapply(., magrittr::extract2, "Target"))
+
+flusurv2017_target_trajectory_preprocessor = function(trajectory) {
+  result = c(rep(NA_real_, 9L), round(pmin(pmax(trajectory, 0), 100), 1L), rep(NA_real_, 13))
+  if (length(result) != 52L && length(result) != 53L) {
+    stop ("Trajectory is the wrong length, or there was an error in appending NA's to the ends.")
+  }
+  return (result)
 }
 
 Unit_for_target.spec = function(target.spec) {
