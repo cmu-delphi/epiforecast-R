@@ -157,14 +157,25 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   is.inseason = usa_flu_inseason_flags(n.weeks.in.season)
   forecast.time = model_week_to_time(
     model.week, usa.flu.first.week.of.season)
+  max.lag = 51L
   return (list(
     season = season,
     model.week = model.week,
     epigroup = epigroup,
+    source.name = "fluview",
+    signal.name = "wili",
     issue = issue,
-    epidata.df = epidata.df,
-    epidata.history.df = epidata.history.df,
-    nowcast.df = nowcast.df,
+    ## epidata.df = epidata.df,
+    ## epidata.history.df = epidata.history.df,
+    ## nowcast.df = nowcast.df,
+    epidata.dfs = list(
+      fluview=fluview.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
+      nowcast=nowcast.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag))
+    ),
+    epidata.history.dfs = list(
+      fluview=fluview.history.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
+      nowcast=nowcast.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag))
+    ),
     baseline = baseline,
     target.settings = list(
       baseline = baseline,
@@ -200,6 +211,7 @@ get_observation_values = function(voxel.data, target_trajectory_preprocessor, ta
   return (observion.values)
 }
 
+source.name = "fluview"
 signal.name = "wili"
 
 current.issue.sw =
@@ -220,7 +232,9 @@ g.epigroups = fluview.location.spreadsheet.names %>>%
   with_dimnamesnames("Location")
 last.losocv.issue = 201039L
 b.backcasters = list(
-  ignorant=backfill_ignorant_backsim
+  ignorant=backfill_ignorant_backsim#,
+  ## quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
+  ## quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
