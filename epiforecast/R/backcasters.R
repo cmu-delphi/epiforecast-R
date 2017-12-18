@@ -231,8 +231,10 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead) function(vox
         full.train.tbl %>>%
         dplyr::select(-reference.epiweek) %>>%
         na.omit() %>>%
+        ## Throw out features that appear to be redundant (preventing singular
+        ## matrix errors later):
         {
-          lm.fit = lm(y~., .)
+          lm.fit = lm(y~., ., tol=1e-5)
           beta = coefficients(lm.fit)
           stopifnot(names(beta)[[1L]] == "(Intercept)" &&
                     length(beta) - 1L == ncol(.) - 1L &&
