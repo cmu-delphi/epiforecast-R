@@ -94,8 +94,8 @@ empirical.futures.sim = function(full.dat, baseline=NA_real_, max.n.sims=2000L) 
   } else {
     ## Construct (potentially) wider sim objects that together correspond to a
     ## sim object over the cartesian product <PAST, FUTURE>:
-    product.past.sim = upsample_sim_inflating_total_weight(product.past.sim, max.n.sims)
-    product.future.sim = upsample_sim_inflating_total_weight(product.past.sim, max.n.sims)
+    product.past.sim = upsample_sim(past.sim, max.n.sims, TRUE)
+    product.future.sim = upsample_sim(future.sim, max.n.sims, TRUE)
   }
 
   ys = dplyr::coalesce(product.past.sim[["ys"]], product.future.sim[["ys"]])
