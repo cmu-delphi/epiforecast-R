@@ -414,6 +414,8 @@ DatesOfSeason = function(season, first.week, first.wday, owning.wday) {
 ##' \code{$season}: integer-class vector: season numbers
 ##'
 ##' \code{$model.week}: integer-class vector: model week numbers
+##'
+##' @export
 yearWeekToSeasonModelWeekDF = function(year, week, first.week, owning.wday) {
     year <- as.integer(year)
     week <- as.integer(week)
@@ -690,21 +692,25 @@ epi_week_to_model_week = function(epi.week, first.week.of.season, n.weeks.in.sea
   return (model.week)
 }
 
+##' @export
 epiweek_to_Date = function(epiweek, wday) {
   yearWeekWdayVecsToDate(
     epiweek %/% 100L, epiweek %% 100L, wday, 0L,3L
   )
 }
 
+##' @export
 epiweek_to_sunday = function(epiweek) {
   epiweek_to_Date(epiweek, 0L)
 }
 
+##' @export
 Date_to_epiweek = function(date) {
   ywwd = DateToYearWeekWdayDF(date, 0L,3L)
   ywwd[["year"]]*100L + ywwd[["week"]]
 }
 
+##' @export
 add_epiweek_integer = function(epiweek, int) {
   epiweek %>>%
     epiweek_to_sunday() %>>%
@@ -712,6 +718,7 @@ add_epiweek_integer = function(epiweek, int) {
     Date_to_epiweek()
 }
 
+##' @export
 subtract_epiweek_epiweek = function(epiweek.a, epiweek.b) {
   difftime(epiweek_to_sunday(epiweek.a),
            epiweek_to_sunday(epiweek.b), "days") %>>%
@@ -719,6 +726,28 @@ subtract_epiweek_epiweek = function(epiweek.a, epiweek.b) {
     magrittr::divide_by_int(7L)
 }
 
+##' Compute a sequence of epiweeks with the specified range
+##'
+##' Uses the rules of \code{\link{Seq}}; if \code{end.epiweek} lies before
+##' \code{start.epiweek}, an empty sequence will be returned.
+##'
+##' @param from.epiweek the first epiweek to include in the sequence
+##' @param to.epiweek the first epiweek to include in the sequence
+##' @return a sequence of epiweeks
+##'
+##' @examples
+##' epiweek_Seq(201450L, 201503L)
+##' epiweek_Seq(201550L, 201603L)
+##' epiweek_Seq(201550L, 201203L)
+##' epiweek_Seq(201250L, 201503L)
+##'
+##' @export
+epiweek_Seq = function(from.epiweek, to.epiweek) {
+  difference = subtract_epiweek_epiweek(to.epiweek, from.epiweek)
+  add_epiweek_integer(from.epiweek, Seq(0L,difference))
+}
+
+##' @export
 season_model.week_to_epiweek = function(season, model.week, first.week.of.season, owning.wday) {
   yw = seasonModelWeekToYearWeekDF(
     season, model.week, first.week.of.season, 3L)
@@ -726,6 +755,7 @@ season_model.week_to_epiweek = function(season, model.week, first.week.of.season
   return (epiweek)
 }
 
+##' @export
 season_to_Season = function(season, first.week.of.season) {
   if (first.week.of.season == 1L) {
     as.character(season)
