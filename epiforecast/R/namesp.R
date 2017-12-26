@@ -69,6 +69,21 @@ dimnamesp = function(x, invent.scalars=TRUE) {
   return (maybe.dimnamesp.x)
 }
 
+dimnames_or_inds = function(x, invent.scalars=TRUE) {
+  dnp.x = dimnamesp(x, invent.scalars=invent.scalars)
+  dimnamesp_to_dimindices(dnp.x)
+}
+
+dimnamesp_to_dimindices = function(dnp) {
+  lapply(dnp, function(dimension.np) {
+    if (all(dimension.np=="")) {
+      seq_along(dimension.np)
+    } else {
+      dimension.np
+    }
+  })
+}
+
 dimnamesnamesp = function(x, invent.scalars=TRUE) {
   return (names(dimnamesp(x, invent.scalars=invent.scalars)))
 }

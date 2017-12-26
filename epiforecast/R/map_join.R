@@ -283,9 +283,27 @@ map_join_ = function(f, arraylike.args,
   }
 
   index.dimension.lengths = vapply(index.dnp, length, 1L)
-  result.to.arg.dimension.maps = lapply(
+  result.from.arg.dimension.maps = lapply(
     arraylike.args, function(arraylike.arg) {
       match(dimnamesnamesp(arraylike.arg), names(index.dnp))
+    }
+  )
+  result.to.arg.dimension.index.map.lists = lapply(
+    seq_along(arraylike.args), function(arraylike.arg.i) {
+      arraylike.arg.dim.indices = dimnames_or_inds(arraylike.args[[arraylike.arg.i]])
+      corresponding.result.dim.indices = dimnamesp_to_dimindices(index.dnp[result.from.arg.dimension.maps[[arraylike.arg.i]]])
+      Map(function(inds.a, inds.b) {
+        if (class(inds.a)==class(inds.b)) {
+          match(inds.a, inds.b)
+        } else if (class(inds.a)=="character" && class(inds.b)=="integer" ||
+                   class(inds.a)=="integer" && class(inds.b)=="integer") {
+          stopifnot(length(inds.a)==length(inds.b))
+          seq_along(inds.a)
+        } else {
+          stop ("Internal error: unable to translate dimension indices for the result to dimension indices of an argument.")
+        }
+      },
+      corresponding.result.dim.indices, arraylike.arg.dim.indices)
     }
   )
   perm =
@@ -330,7 +348,11 @@ map_join_ = function(f, arraylike.args,
           lapply(function(arraylike.arg.i) {
             arraylike.arg = arraylike.args[[arraylike.arg.i]]
             arraylike.arg.indices =
-              indices[result.to.arg.dimension.maps[[arraylike.arg.i]]]
+              mapply(
+                magrittr::extract2,
+                result.to.arg.dimension.index.map.lists[[arraylike.arg.i]],
+                indices[result.from.arg.dimension.maps[[arraylike.arg.i]]]
+              )
             arg =
               if (ndimp(arraylike.arg) == 0L) {
                 stopifnot(class(arraylike.arg)=="no_join")
@@ -380,6 +402,7 @@ map_join_ = function(f, arraylike.args,
 ##'   \code{arraylike.args} parameter using \code{list(...)}
 ##'
 ##' @examples
+##' library("pipeR")
 ##' map_join(`*`, 2L,3L, lapply_variant=lapply)
 ##' map_join(`*`,
 ##'          with_dimnamesnames(2:3,"A"),
@@ -402,11 +425,17 @@ map_join_ = function(f, arraylike.args,
 ##'   , C=matrix(1:4, 2L,2L) %>>%
 ##'       {dimnames(.) <- list(DA=paste0("S",1:2),DA=paste0("S",1:2)); .}
 ##'   , D=142
-##'   ## , E=1:5
+##'   , E=1:5
 ##'   , F=vector_as_named_array_(11:14, "DC", 1:4)
-##'   ## , G=c(S1=1,S2=2)
+##'   , G=c(S1=1,S2=2)
+##'   , CP=matrix(1:4, 2L,2L) %>>%
+##'       {dimnames(.) <- list(DA=paste0("S",1:2),DA=paste0("S",1:2)); .} %>>%
+##'       magrittr::extract(1:2,2:1)
+##'   , FP=vector_as_named_array_(11:15, "DC", 1:5)[c(5,3,4,2,1)]
 ##' )[-1L]
-##' map_join_(list, arraylike.args)[[DA="S1",DB=1L,DC=1L]]
+##' map_join_(list, arraylike.args[c("A","B","C","D","F")])[[DA="S1",DB=1L,DC=1L]]
+##' map_join_(list, arraylike.args[c("A","B","C","D","F","CP","FP")],
+##'           eltname.mismatch.behavior="intersect")[[DA="S1",DB=1L,DC=1L]]
 ##'
 ##' @rdname map_join
 ##' @export
