@@ -246,19 +246,16 @@ map_join_ = function(f, arraylike.args,
       if (is.null(existing.eltnames)) {
         ## no previous arg with this dimension; make dimension with these eltnames
         index.dnp[[dimension.name]] <- dimension.eltnames
-      } else if (length(existing.eltnames) != length(dimension.eltnames)) {
-        if (eltname.mismatch.behavior == "stop" ||
-            eltname.mismatch.behavior == "intersect" &&
-            (all(existing.eltnames=="") ||
-             all(dimension.eltnames==""))
-            ) {
+      } else if (length(existing.eltnames) != length(dimension.eltnames) &&
+                 (eltname.mismatch.behavior == "stop" ||
+                  eltname.mismatch.behavior == "intersect" &&
+                 (all(existing.eltnames=="") ||
+                  all(dimension.eltnames==""))
+                 )) {
           ## there is a length mismatch that we don't want to or can't fix by
           ## taking the eltnames intersection
           stop (sprintf('Inconsistent lengths found for dimension named "%s".  Length of dimension in arg %d (namep\'d "%s") (dimension %d): %d.  Previous length: %d.',
                         dimension.name, arraylike.arg.i, arraylike.arg.name, arg.dimension.i, length(dimension.eltnames), length(existing.eltnames)))
-        } else {
-          ## allow other eltnames checks to occur
-        }
       } else if (any(existing.eltnames != dimension.eltnames)) {
         if (all(existing.eltnames=="")) {
           ## no pre-existing eltnames; assign
