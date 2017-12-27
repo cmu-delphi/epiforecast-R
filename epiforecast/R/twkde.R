@@ -87,7 +87,7 @@ twkde.markovian.sim = function(full.dat, baseline=NA_real_, max.n.sims=1000L) {
 
   new.dat.sim <- downsample_sim(upsample_sim(new.dat.sim, n.sims, TRUE), n.sims)
   ys = new.dat.sim[["ys"]]
-  sim.weights = new.dat.sim[["weights"]]
+  sim.weights = new.dat.sim[["weights"]]/mean(new.dat.sim[["weights"]])
   min.n.out = min(sapply(dat, length))
   obs.mat = sapply(dat, `[`, seq_len(min.n.out))
   obs.bws = sapply(seq_len(min.n.out), function(time.of.obs)
@@ -217,7 +217,7 @@ twkde.sim = function(full.dat,
 
   new.dat.sim <- downsample_sim(upsample_sim(new.dat.sim, n.sims, TRUE), n.sims)
   ys = new.dat.sim[["ys"]]
-  sim.weights = new.dat.sim[["weights"]]
+  sim.weights = new.dat.sim[["weights"]]/mean(new.dat.sim[["weights"]])
 
   orig.min.n.out = min(sapply(dat, length))
   orig.obs.mat = dat.to.matrix(dat, orig.min.n.out)
