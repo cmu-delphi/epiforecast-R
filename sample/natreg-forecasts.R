@@ -104,7 +104,7 @@ g.nowcast.current.dfs = fluview.location.epidata.names %>>%
     cache.file.prefix=file.path(epidata.cache.dir,paste0("nowcast_",fluview.location.epidata.name))
   ) %>>%
     dplyr::mutate(issue = add_epiweek_integer(epiweek, -nowcast.lead)) %>>%
-    dplyr::mutate(lag = epiweek - issue)
+    dplyr::mutate(lag = subtract_epiweek_epiweek(issue, epiweek))
 })
 
 epigroup.colname = "Location"
