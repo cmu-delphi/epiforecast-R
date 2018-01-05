@@ -297,8 +297,7 @@ s.retro.seasons = seq.int(2010L,current.issue.sw[["season"]]-1L) %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
 ## fixme expand week range
-w.retro.model.weeks = (44:52) %>>%
-## w.retro.model.weeks = (40:65) %>>%
+w.retro.model.weeks = (40:65) %>>%
 ## w.retro.model.weeks = (40:69) %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
