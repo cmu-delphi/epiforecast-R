@@ -27,9 +27,9 @@ get.latest.time = function(new.dat.sim){
 
     is.na.ys = is.na(ys)
 
-    if (!any(is.na.ys)) {
-        stop("There are no missing values in new.dat.sim, i.e., the new season has been fully observed!")
-    }
+    ## if (!any(is.na.ys)) {
+    ##     stop("There are no missing values in new.dat.sim, i.e., the new season has been fully observed!")
+    ## }
 
     ## check that NA occurrences match between all columns
     if (ncol(is.na.ys) > 1L && # preoptimization...: no need to check if only 1 trajectory
