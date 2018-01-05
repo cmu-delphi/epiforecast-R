@@ -276,11 +276,11 @@ epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-ru
 source("generate-retro-and-prospective-forecasts.R")
 
 ## Output prospective forecast spreadsheets, plots:
-collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-submission-3"
+collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-potential-submission-4"
 if (!dir.exists(collab.ensemble.retro.dir)) {
   dir.create(collab.ensemble.retro.dir)
 }
-save_spreadsheets(swgbf.retro.component.target.multicasts,
+save_spreadsheets(swgbf.retro.component.target.multicasts[,,,"quantile_arx_backnowcast",,drop=FALSE],
                   swg.retro.voxel.data,
                   t.target.specs, m.forecast.types,
                   collab.ensemble.retro.dir,
@@ -309,7 +309,7 @@ collab.ensemble.prospective.dir = "~/files/nosync/cdc-flusight-ensemble/model-fo
 if (!dir.exists(collab.ensemble.prospective.dir)) {
   dir.create(collab.ensemble.prospective.dir)
 }
-save_spreadsheets(swgbf.prospective.component.target.multicasts,
+save_spreadsheets(swgbf.prospective.component.target.multicasts[,,,"quantile_arx_backnowcast",,drop=FALSE],
                   swg.prospective.voxel.data,
                   t.target.specs, m.forecast.types,
                   collab.ensemble.prospective.dir,
