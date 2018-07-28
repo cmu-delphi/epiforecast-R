@@ -66,6 +66,7 @@ Collate:
     'get_completed_fluview_state_df.R'
     'holidays.R'
     'read.R'
+    'simplify2arrayp.R'
     'target_spec.R'
     'todo-by-file.R'
     'twkde.R'

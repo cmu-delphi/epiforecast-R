@@ -65,7 +65,7 @@ swgtmbf.retro.component.forecast.values =
   map_join(swgbf.retro.component.target.multicasts,
            f=`[[`, "forecast.values",
            lapply_variant=lapply) %>>%
-  simplify2array() %>>%
+  simplify2arrayp() %>>%
   {
     original = .
     dim(.) <- c(dim(original)[1:2], dim(swgbf.retro.component.target.multicasts))
@@ -133,7 +133,7 @@ swgtme.retro.ensemble.forecast.values =
                      dplyr::coalesce(x+y, x, y)
                    })
                  }) %>>%
-      simplify2array() %>>%
+      simplify2arrayp() %>>%
       {names(dimnames(.))[[6L]] <- dimnamesnamesp(e.retro.ensemble.weightsets); .}
   }
 if (!file.exists(swgtme.retro.ensemble.forecast.values.file)) {
@@ -332,7 +332,7 @@ swgtme.prospective.ensemble.forecast.values = lapply(
       dplyr::coalesce(x+y, x, y)
     })
   }) %>>%
-  simplify2array() %>>%
+  simplify2arrayp() %>>%
   {names(dimnames(.))[[6L]] <- dimnamesnamesp(e.prospective.ensemble.weightsets); .}
 ## todo make this work for subsets and other indexers --- get index sets from
 ## indexers
