@@ -55,6 +55,19 @@ target_forecast2 = function(voxel.data, target_trajectory_preprocessor, target.s
   return (target.forecast)
 }
 
+observed_multival2 = function(voxel.data, target_trajectory_preprocessor, target.spec, observed.trajectory) {
+  do.call(
+    target.spec[["for_processed_trajectory"]],
+    c(list(
+      target_trajectory_preprocessor(observed.trajectory)
+    ), voxel.data[["target.settings"]])
+  )
+}
+
+observed_value2 = function(voxel.data, target.spec, forecast.type, observed.multival, label.bins=FALSE) {
+  observed_value(target.spec, voxel.data[["target.settings"]], forecast.type, observed.multival, label.bins=label.bins)
+}
+
 forecast_value2 = function(voxel.data, target.spec, forecast.type, target.forecast, label.bins=FALSE) {
   if ("target.settings" %in% names(target.forecast)) {
     stop ("Expected target.settings to be missing in target.forecast (as it will be filled in using voxel.data).")

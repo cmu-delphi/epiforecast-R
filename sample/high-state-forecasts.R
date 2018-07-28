@@ -141,31 +141,16 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   ))
 }
 
-get_observation_values = function(voxel.data, target_trajectory_preprocessor, target.spec, forecast.type) {
-  observation.issue = (voxel.data[["season"]]+1L)*100L + 40L
-  season = voxel.data[["season"]]
-  epigroup = voxel.data[["epigroup"]]
-  ## todo g.fluview.history.dfs as separate argument or curried argument in this
-  ## method and get_voxel_data
-  ## epidata.df = mimicPastEpidataDF(
-  ##   g.fluview.history.dfs[[epigroup]], observation.issue)
-  ## xxx check that this doesn't change anything:
+signal.name = "wili" # xxx should use "ili" rather than "wili" (above as well)
+
+get_observed_trajectory = function(season, epigroup) {
+  ## Use the current issue's version of a trajectory as the "observed" (vs. a
+  ## fixed issue after the season's end):
   epidata.df = g.fluview.current.dfs[[epigroup]]
   observed.trajectory = epidata.df %>>%
-    {.[["wili"]][.[["season"]]==season]}
-  observation.as.target.forecast = target_forecast2(
-    voxel.data, target_trajectory_preprocessor, target.spec,
-    match.new.dat.sim(observed.trajectory))
-  observation.as.target.forecast[["method.settings"]] <-
-    c(observation.as.target.forecast[["method.settings"]],
-      uniform.pseudoweight.total=0,
-      smooth.sim.targets=FALSE)
-  observion.values =
-    forecast_value2(voxel.data, target.spec, forecast.type, observation.as.target.forecast)
-  return (observion.values)
+    {.[[signal.name]][.[["season"]]==season]}
+  return (observed.trajectory)
 }
-
-signal.name = "wili" # xxx should use "ili" rather than "wili" (above as well)
 
 current.issue.sw =
   g.fluview.current.dfs[[1L]] %>>%

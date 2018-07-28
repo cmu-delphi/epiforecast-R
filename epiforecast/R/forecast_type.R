@@ -71,15 +71,15 @@ get_na_binlabelstart_or_empty_for_target = function(target.spec, ...) {
   )
 }
 
-point_prediction_error = function(forecast.value, observation.value) {
+point_prediction_error = function(forecast.value, observed.value) {
   ## calculate absolute error with some special treatment of NA's
-  if (is.na(observation.value)) {
+  if (is.na(observed.value)) {
     NA_real_
   } else if (is.na(forecast.value)) {
     Inf
   } else {
     ## (note: all evaluate_forecast_value's should return numerics)
-    return (as.numeric(forecast.value - observation.value))
+    return (as.numeric(forecast.value - observed.value))
   }
   ## xxx will probably also need the domain settings (e.g.,
   ## flusight2016.settings) to go with the target in some contexts, but only the
@@ -92,6 +92,12 @@ point.mae.forecast.type = list(
                                                   target.values, target.weights,
                                                   ...) {
     matrixStats::weightedMedian(target.values, target.weights, na.rm=TRUE)
+  },
+  observed_value_from_observed_multival = function(target.spec,
+                                                   observed.multival, ...) {
+    ## xxx pretend that the median was observed instead; todo instead keep the
+    ## multival and change the evaluation & maybe fitting functions
+    median(observed.multival, na.rm=TRUE)
   },
   Value_from_forecast_value = function(forecast.value, target.spec, ...) {
     ## forecast.value is a point prediction in its natural representation; Value
@@ -108,16 +114,16 @@ point.mae.forecast.type = list(
   Bin_end_notincl_for = function(target.spec, ...) {
     return (NA_character_)
   },
-  evaluate_forecast_value = function(forecast.value, observation.value) {
-    return (abs(point_prediction_error(forecast.value, observation.value)))
+  evaluate_forecast_value = function(forecast.value, observed.value) {
+    return (abs(point_prediction_error(forecast.value, observed.value)))
   },
-  fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observation.values.list, total.instance.weight, fallback.method.index) {
+  fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observed.values.list, total.instance.weight, fallback.method.index) {
     X = instance.method.forecast.values.listmat
     mode(X) <- "numeric"
     if (any(is.na(X[,fallback.method.index]))) {
       stop ("Fallback method must not contain any NA point predictions.")
     }
-    y = instance.observation.values.list
+    y = instance.observed.values.list
     mode(y) <- "numeric"
     ## exclude instances where observation was NA:
     X <- X[!is.na(y),,drop=FALSE]
@@ -130,22 +136,21 @@ point.mae.forecast.type = list(
   }
 )
 
-unibin_log_score = function(forecast.value, observation.value) {
-  ## unibin-like log score: if observation.value is not an indicator for a
+unibin_log_score = function(forecast.value, observed.value) {
+  ## unibin-like log score: if observed.value is not an indicator for a
   ## single value, treat it as a probability distribution over the "real"
   ## observed value, and calculate the expected unibin log score:
-  return (sum(observation.value[observation.value!=0]*
-              log(forecast.value[observation.value!=0])))
+  return (sum(observed.value[observed.value!=0]*
+              log(forecast.value[observed.value!=0])))
 }
 
-distr.logscore.forecast.type = list(
-  Type = "Bin",
-  forecast_value_from_weighted_univals = function(target.spec,
-                                                  target.values, target.weights,
-                                                  label.bins=TRUE,
-                                                  uniform.pseudoweight.total=3,
-                                                  smooth.sim.targets=TRUE,
-                                                  ...) {
+distr_from_weighted_univals =
+  function(target.spec,
+           target.values, target.weights,
+           label.bins=TRUE,
+           uniform.pseudoweight.total=3,
+           smooth.sim.targets=TRUE,
+           ...) {
     target.weights <- match.nonnegative.numeric(target.weights)
     ## get bin info and check:
     bin.info = target.spec[["bin_info_for"]](...)
@@ -253,12 +258,37 @@ distr.logscore.forecast.type = list(
         paste0(left.delimiter, left.break.string, ", ",
                right.break.string, right.delimiter),
         get_na_binlabelstart_or_empty_for_target(target.spec, ...)
-        )
+      )
       names(bin.weights) <- bin.names
     }
     ## normalize bin weights:
     bin.weights <- bin.weights/sum(bin.weights)
     return (bin.weights)
+  }
+
+distr.logscore.forecast.type = list(
+  Type = "Bin",
+  forecast_value_from_weighted_univals = distr_from_weighted_univals,
+  observed_value_from_observed_multival = function(target.spec,
+                                                   observed.multival,
+                                                   label.bins=TRUE,
+                                                   ...) {
+    ## transform single observed val -> one-hot vector over bins
+    ##
+    ## xxx if there are multiple observed vals, produce a probability
+    ## distribution over bins instead as if every val is equally likely
+    later.args = list(...)
+    ## set/override smoothing parameters:
+    later.args[["uniform.pseudoweight.total"]] <- 0
+    later.args[["smooth.sim.targets"]] <- FALSE
+    do.call(distr_from_weighted_univals,
+            c(list(
+              target.spec,
+              observed.multival,
+              rep(1/length(observed.multival), length(observed.multival)),
+              label.bins=label.bins
+            ), later.args)
+            )
   },
   Value_from_forecast_value = function(forecast.value, target.spec, ...) {
     forecast.value
@@ -289,9 +319,9 @@ distr.logscore.forecast.type = list(
     return (Bin_end_notincl)
   },
   evaluate_forecast_value = unibin_log_score,
-  fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observation.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score=-8) {
+  fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observed.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score=-8) {
     ## fixme make consistent with updated metric --- weighting
-    instance.method.log.scores.mat = Map(unibin_log_score, instance.method.forecast.values.listmat, instance.observation.values.list) %>>%
+    instance.method.log.scores.mat = Map(unibin_log_score, instance.method.forecast.values.listmat, instance.observed.values.list) %>>%
       {
         dim(.) <- dim(instance.method.forecast.values.listmat)
         dimnames(.) <- dimnames(instance.method.forecast.values.listmat)
@@ -359,6 +389,13 @@ forecast_value = function(target.spec, forecast.type, target.forecast, label.bin
       target.forecast[["target.settings"]],
       target.forecast[["method.settings"]])
   )
+}
+
+observed_value = function(target.spec, target.settings, forecast.type, observed.multival, label.bins=TRUE) {
+  do.call(
+    forecast.type[["observed_value_from_observed_multival"]],
+    c(list(target.spec, observed.multival, label.bins=label.bins),
+      target.settings))
 }
 
 ## xxx Are break.bin.representatives used for labeling? If not, they can be shifted and the shift_for_smoothing functions can be removed.

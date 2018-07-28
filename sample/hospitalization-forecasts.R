@@ -131,160 +131,18 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   ))
 }
 
-get_observation_values = function(voxel.data, target_trajectory_preprocessor, target.spec, forecast.type) {
-  observation.issue = (voxel.data[["season"]]+1L)*100L + 40L
-  season = voxel.data[["season"]]
-  epigroup = voxel.data[["epigroup"]]
-  ## todo g.flusurv.network_all.history.dfs as separate argument or curried argument in this
-  ## method and get_voxel_data
-  ## epidata.df = mimicPastEpidataDF(
-  ##   g.flusurv.network_all.history.dfs[[epigroup]], observation.issue)
-  ## xxx check that this doesn't change anything:
-  epidata.df = g.flusurv.network_all.current.dfs[[epigroup]] %>>%
-    dplyr::filter(!dplyr::between(epiweek%%100L, 18L,39L))
-  observed.trajectory = epidata.df %>>%
-    {.[["rate"]][.[["season"]]==season]}
-  observation.as.target.forecast = target_forecast2(
-    voxel.data, target_trajectory_preprocessor, target.spec,
-    match.new.dat.sim(observed.trajectory))
-  observation.as.target.forecast[["method.settings"]] <-
-    c(observation.as.target.forecast[["method.settings"]],
-      uniform.pseudoweight.total=0,
-      smooth.sim.targets=FALSE)
-  observion.values =
-    forecast_value2(voxel.data, target.spec, forecast.type, observation.as.target.forecast)
-  return (observion.values)
-}
-
-
-
-## source.name = "flusurv.network_all"
-## signal.name = "rate"
-
-## last.losocv.issue = 201739L
-
-## ## voxel.data = get_voxel_data(2010L, 40L, "Overall", last.losocv.issue)
-## ## voxel.data = get_voxel_data(2017L, 48L, "Overall", last.losocv.issue)
-## ## voxel.data = get_voxel_data(2017L, 48L, "65+ yr", last.losocv.issue)
-## voxel.data = get_voxel_data(2017L, 48L, "0-4 yr", last.losocv.issue)
-
-## full.dat = get_backcast(voxel.data, source.name, signal.name, backfill_ignorant_backsim)
-
-## new.dat.sim = get_forecast(voxel.data, full.dat, twkde.sim)
-
-## new.dat.sim = get_forecast(voxel.data, full.dat, twkde.markovian.sim)
-
-## new.dat.sim = get_forecast(voxel.data, full.dat,
-##                            function(full.dat, baseline=0, max.n.sims=1000L) {
-##                              twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims, max.shifts=c(rep(10L,1L),10:1,rep(0L,3L),1:10,rep(10L,7L)))
-##                            })
-
-## new.dat.sim = get_forecast(voxel.data, full.dat, empirical.trajectories.sim)
-
-## plot(new.dat.sim)
-## dev.off()
-
-## current.issue.sw =
-##   g.flusurv.network_all.current.dfs[[1L]] %>>%
-##   dplyr::filter(season == max(season)) %>>%
-##   {.[!is.na(.[[signal.name]]),]} %>>%
-##   dplyr::filter(model.week == max(model.week)) %>>%
-##   dplyr::select(season, model.week)
-## s.selected.seasons = current.issue.sw[["season"]] %>>%
-## ## s.selected.seasons = (2008L) %>>%
-##   stats::setNames(paste0(.,"/",.+1L)) %>>%
-##   with_dimnamesnames("Season")
-## ## w.selected.model.weeks = current.issue.sw[["model.week"]] %>>%
-## w.selected.model.weeks = (48L) %>>%
-##   stats::setNames(paste0("MW",.)) %>>%
-##   with_dimnamesnames("Model Week")
-## g.epigroups = flusurv.age.spreadsheet.names %>>%
-##   stats::setNames(.) %>>%
-##   with_dimnamesnames("Location")
-## t.target.specs = flusurv2017.target.specs %>>%
-##   with_dimnamesnames("Target")
-## m.forecast.types = flusight2016.proxy.forecast.types %>>%
-##   with_dimnamesnames("Type")
-## target_trajectory_preprocessor = flusurv2017_target_trajectory_preprocessor
-
-## swg.selected.voxel.data =
-##   tryCatch({
-##     map_join(
-##       get_voxel_data,
-##       s.selected.seasons, w.selected.model.weeks, g.epigroups,
-##       last.losocv.issue#,
-##       ## cache.prefix=file.path(epiproject.cache.dir,"swg.selected.voxel.data/swg.selected.voxel.data"),
-##       ## use.proxy=TRUE
-##     )
-##   },
-##   ## issues with parallel package returning long vector results from large runs...
-##   error=function(e) {
-##     print ("Encountered error preparing voxel data in parallel.  Attempting to read cache files sequentially with no progress bar --- this make take a while.")
-##     map_join(
-##       get_voxel_data,
-##       s.selected.seasons, w.selected.model.weeks, g.epigroups,
-##       last.losocv.issue,
-##       lapply_variant=lapply#,
-##       ## cache.prefix=file.path(epiproject.cache.dir,"swg.selected.voxel.data/swg.selected.voxel.data"),
-##       ## use.proxy=TRUE
-##     )
-##   })
-
-## sw.g.selected.voxel.data = map_join(
-##   function(swg.array, s,w) {
-##     swg.array[s,w,,drop=FALSE] %>>%
-##       select_dims(1:2, "drop") # drop s & w dimensions, but keep g dimension even if size 1
-##   },
-##   no_join(swg.selected.voxel.data),
-##   named_arrayvec_to_name_arrayvec(s.selected.seasons),
-##   named_arrayvec_to_name_arrayvec(w.selected.model.weeks),
-##   lapply_variant=lapply, show.progress=FALSE
-## )
-
-## voxel.data = swg.selected.voxel.data[[1L,1L,"65+ yr"]]
-## g.voxel.data = sw.g.selected.voxel.data[[1L,1L]]
-
-## full.dat = get_backcast(voxel.data, source.name, signal.name, backfill_ignorant_backsim)
-
-## full.dat = get_backcast(voxel.data, source.name, signal.name, quantile_arx_pancaster(FALSE, 0L))
-
-## ## target.multicast = target_multicast(voxel.data, full.dat, empirical.trajectories.sim, target_trajectory_preprocessor, t.target.specs, m.forecast.types)
-## ## target.multicast = target_multicast(voxel.data, full.dat, twkde.sim, target_trajectory_preprocessor, t.target.specs, m.forecast.types)
-## ## target.multicast = target_multicast(voxel.data, full.dat, twkde.markovian.sim, target_trajectory_preprocessor, t.target.specs, m.forecast.types)
-## target.multicast = target_multicast(voxel.data, full.dat,
-##                                     function(full.dat, baseline=0, max.n.sims=1000L) {
-##                                       twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims, max.shifts=c(rep(10L,1L),10:1,rep(0L,3L),1:10,rep(10L,7L)))
-##                                     }, target_trajectory_preprocessor, t.target.specs, m.forecast.types)
-
-## matplot(target.multicast[["simplified.simlike"]]$ys, type="l")
-## lines(voxel.data[["epidata.dfs"]][[voxel.data[["source.name"]]]] %>>%
-##       dplyr::filter(season==voxel.data[["season"]]) %>>%
-##       magrittr::extract2(voxel.data[["signal.name"]]),
-##       lwd=3)
-## lines(matrixStats::rowWeightedMedians(target.multicast[["simplified.simlike"]]$ys, target.multicast[["simplified.simlike"]]$weights), lwd=3, col="red")
-
-## matplot(tail(full.dat,1L)[[1L]]$ys, type="l")
-## lines(voxel.data[["epidata.dfs"]][[voxel.data[["source.name"]]]] %>>%
-##       dplyr::filter(season==voxel.data[["season"]]) %>>%
-##       magrittr::extract2(voxel.data[["signal.name"]]),
-##       lwd=3)
-## lines(matrixStats::rowWeightedMedians(tail(full.dat,1L)[[1L]]$ys, tail(full.dat,1L)[[1L]]$weights), lwd=3, col="red")
-
-## plot(target.multicast %>>% (simplified.simlike))
-## lines(tail(full.dat,1L)[[1L]]$ys[,1], lwd=3)
-
-## plot(target.multicast %>>% (forecast.values) %>>% magrittr::extract2("Season peak week","Bin"))
-## ## plot(target.multicast %>>% (forecast.values) %>>% magrittr::extract2("Season peak week","Bin") %>>% log())
-
-## tail(target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types))
-
-## plot(new.dat.sim)
-## lines(tail(full.dat,1L)[[1L]]$ys[,1], lwd=3)
-
-## print(lapply(full.dat, unclass))
-
 source.name = "flusurv.network_all"
 signal.name = "rate"
+
+get_observed_trajectory = function(season, epigroup) {
+  ## Use the current issue's version of a trajectory as the "observed" (vs. a
+  ## fixed issue after the season's end):
+  epidata.df = g.fluview.current.dfs[[epigroup]]
+  observed.trajectory = epidata.df %>>%
+    dplyr::filter(!dplyr::between(epiweek%%100L, 18L,39L)) %>>%
+    {.[[signal.name]][.[["season"]]==season]}
+  return (observed.trajectory)
+}
 
 current.issue.sw =
   g.flusurv.network_all.current.dfs[[1L]] %>>%

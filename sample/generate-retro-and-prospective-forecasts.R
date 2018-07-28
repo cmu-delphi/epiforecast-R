@@ -75,13 +75,28 @@ swgtmbf.retro.component.forecast.values =
   aperm(c(3:5,1:2,6:7))
 
 ## Observations we use for CV evaluation:
-print("CV: find observation values")
+print("CV: find observed trajectories, target multivals, target values")
 gc()
-swgtm.retro.observation.values = map_join(
-  get_observation_values,
+sg.retro.observed.trajectories = map_join(
+  get_observed_trajectory,
+  s.retro.seasons, g.epigroups,
+  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories/sg.retro.observed.trajectories ")
+)
+
+swgt.retro.observed.multivals = map_join(
+  observed_multival2,
   swg.retro.voxel.data,
-  target_trajectory_preprocessor, t.target.specs, m.forecast.types,
-  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observation.values/swgtm.retro.observation.values")
+  target_trajectory_preprocessor,
+  t.target.specs,
+  sg.retro.observed.trajectories,
+  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals/swgt.retro.observed.multivals ")
+)
+
+swgtm.retro.observed.values = map_join(
+  observed_value2,
+  swg.retro.voxel.data, t.target.specs, m.forecast.types,
+  swgt.retro.observed.multivals,
+  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values/swgtm.retro.observed.values ")
 )
 
 ## Tack on additional indexer_list's for CV:
@@ -99,7 +114,7 @@ print("CV: fit weightsets")
 e.retro.ensemble.weightsets = map_join(
   function(weighting.scheme.indexer.list) {
     get_ensemble_weightset(swgtmbf.retro.component.forecast.values,
-                           swgtm.retro.observation.values,
+                           swgtm.retro.observed.values,
                            m.forecast.types,
                            weighting.scheme.indexer.list)
   },
@@ -162,7 +177,7 @@ print("Analysis: calculate CV evaluations")
 gc()
 swgtmbf.retro.component.evaluations = map_join(
   get_evaluation,
-  swgtmbf.retro.component.forecast.values, swgtm.retro.observation.values, m.forecast.types
+  swgtmbf.retro.component.forecast.values, swgtm.retro.observed.values, m.forecast.types
 )
 mode(swgtmbf.retro.component.evaluations) <- "numeric"
 saveRDS(swgtmbf.retro.component.evaluations, file.path(epiproject.cache.dir,"swgtmbf.retro.component.evaluations.rds"))
@@ -171,7 +186,7 @@ saveRDS(swgtmbf.retro.component.evaluations, file.path(epiproject.cache.dir,"swg
 
 swgtme.retro.ensemble.evaluations = map_join(
   get_evaluation,
-  swgtme.retro.ensemble.forecast.values, swgtm.retro.observation.values, m.forecast.types
+  swgtme.retro.ensemble.forecast.values, swgtm.retro.observed.values, m.forecast.types
 )
 mode(swgtme.retro.ensemble.evaluations) <- "numeric"
 saveRDS(swgtme.retro.ensemble.evaluations, file.path(epiproject.cache.dir,"swgtme.retro.ensemble.evaluations.rds"))
@@ -298,7 +313,7 @@ print("Current season: fit ensemble weightsets")
 e.prospective.ensemble.weightsets = map_join(
   function(weighting.scheme.indexer.list) {
     get_ensemble_weightset(swgtmbf.retro.component.forecast.values,
-                           swgtm.retro.observation.values,
+                           swgtm.retro.observed.values,
                            m.forecast.types,
                            weighting.scheme.indexer.list)
   },
