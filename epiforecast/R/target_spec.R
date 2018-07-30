@@ -212,6 +212,17 @@ percentage.unit = list(
   }
 )
 
+fixed_radius_multibin_neighbor_matrix = function(bin.info, bin.radius) {
+  n.non.na.bins = length(bin.info[["break.bin.representatives"]])
+  non.na.neighbor.matrix = Matrix::bandSparse(n.non.na.bins,,-bin.radius:bin.radius)
+  if (bin.info[["include.na"]]) {
+    ## Assumes NA bin is at end and is its only neighbor regardless of bin radius:
+    Matrix::bdiag(non.na.neighbor.matrix, Matrix::bandSparse(1L,,0:0))
+  } else {
+    non.na.neighbor.matrix
+  }
+}
+
 flusight2016.onset.target.spec = list(
   Target = "Season onset",
   unit = week.unit,
@@ -240,6 +251,9 @@ flusight2016.onset.target.spec = list(
       break.bin.representatives=head(breaks, -1L),
       rightmost.closed=FALSE, include.na=TRUE
     ))
+  },
+  multibin_neighbor_matrix = function(bin.info, ...) {
+    fixed_radius_multibin_neighbor_matrix(bin.info, bin.radius=1L)
   }
 )
 
@@ -259,6 +273,9 @@ flusight2016.peak.week.target.spec = list(
       break.bin.representatives=head(breaks, -1L),
       rightmost.closed=FALSE, include.na=FALSE
     ))
+  },
+  multibin_neighbor_matrix = function(bin.info, ...) {
+    fixed_radius_multibin_neighbor_matrix(bin.info, bin.radius=1L)
   }
 )
 
@@ -267,6 +284,10 @@ flusight2016.percentage.bin.info = list(
   break.bin.representatives = 0:130/10,
   rightmost.closed=TRUE, include.na=FALSE
 )
+flusight2016.percentage.multibin.neighbor.matrix =
+  fixed_radius_multibin_neighbor_matrix(
+    flusight2016.percentage.bin.info, bin.radius=5L
+  )
 
 flusight2016.peak.percentage.target.spec = list(
   Target = "Season peak percentage",
@@ -276,6 +297,9 @@ flusight2016.peak.percentage.target.spec = list(
   },
   bin_info_for = function(...) {
     return (flusight2016.percentage.bin.info)
+  },
+  multibin_neighbor_matrix = function(bin.info, ...) {
+    flusight2016.percentage.multibin.neighbor.matrix
   }
 )
 
@@ -288,6 +312,9 @@ flusight2016_percentage_target_spec_for_lookahead = function(lookahead) {
     },
     bin_info_for = function(...) {
       return (flusight2016.percentage.bin.info)
+    },
+    multibin_neighbor_matrix = function(bin.info, ...) {
+      flusight2016.percentage.multibin.neighbor.matrix
     }
   )
 }
@@ -322,6 +349,23 @@ flusurv2017.age.group.percentage.bin.infos = c(
       rightmost.closed=TRUE, include.na=FALSE
     )
   })
+flusurv2017.age.group.percentage.multibin.neighbor.matrices =
+  lapply(flusurv2017.age.group.percentage.bin.infos,
+         function(bin.info) {
+           n.bins = length(bin.info[["break.bin.representatives"]])
+           ## radius = 1/10 the (rounded?) value, but with a minimum of 1
+           bin.inds = seq_len(n.bins)
+           bin.radii = pmax(1L, bin.inds %/% 10L)
+           window.froms = pmax(1L, bin.inds - bin.radii)
+           window.tos = pmin(n.bins, bin.inds + bin.radii)
+           windows = Map(seq, window.froms, window.tos)
+           ## row.inds = do.call(c, windows)
+           ## col.inds = rep(bin.inds, times=sapply(windows, length))
+           row.inds = do.call(c, windows)
+           col.data.start.inds = c(0L, cumsum(sapply(windows, length)))
+           Matrix::sparseMatrix(row.inds,,col.data.start.inds)
+         }
+         )
 
 flusurv2017.peak.week.target.spec = flusight2016.peak.week.target.spec
 
@@ -333,6 +377,9 @@ flusurv2017.peak.percentage.target.spec = list(
   },
   bin_info_for = function(age.group, ...) {
     return (flusurv2017.age.group.percentage.bin.infos[[age.group]])
+  },
+  multibin_neighbor_matrix = function(bin.info, age.group, ...) {
+    return (flusurv2017.age.group.percentage.multibin.neighbor.matrices [[age.group]])
   }
 )
 
@@ -345,6 +392,9 @@ flusurv2017_percentage_target_spec_for_lookahead = function(lookahead) {
     },
     bin_info_for = function(age.group, ...) {
       return (flusurv2017.age.group.percentage.bin.infos[[age.group]])
+    },
+    multibin_neighbor_matrix = function(bin.info, age.group, ...) {
+      return (flusurv2017.age.group.percentage.multibin.neighbor.matrices [[age.group]])
     }
   )
 }

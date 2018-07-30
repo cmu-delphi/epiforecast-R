@@ -137,11 +137,18 @@ point.mae.forecast.type = list(
 )
 
 unibin_log_score = function(forecast.value, observed.value) {
-  ## unibin-like log score: if observed.value is not an indicator for a
-  ## single value, treat it as a probability distribution over the "real"
-  ## observed value, and calculate the expected unibin log score:
+  ## unibin-like log score: if observed.value is not an indicator for a single
+  ## value, treat it as a probability distribution over the "real" observed
+  ## value, and calculate the expected unibin log score (KL divergence?):
   return (sum(observed.value[observed.value!=0]*
               log(forecast.value[observed.value!=0])))
+}
+
+multibin_log_score = function(forecast.value, observed.value) {
+  ## (given different observed.value's than multibin_log_score: nearly always many-hot rather than nearly always one-hot)
+  ##
+  ## Sum all accepted mass and take log:
+  log(sum(observed.value*forecast.value))
 }
 
 distr_from_weighted_univals =
@@ -266,6 +273,29 @@ distr_from_weighted_univals =
     return (bin.weights)
   }
 
+fit_distr_ensemble_coefs =
+  function(instance.method.forecast.values.listmat, evaluate_forecast_value, instance.observed.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score=-8) {
+    ## fixme make consistent with updated metric --- weighting
+    instance.method.log.scores.mat = Map(evaluate_forecast_value, instance.method.forecast.values.listmat, instance.observed.values.list) %>>%
+      {
+        dim(.) <- dim(instance.method.forecast.values.listmat)
+        dimnames(.) <- dimnames(instance.method.forecast.values.listmat)
+        mode(.) <- "numeric"
+        .
+      }
+    if (any(instance.method.log.scores.mat[,fallback.method.index] <= excessively.low.fallback.log.score)) {
+      stop ("Fallback method produced excessively low log score for at least one training instance.")
+    }
+    degenerate.em.weights = degenerate_em_weights(exp(instance.method.log.scores.mat))
+    fallback.inflation.factor = min(1, 3/total.instance.weight)
+    if (is.character(fallback.method.index)) {
+      fallback.method.index <- which(colnames(instance.method.log.scores.mat)==fallback.method.index)
+    }
+    weights = (1-fallback.inflation.factor)*degenerate.em.weights +
+      fallback.inflation.factor*as.numeric(seq_len(ncol(instance.method.log.scores.mat))==fallback.method.index)
+    return (weights)
+  }
+
 distr.logscore.forecast.type = list(
   Type = "Bin",
   forecast_value_from_weighted_univals = distr_from_weighted_univals,
@@ -320,27 +350,50 @@ distr.logscore.forecast.type = list(
   },
   evaluate_forecast_value = unibin_log_score,
   fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observed.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score=-8) {
-    ## fixme make consistent with updated metric --- weighting
-    instance.method.log.scores.mat = Map(unibin_log_score, instance.method.forecast.values.listmat, instance.observed.values.list) %>>%
-      {
-        dim(.) <- dim(instance.method.forecast.values.listmat)
-        dimnames(.) <- dimnames(instance.method.forecast.values.listmat)
-        mode(.) <- "numeric"
-        .
-      }
-    if (any(instance.method.log.scores.mat[,fallback.method.index] <= excessively.low.fallback.log.score)) {
-      stop ("Fallback method produced excessively low log score for at least one training instance.")
-    }
-    degenerate.em.weights = degenerate_em_weights(exp(instance.method.log.scores.mat))
-    fallback.inflation.factor = min(1, 3/total.instance.weight)
-    if (is.character(fallback.method.index)) {
-      fallback.method.index <- which(colnames(instance.method.log.scores.mat)==fallback.method.index)
-    }
-    weights = (1-fallback.inflation.factor)*degenerate.em.weights +
-                  fallback.inflation.factor*as.numeric(seq_len(ncol(instance.method.log.scores.mat))==fallback.method.index)
-    return (weights)
+    fit_distr_ensemble_coefs(instance.method.forecast.values.listmat,
+                             unibin_log_score,
+                             instance.observed.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score)
   }
 )
+
+multibin.logscore.forecast.type =
+  distr.logscore.forecast.type[c(
+    "Type",
+    "Value_from_forecast_value",
+    "forecast_value_from_Value",
+    "Bin_start_incl_for",
+    "Bin_end_notincl_for",
+    "forecast_value_from_weighted_univals"
+  )] %>>%
+  c(list(
+    observed_value_from_observed_multival =
+      function(target.spec,
+               observed.multival,
+               label.bins=TRUE,
+               ...) {
+        unibin.observed.value = distr.logscore.forecast.type[["observed_value_from_observed_multival"]](
+          target.spec, observed.multival, label.bins=label.bins, ...
+        )
+        ## flags for nonzero-weighted bins --- all are accepted centers for
+        ## multibin score
+        bin.is.valid.center = unibin.observed.value > 0
+        ## expand around centers according to multibin neighbor matrix:
+        bin.info = target.spec[["bin_info_for"]](...)
+        multibin.neighbor.matrix = target.spec[["multibin_neighbor_matrix"]](bin.info, ...)
+        bin.is.accepted = multibin.neighbor.matrix %*% bin.is.valid.center
+        ## flags to numeric:
+        return (as.numeric(bin.is.accepted))
+      },
+    evaluate_forecast_value = multibin_log_score,
+    ## forecast_value_from_weighted_univals = function(...) {
+    ##   stop ("implementation decision todo: multibin forecast values --- reuse unibin forecast values vs. optimize")
+    ## },
+    fit_ensemble_coefs = function(instance.method.forecast.values.listmat, instance.observed.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score=-8) {
+      fit_distr_ensemble_coefs(instance.method.forecast.values.listmat,
+                               multibin_log_score,
+                               instance.observed.values.list, total.instance.weight, fallback.method.index, excessively.low.fallback.log.score)
+    }
+  ))
 
 subspreadsheet_from_forecast_value = function(forecast.value,
                                               target.spec, forecast.type,
@@ -368,9 +421,61 @@ subspreadsheet_from_forecast_value = function(forecast.value,
   }
 }
 
+forecast_value_from_subspreadsheet =
+  function(subspreadsheet, target.spec, forecast.type, ...) {
+    ## tibble::tibble acts a bit slow in this case; forming and converting a
+    ## data.frame instead is faster
+    index.tbl =
+      data.frame(
+        Target=target.spec[["Target"]],
+        Type=forecast.type[["Type"]],
+        Unit=target.spec[["unit"]][["Unit"]],
+        Bin_start_incl=forecast.type[["Bin_start_incl_for"]](target.spec, ...),
+        Bin_end_notincl=forecast.type[["Bin_end_notincl_for"]](target.spec, ...),
+        check.names=FALSE,
+        stringsAsFactors=FALSE
+      ) %>>%
+      tibble::as_tibble() %>>%
+      stats::setNames(tolower(names(.)))
+    if (anyDuplicated(tolower(names(subspreadsheet))) != 0L) {
+      stop ("Duplicate names in subspreadsheet when case-insensitive; need them to be unique after lower-casing")
+    }
+    subspreadsheet <- subspreadsheet %>>%
+      stats::setNames(tolower(names(.)))
+    if (!identical(index.tbl, subspreadsheet[names(index.tbl)])) {
+      print("AAA")
+      print(index.tbl)
+      print("BBB")
+      print(subspreadsheet[names(index.tbl)])
+      print("CCC")
+      missing.indices =
+        dplyr::anti_join(index.tbl, subspreadsheet, names(index.tbl))
+      if (nrow(missing.indices) != 0L) {
+        stop (paste0("Missing indices:\n", paste(capture.output(print(missing.indices)),collapse="\n")))
+      }
+      extra.entries =
+        dplyr::anti_join(subspreadsheet, index.tbl, names(index.tbl))
+      if (nrow(extra.entries) != 0L) {
+        stop (paste0("Extra/mislabeled entries:\n", paste(capture.output(print(extra.entries)),collapse="\n")))
+      }
+      if (nrow(index.tbl) != nrow(subspreadsheet)) {
+        stop ("Number of rows in spreadsheet did not match the expected value; should be due to duplicate indices in subspreadsheet.")
+      }
+      stop (paste0("(After lowercasing colnames) index columns were not identical to expectations; feedback from all.equal (which may not cover all differences): ", capture.output(str(all.equal(subspreadsheet[names(index.tbl)], index.tbl, check.attributes=TRUE, ignore.col.order=FALSE, ignore.row.order=FALSE, tolerance=0)))))
+    }
+    forecast.type[["forecast_value_from_Value"]](subspreadsheet[["value"]], target.spec, ...)
+  }
+
 flusight2016.proxy.forecast.types = list(
   point.mae.forecast.type,
   distr.logscore.forecast.type
+) %>>%
+  setNames(sapply(., magrittr::extract2, "Type"))
+
+flusight2016.evaluation.forecast.types = list(
+  point.mae.forecast.type, # not really part of FluSight 2016 evaluations;
+                           # including for extra evaluation information
+  multibin.logscore.forecast.type
 ) %>>%
   setNames(sapply(., magrittr::extract2, "Type"))
 
