@@ -173,6 +173,8 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead) function(vox
               "stable@s-4" , -4L, FALSE, NA_integer_,         "stable@s", target.epigroup,      "simulations"
             ) %>>%
     dplyr::filter(include.nowcast | variable.name != "nowcast@s")
+  ## todo especially if regularizing, may want explicit `latestcorrection@s-1` = `stable@s-1`-`latest@s-1` to model connection between corrections within same issue of nearby epiweeks
+  ## todo add cross-region covariates
   simulation.descriptions =
     tibble::tribble(
               ~variable.name, ~relative.epiweek, ~use.lag.group, ~lag.group,
