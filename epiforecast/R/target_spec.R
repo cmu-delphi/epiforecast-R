@@ -353,9 +353,10 @@ flusurv2017.age.group.percentage.multibin.neighbor.matrices =
   lapply(flusurv2017.age.group.percentage.bin.infos,
          function(bin.info) {
            n.bins = length(bin.info[["break.bin.representatives"]])
-           ## radius = 1/10 the (rounded?) value, but with a minimum of 1
+           ## radius = 10% of the value, with banker's rounding, or the minimum
+           ## radius of 1 (whichever is higher).
            bin.inds = seq_len(n.bins)
-           bin.radii = pmax(1L, bin.inds %/% 10L)
+           bin.radii = pmax(1L, as.integer(round(bin.inds/10)))
            window.froms = pmax(1L, bin.inds - bin.radii)
            window.tos = pmin(n.bins, bin.inds + bin.radii)
            windows = Map(seq, window.froms, window.tos)
