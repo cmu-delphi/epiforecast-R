@@ -141,7 +141,7 @@ EWnone_to_MWplus1 = function(EWnone, n.weeks.in.season) {
   EW_NA_to_MWplus1(EW_NA, n.weeks.in.season)
 }
 
-target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
+target_multicast_epigroup_forecast_table = function(target.multicast, voxel.data, t.target.specs, m.forecast.types, epigroup.colname) {
   epigroup.forecast.table = map_join(
     function(forecast.type, target.spec, voxel.data, forecast.value) {
       subspreadsheet =
@@ -185,10 +185,10 @@ multi_spreadsheet_linlog_plot = function(multi.spreadsheet, binlabel_to_x, point
     ggplot2::theme(legend.position=c(1,1), legend.justification=c(1,1))
 }
 
-target_multicast_week_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
+target_multicast_week_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types, epigroup.colname) {
   n.weeks.in.season = length(voxel.data[["target.settings"]][["is.inseason"]])
   ##
-  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types)
+  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types, epigroup.colname)
   ##
   epigroup.forecast.table %>>%
     dplyr::filter(Unit == "week") %>>%
@@ -202,8 +202,8 @@ target_multicast_week_plot = function(target.multicast, voxel.data, t.target.spe
       "Target")
 }
 
-target_multicast_percent_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types) {
-  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types)
+target_multicast_percent_plot = function(target.multicast, voxel.data, t.target.specs, m.forecast.types, epigroup.colname) {
+  epigroup.forecast.table = target_multicast_epigroup_forecast_table(target.multicast, voxel.data, t.target.specs, m.forecast.types, epigroup.colname)
   ##
   epigroup.forecast.table %>>%
     dplyr::filter(Unit == "percent") %>>%
@@ -212,7 +212,7 @@ target_multicast_percent_plot = function(target.multicast, voxel.data, t.target.
                                  "Target")
 }
 
-target_multicast_combined_target_plot = function(target.multicasts, voxel.data, t.target.specs, m.forecast.types, plot.Target, Mtm.weights=NULL) {
+target_multicast_combined_target_plot = function(target.multicasts, voxel.data, t.target.specs, m.forecast.types, epigroup.colname, plot.Target, Mtm.weights=NULL) {
   n.weeks.in.season = length(voxel.data[["target.settings"]][["is.inseason"]])
   Unit = t.target.specs[[plot.Target]][["unit"]][["Unit"]]
   if (Unit == "week") {
@@ -231,7 +231,8 @@ target_multicast_combined_target_plot = function(target.multicasts, voxel.data, 
   target.spreadsheet =
     lapply(target.multicasts,
            target_multicast_epigroup_forecast_table,
-           voxel.data, t.target.specs, m.forecast.types) %>>%
+           voxel.data, t.target.specs, m.forecast.types,
+           epigroup.colname) %>>%
     dplyr::bind_rows(.id="Model") %>>%
     {
       if (is.null(Mtm.weights)) {
@@ -342,6 +343,7 @@ save_spreadsheets =
   function(swg_.target.multicasts,
            swg.voxel.data,
            t.target.specs, m.forecast.types,
+           epigroup.colname,
            spreadsheet.dir,
            subpath_or_NULL_for_save = function(swg.voxel.data,s,w,...) {
              spreadsheet.name = paste(s,w,...,sep=".") %>>%
@@ -366,9 +368,10 @@ save_spreadsheets =
                 target_multicast_epigroup_forecast_table,
                 swg_.target.multicasts[s,w,,...,drop=FALSE],
                 swg.voxel.data[s,w,,drop=FALSE],
-              no_join(t.target.specs), no_join(m.forecast.types),
-              lapply_variant=lapply, shuffle=FALSE,
-              show.progress=FALSE
+                no_join(t.target.specs), no_join(m.forecast.types),
+                epigroup.colname,
+                lapply_variant=lapply, shuffle=FALSE,
+                show.progress=FALSE
               ) %>>%
               dplyr::bind_rows()
             dir = dirname(filepath) # allow 1 level of dir nesting within spreadsheet.dir

@@ -268,6 +268,7 @@ if (!dir.exists(collab.ensemble.retro.dir)) {
 save_spreadsheets(swgbf.retro.component.target.multicasts[,,,"quantile_arx_backnowcast",,drop=FALSE],
                   swg.retro.voxel.data,
                   t.target.specs, m.forecast.types,
+                  epigroup.colname,
                   collab.ensemble.retro.dir,
                   function(swg.voxel.data,s,w,...) {
                     season = swg.voxel.data[[s,w,1L]][["season"]]
@@ -280,6 +281,7 @@ save_spreadsheets(swgbf.retro.component.target.multicasts[,,,"quantile_arx_backn
 save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
                   swg.retro.voxel.data,
                   t.target.specs, m.forecast.types,
+                  epigroup.colname,
                   collab.ensemble.retro.dir,
                   function(swg.voxel.data,s,w,...) {
                     season = swg.voxel.data[[s,w,1L]][["season"]]
@@ -297,6 +299,7 @@ if (!dir.exists(collab.ensemble.prospective.dir)) {
 save_spreadsheets(swgbf.prospective.component.target.multicasts[,,,"quantile_arx_backnowcast",,drop=FALSE],
                   swg.prospective.voxel.data,
                   t.target.specs, m.forecast.types,
+                  epigroup.colname,
                   collab.ensemble.prospective.dir,
                   function(swg.voxel.data,s,w,...) {
                     season = swg.voxel.data[[s,w,1L]][["season"]]
@@ -309,6 +312,7 @@ save_spreadsheets(swgbf.prospective.component.target.multicasts[,,,"quantile_arx
 save_spreadsheets(swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
                   swg.prospective.voxel.data,
                   t.target.specs, m.forecast.types,
+                  epigroup.colname,
                   collab.ensemble.prospective.dir,
                   function(swg.voxel.data,s,w,...) {
                     season = swg.voxel.data[[s,w,1L]][["season"]]
@@ -323,6 +327,7 @@ save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
 )
 
@@ -331,6 +336,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
 )
 
@@ -339,6 +345,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
 )
 
@@ -346,6 +353,7 @@ save_spreadsheets(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
 )
 
@@ -354,6 +362,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-week"
 )
 
@@ -362,6 +371,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-percent"
 )
 
@@ -369,6 +379,7 @@ save_spreadsheets(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-spreadsheets",
   function(swg.voxel.data,s,w,...) {
     season = swg.voxel.data[[s,w,1L]][["season"]]
@@ -383,6 +394,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-week"
 )
 
@@ -391,6 +403,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-percent"
 )
 
@@ -399,5 +412,6 @@ save_weighting_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-weighting-plots"
 )

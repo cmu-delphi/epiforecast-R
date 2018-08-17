@@ -211,6 +211,8 @@ save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/spreadsheets"
 )
 
@@ -219,6 +221,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-week"
 )
 
@@ -227,6 +230,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-percent"
 )
 
@@ -234,6 +238,7 @@ save_spreadsheets(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/spreadsheets"
 )
 
@@ -242,6 +247,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-week"
 )
 
@@ -250,6 +256,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-percent"
 )
 
@@ -257,6 +264,7 @@ save_spreadsheets(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-spreadsheets"
 )
 
@@ -265,6 +273,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-linlog.plots-week"
 )
 
@@ -273,6 +282,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-linlog.plots-percent"
 )
 
@@ -281,6 +291,7 @@ save_weighting_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
+  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-weighting-plots"
 )
 

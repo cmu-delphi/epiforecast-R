@@ -211,7 +211,8 @@ apply(swgtme.retro.ensemble.evaluations, 6:5, mean, na.rm=TRUE)
 ##   target_multicast_epigroup_forecast_table,
 ##   swgbf.retro.component.target.multicasts,
 ##   swg.retro.voxel.data,
-##   no_join(t.target.specs), no_join(m.forecast.types)
+##   no_join(t.target.specs), no_join(m.forecast.types),
+##   epigroup.colname
 ## ) %>>%
 ##   apply(c(1:2,4:5), dplyr::bind_rows)
 
