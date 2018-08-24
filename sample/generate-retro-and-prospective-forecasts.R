@@ -80,7 +80,7 @@ gc()
 sg.retro.observed.trajectories = map_join(
   get_observed_trajectory,
   s.retro.seasons, g.epigroups,
-  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories/sg.retro.observed.trajectories ")
+  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories/sg.retro.observed.trajectories")
 )
 
 swgt.retro.observed.multivals = map_join(
@@ -89,14 +89,14 @@ swgt.retro.observed.multivals = map_join(
   target_trajectory_preprocessor,
   t.target.specs,
   sg.retro.observed.trajectories,
-  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals/swgt.retro.observed.multivals ")
+  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals/swgt.retro.observed.multivals")
 )
 
 swgtm.retro.observed.values = map_join(
   observed_value2,
   swg.retro.voxel.data, t.target.specs, m.forecast.types,
   swgt.retro.observed.multivals,
-  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values/swgtm.retro.observed.values ")
+  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values/swgtm.retro.observed.values")
 )
 
 ## Tack on additional indexer_list's for CV:
