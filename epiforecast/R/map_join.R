@@ -256,7 +256,8 @@ map_join_ = function(f, arraylike.args,
           ## taking the eltnames intersection
           stop (sprintf('Inconsistent lengths found for dimension named "%s".  Length of dimension in arg %d (namep\'d "%s") (dimension %d): %d.  Previous length: %d.',
                         dimension.name, arraylike.arg.i, arraylike.arg.name, arg.dimension.i, length(dimension.eltnames), length(existing.eltnames)))
-      } else if (length(existing.eltnames) != length(dimension.eltnames) ||
+      } else if (length(existing.eltnames) != length(dimension.eltnames) &&
+                 eltname.mismatch.behavior == "intersect" ||
                  any(existing.eltnames != dimension.eltnames)) {
         if (all(existing.eltnames=="")) {
           ## no pre-existing eltnames; assign
