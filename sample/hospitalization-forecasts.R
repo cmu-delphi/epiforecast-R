@@ -137,7 +137,7 @@ signal.name = "rate"
 get_observed_trajectory = function(season, epigroup) {
   ## Use the current issue's version of a trajectory as the "observed" (vs. a
   ## fixed issue after the season's end):
-  epidata.df = g.fluview.current.dfs[[epigroup]]
+  epidata.df = g.flusurv.network_all.current.dfs[[epigroup]]
   observed.trajectory = epidata.df %>>%
     dplyr::filter(!dplyr::between(epiweek%%100L, 18L,39L)) %>>%
     {.[[signal.name]][.[["season"]]==season]}
