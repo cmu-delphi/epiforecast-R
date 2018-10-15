@@ -1,0 +1,1 @@
+../../epiforecast/man-roxygen/sim.method_template.R

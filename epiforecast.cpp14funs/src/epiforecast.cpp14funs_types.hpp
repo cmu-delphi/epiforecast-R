@@ -22,6 +22,11 @@
 // Note: the naming of this file is important in determining whether it is
 // properly included by the Rcpp::export attribute.
 
+#ifndef EPIFORECAST_TYPES_H
+#define EPIFORECAST_TYPES_H
+
+#include <Rcpp.h>
+
 // xxx global typedefs; perhaps better as template arguments
 using Time = double;
 using Observation = double;
@@ -29,3 +34,5 @@ using Mean = double;
 using SD = double;
 using LogLikelihood = double;
 using Rp = double;
+
+#endif

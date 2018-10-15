@@ -1,4 +1,4 @@
-Package: epiforecast
+Package: epiforecast.cpp14funs
 Type: Package
 Title: Tools for forecasting semi-regular seasonal epidemic curves and similar
     time series
@@ -42,33 +42,10 @@ License: GPL-2
 RoxygenNote: 6.0.1
 Collate: 
     'RcppExports.R'
-    'backcasters.R'
-    'match.R'
-    'utils.R'
-    'br.R'
-    'checks.R'
-    'cv.R'
-    'cv_apply.R'
-    'delphi_epidata.R'
-    'empirical.futures.R'
-    'empirical.trajectories.R'
-    'simclass.R'
-    'ensemble.R'
-    'namesp.R'
-    'map_join.R'
-    'epiproject.R'
-    'forecast_type.R'
-    'get_completed_fluview_state_df.R'
-    'holidays.R'
-    'weeks.R'
-    'loaders.R'
-    'read.R'
-    'setting.R'
-    'simplify2arrayp.R'
-    'target_spec.R'
-    'todo-by-file.R'
-    'twkde.R'
+    'eb_dists.R'
+    'interface.R'
+    'eb.R'
 LinkingTo: Rcpp
-SystemRequirements:
+SystemRequirements: C++14
 Suggests:
     testthat

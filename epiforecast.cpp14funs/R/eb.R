@@ -19,12 +19,11 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
-##' @include match.R
-##' @include loaders.R
 ##' @include interface.R
 ##' @include eb_dists.R
+##' @import epiforecast
 ##' @import Rcpp
-##' @useDynLib epiforecast
+##' @useDynLib epiforecast.cpp14funs
 NULL
 
 obs.vec.to.trajectory = function(obs.vec) {

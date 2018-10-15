@@ -7,9 +7,7 @@
 // author_header end
 // license_header begin
 // epiforecast is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2 of the License.
-//
+// it under the terms of the GNU General Public License as published by // the Free Software Foundation, version 2 of the License. //
 // epiforecast is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -35,7 +33,7 @@
 
 #include <Rcpp.h>
 
-#include "epiforecast_types.hpp"
+#include "epiforecast.cpp14funs_types.hpp"
 
 #define OUTELT(elt) \
   do { \
