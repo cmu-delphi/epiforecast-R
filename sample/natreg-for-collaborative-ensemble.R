@@ -256,8 +256,8 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 ## oneahead on seasons >= 2010L (train on seasons < test season)
 retro.season.indexer = list(loo_oneahead=match(2010L,s.retro.seasons))
 
-## epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-collab-run-2018"
-epiproject.cache.dir = "~/Dropbox/private/epiforecast-epiproject/flusight-natreg-collab-run-2018"
+epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-collab-run-2018"
+## epiproject.cache.dir = "~/Dropbox/private/epiforecast-epiproject/flusight-natreg-collab-run-2018"
 
 source("generate-retro-and-prospective-forecasts.R")
 
