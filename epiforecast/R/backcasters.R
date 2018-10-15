@@ -230,6 +230,27 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
       train.data =
         full.train.tbl %>>%
         dplyr::select(-reference.epiweek) %>>%
+        {
+          ## filter out columns with too many NA's (also considering NA's in
+          ## previously okay'd columns; earlier columns are favored for
+          ## inclusion over later ones; "y" col must be included):
+          original.nrow = nrow(.)
+          min.nrow = max(10, original.nrow*0.10)
+          running.dat = .[!is.na(.[["y"]]),]
+          if (nrow(running.dat) < min.nrow) {
+            stop ("Not enough non-NA y's for training.")
+          }
+          included.colnames = character(0L) # "y" should be grabbed at end
+          for (colname in colnames(.)) {
+              col.available = !is.na(running.dat[[colname]])
+              if (sum(col.available) >= min.nrow) {
+                  included.colnames <- c(included.colnames, colname)
+                  running.dat <- running.dat[col.available,]
+              }
+          }
+          ## print(included.colnames)
+          running.dat[included.colnames]
+        } %>>%
         na.omit() %>>%
         ## Throw out features that appear to be redundant (preventing singular
         ## matrix errors later):
