@@ -262,6 +262,10 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
                     names(.)[[ncol(.)]] == "y")
           .[c(!is.na(beta)[-1L],TRUE)]
         } %>>%
+        ## Try to avoid more insidious sources of singular matrices in quantile
+        ## regression with jitter:
+        dplyr::mutate_at(dplyr::vars(dplyr::everything()),
+                         function(col) col+rnorm(length(col),,sd(col)*1e-6)) %>>%
         {.}
       covariate.test.tbl =
         covariate.availabilities %>>%
