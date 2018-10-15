@@ -296,7 +296,13 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
       ## todo base on deltas, etc.
       ## todo sliding window average / exponential average of observations / deltas
       taus = runif(n.sims)
-      fit = quantreg::rq(y~., taus, train.data, method="lasso", lambda=lambda)
+      fit = tryCatch(
+          quantreg::rq(y~., taus, train.data, method="lasso", lambda=lambda),
+          error=function(e) {
+              ## todo iterate through taus, weight on recent data
+              quantreg::rq(y~., taus, train.data, method="fn")
+          }
+      )
       simulated.values = predict(fit, newdata=covariate.test.tbl)[cbind(seq_len(n.sims),seq_len(n.sims))]
       g.obs.sim.latest[[response.description[["epigroup"]]]][["simulations"]] <-
         dplyr::bind_rows(g.obs.sim.latest[[response.description[["epigroup"]]]][["simulations"]],
