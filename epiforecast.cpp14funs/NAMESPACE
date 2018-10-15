@@ -3,7 +3,6 @@
 export(eb.createForecasts)
 export(eb.fitSmoothCurves)
 export(eb.sim)
-export(get_br_control_list)
 export(get_eb_control_list)
 export(unifChoicePrior)
 import(Rcpp)
