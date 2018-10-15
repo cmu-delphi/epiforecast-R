@@ -19,15 +19,8 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP _epiforecast_CartesianProductCurves(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-RcppExport SEXP _epiforecast_CartesianProductLogWeights(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-RcppExport SEXP _epiforecast_ZipProductCurvesAndLogWeightsp(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-
 static const R_CallMethodDef CallEntries[] = {
     {"_epiforecast_WeightedTabulateRcpp", (DL_FUNC) &_epiforecast_WeightedTabulateRcpp, 3},
-    {"_epiforecast_CartesianProductCurves",         (DL_FUNC) &_epiforecast_CartesianProductCurves,         10},
-    {"_epiforecast_CartesianProductLogWeights",     (DL_FUNC) &_epiforecast_CartesianProductLogWeights,     21},
-    {"_epiforecast_ZipProductCurvesAndLogWeightsp", (DL_FUNC) &_epiforecast_ZipProductCurvesAndLogWeightsp, 22},
     {NULL, NULL, 0}
 };
 

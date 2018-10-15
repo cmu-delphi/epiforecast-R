@@ -33,6 +33,7 @@
 //' @return numeric vector of length \code{nbins}; the \code{i}th entry is like
 //' \code{sum(w[bin==i])}, but with a naive summation algorithm
 //'
+//' @useDynLib epiforecast
 //' @export
 // [[Rcpp::export(name="weighted_tabulate")]]
 Rcpp::NumericVector WeightedTabulateRcpp

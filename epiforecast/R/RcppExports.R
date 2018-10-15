@@ -13,6 +13,7 @@
 #' @return numeric vector of length \code{nbins}; the \code{i}th entry is like
 #' \code{sum(w[bin==i])}, but with a naive summation algorithm
 #'
+#' @useDynLib epiforecast
 #' @export
 weighted_tabulate <- function(bin, nbins, w) {
     .Call('_epiforecast_WeightedTabulateRcpp', PACKAGE = 'epiforecast', bin, nbins, w)
