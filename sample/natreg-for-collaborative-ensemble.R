@@ -219,7 +219,7 @@ g.epigroups = fluview.location.spreadsheet.names %>>%
 last.losocv.issue = 201039L
 b.backcasters = list(
   ## ignorant=backfill_ignorant_backsim,
-  quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L, lambda=1e-2, tol=1e-3, n.sims=200L)#,
+  quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L, lambda=1e-1, tol=1e-3, n.sims=200L)#,
   ## quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
 ) %>>%
   with_dimnamesnames("Backcaster")
