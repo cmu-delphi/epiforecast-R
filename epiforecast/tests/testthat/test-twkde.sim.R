@@ -19,17 +19,18 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
-("Testing the eb.sim() function..")
+context("Testing the twkde.sim() function..")
+
+area.name = "hhs1"
 
 ## Make a sim object from fluview.
-full.dat = fetchEpidataFullDat("fluview", "hhs1", "wili",
+full.dat = fetchEpidataFullDat("fluview", area.name, "wili",
                                min.points.in.season=52L,
                                first.week.of.season = 21L,
                                cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
-mysim = eb.sim(full.dat, n.sims=100)
+mysim = twkde.sim(full.dat, max.n.sims=2L)
 
 ## Tests:
-
 test_that("Returns object of class 'sim'.", {
     expect_equal(class(mysim),"sim")
 })

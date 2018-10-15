@@ -22,12 +22,14 @@
 
 context("Testing the eb.sim() function..")
 
+area.name = "hhs1"
+
 ## Make a sim object from fluview.
-full.dat = fetchEpidataFullDat("fluview", "hhs1", "wili",
-                               min.points.in.season=52L,
-                               first.week.of.season = 21L,
-                               cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
-mysim = eb.sim(full.dat, n.sims=100)
+full.dat = epiforecast::fetchEpidataFullDat("fluview", area.name, "wili",
+                                            min.points.in.season=52L,
+                                            first.week.of.season = 21L,
+                                            cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
+mysim = eb.sim(full.dat, max.n.sims=100)
 
 ## Tests:
 
