@@ -63,7 +63,6 @@ Collate:
     'weeks.R'
     'loaders.R'
     'read.R'
-    'setting.R'
     'simplify2arrayp.R'
     'target_spec.R'
     'todo-by-file.R'
