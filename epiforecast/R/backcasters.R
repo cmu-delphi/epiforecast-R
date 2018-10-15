@@ -25,10 +25,8 @@ backfill_ignorant_backsim = function(voxel.data, g.voxel.data, source.name, sign
   return (full.dat)
 }
 
-quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead) function(voxel.data, g.voxel.data, source.name, signal.name) {
-  n.sims = 200L
+quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3, tol=1e-3, n.sims=200L) function(voxel.data, g.voxel.data, source.name, signal.name) {
   model.week.shift.range = c(-4L, +4L)
-  lambda = 1e-6
   target.epigroup = voxel.data[["epigroup"]]
   target.source.name = voxel.data[["source.name"]]
   target.signal.name = voxel.data[["signal.name"]]
@@ -236,7 +234,7 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead) function(vox
         ## Throw out features that appear to be redundant (preventing singular
         ## matrix errors later):
         {
-          lm.fit = lm(y~., ., tol=1e-3)
+          lm.fit = lm(y~., ., tol=tol)
           beta = coefficients(lm.fit)
           stopifnot(names(beta)[[1L]] == "(Intercept)" &&
                     length(beta) - 1L == ncol(.) - 1L &&
@@ -259,7 +257,7 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead) function(vox
       ## print(fit)
       ## print(anova(fit))
       ## print(sigma)
-      lm.fit = lm(y~., train.data)
+      ## lm.fit = lm(y~., train.data)
       ## print(anova(lm.fit))
       ## taus = runif(n.sims)
       ## simulated.values =
