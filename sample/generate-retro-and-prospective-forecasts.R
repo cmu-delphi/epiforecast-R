@@ -7,7 +7,7 @@ swg.retro.voxel.data =
       get_voxel_data,
       s.retro.seasons, w.retro.model.weeks, g.epigroups,
       last.losocv.issue,
-      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data"),
+      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data"),
       use.proxy=TRUE
     )
   },
@@ -19,7 +19,7 @@ swg.retro.voxel.data =
       s.retro.seasons, w.retro.model.weeks, g.epigroups,
       last.losocv.issue,
       lapply_variant=lapply,
-      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data/swg.retro.voxel.data"),
+      cache.prefix=file.path(epiproject.cache.dir,"swg.retro.voxel.data"),
       use.proxy=TRUE
     )
   })
@@ -41,8 +41,7 @@ print("CV: generate backcasts")
 swgb.retro.full.dats = map_join(
   get_backcast,
   swg.retro.voxel.data, sw.g.retro.voxel.data, source.name, signal.name, b.backcasters,
-  use.proxy=TRUE,
-  cache.prefix=file.path(epiproject.cache.dir,"swgb.retro.full.dats/swgb.retro.full.dats")
+  cache.prefix=file.path(epiproject.cache.dir,"swgb.retro.full.dats")
 )
 
 ## CV forecasts as target_multicast objects:
@@ -55,7 +54,7 @@ swgbf.retro.component.target.multicasts = map_join(
   no_join(t.target.specs),
   no_join(m.forecast.types),
   ## lapply_variant = lapply,
-  cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts/swgbf.retro.component.target.multicasts"),
+  cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts"),
   use.proxy=TRUE
 )
 ## xxx loading from many cache files is slow; reduce # of cache files?
@@ -81,7 +80,7 @@ gc()
 sg.retro.observed.trajectories = map_join(
   get_observed_trajectory,
   s.retro.seasons, g.epigroups,
-  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories/sg.retro.observed.trajectories")
+  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories")
 )
 
 swgt.retro.observed.multivals = map_join(
@@ -90,14 +89,14 @@ swgt.retro.observed.multivals = map_join(
   target_trajectory_preprocessor,
   t.target.specs,
   sg.retro.observed.trajectories,
-  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals/swgt.retro.observed.multivals")
+  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals")
 )
 
 swgtm.retro.observed.values = map_join(
   observed_value2,
   swg.retro.voxel.data, t.target.specs, m.forecast.types,
   swgt.retro.observed.multivals,
-  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values/swgtm.retro.observed.values")
+  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
 )
 
 ## Tack on additional indexer_list's for CV:
@@ -121,7 +120,7 @@ e.retro.ensemble.weightsets = map_join(
   },
   e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists,
   lapply_variant=lapply,
-  cache.prefix=file.path(epiproject.cache.dir,"e.retro.ensemble.weightsets/e.retro.ensemble.weightsets")
+  cache.prefix=file.path(epiproject.cache.dir,"e.retro.ensemble.weightsets")
 )
 
 ## Calculate CV ensemble forecasts as forecast.value's
@@ -275,7 +274,7 @@ print("Current season: generate backcasts")
 swgb.prospective.full.dats = map_join(
   get_backcast,
   swg.prospective.voxel.data, sw.g.prospective.voxel.data, source.name, signal.name, b.backcasters,
-  cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats/swgb.prospective.full.dats"),
+  cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats"),
   lapply_variant=lapply
 )
 
@@ -286,7 +285,7 @@ swgbf.prospective.component.target.multicasts = map_join(
   target_trajectory_preprocessor,
   no_join(t.target.specs),
   no_join(m.forecast.types),
-  cache.prefix=file.path(epiproject.cache.dir,"swgbf.prospective.component.target.multicasts/swgbf.prospective.component.target.multicasts")
+  cache.prefix=file.path(epiproject.cache.dir,"swgbf.prospective.component.target.multicasts")
 )
 
 swgtmbf.prospective.component.forecast.values =
@@ -320,7 +319,7 @@ e.prospective.ensemble.weightsets = map_join(
                            weighting.scheme.indexer.list)
   },
   e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-  cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets/e.prospective.ensemble.weightsets")
+  cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets")
 )
 
 ## e.prospective.ensemble.weightsets = map_join(
@@ -328,7 +327,7 @@ e.prospective.ensemble.weightsets = map_join(
 ##     stop ("Result was not computed yet.")
 ##   },
 ##   e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-##   cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets/e.prospective.ensemble.weightsets")
+##   cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets")
 ## )
 
 print("Current season: generate ensemble forecasts")

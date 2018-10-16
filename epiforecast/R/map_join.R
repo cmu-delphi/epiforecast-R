@@ -121,7 +121,7 @@ dimnames.array_proxy = function(x) {
   ## xxx pre-compute and save original.named.dimp?
   array.char.ind = mapply(`[[`, x.impl[["original.dimnamesp"]], array.ind)
   array.char.ind <- gsub("/","-",array.char.ind)
-  filepath = paste0(x.impl[["prefix"]],".",paste(array.char.ind, collapse="."),".rds")
+  filepath = paste0(x.impl[["prefix"]],"/",paste(array.char.ind, collapse="/"),".rds")
   result = readRDS(filepath)
   return (result)
 }
@@ -331,7 +331,7 @@ map_join_ = function(f, arraylike.args,
             index
           }
         })
-        paste0(cache.prefix,".",paste(names.or.is, collapse="."),".rds")
+        paste0(cache.prefix,"/",paste(names.or.is, collapse="/"),".rds")
       }
     subresult =
       if (!is.null(cache.file) && file.exists(cache.file)) {
@@ -363,6 +363,9 @@ map_join_ = function(f, arraylike.args,
           })
         computed.subresult = do.call(f, args)
         if (!is.null(cache.file)) {
+          if (!dir.exists(dirname(cache.file))) {
+            dir.create(dirname(cache.file), recursive=TRUE)
+          }
           saveRDS(computed.subresult, cache.file)
         }
         computed.subresult
