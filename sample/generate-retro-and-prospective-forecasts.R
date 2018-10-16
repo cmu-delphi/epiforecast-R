@@ -275,7 +275,7 @@ swgb.prospective.full.dats = map_join(
   get_backcast,
   swg.prospective.voxel.data, sw.g.prospective.voxel.data, source.name, signal.name, b.backcasters,
   cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats"),
-  lapply_variant=lapply
+  shuffle=FALSE
 )
 
 print("Current season: generate component forecasts")
