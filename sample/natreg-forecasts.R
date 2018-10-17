@@ -252,9 +252,8 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
   "target-9time-based" = list(smear=-4:4, all=NULL, each=NULL)
 ) %>>% with_dimnamesnames("Ensemble weighting scheme")
 
-## Use LOSOCV on seasons < 2010L (train on other seasons < 2010L), and
-## oneahead on seasons >= 2010L (train on seasons < test season)
-retro.season.indexer = list(loo_oneahead=match(2010L,s.retro.seasons))
+## Use LOSOCV on all seasons but current
+retro.season.indexer = list(loo=NULL)
 
 epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-run"
 
