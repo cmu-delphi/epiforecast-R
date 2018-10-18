@@ -55,6 +55,7 @@ swgbf.retro.component.target.multicasts = map_join(
   no_join(m.forecast.types),
   ## lapply_variant = lapply,
   cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts"),
+  shuffle=FALSE,
   use.proxy=TRUE
 )
 ## xxx loading from many cache files is slow; reduce # of cache files?
@@ -64,7 +65,8 @@ gc()
 swgtmbf.retro.component.forecast.values =
   map_join(swgbf.retro.component.target.multicasts,
            f=`[[`, "forecast.values",
-           lapply_variant=lapply) %>>%
+           shuffle=FALSE#, lapply_variant=lapply
+           ) %>>%
   simplify2arrayp() %>>%
   {
     original = .
@@ -89,6 +91,7 @@ swgt.retro.observed.multivals = map_join(
   target_trajectory_preprocessor,
   t.target.specs,
   sg.retro.observed.trajectories,
+  shuffle=FALSE,
   cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals")
 )
 
@@ -96,6 +99,7 @@ swgtm.retro.observed.values = map_join(
   observed_value2,
   swg.retro.voxel.data, t.target.specs, m.forecast.types,
   swgt.retro.observed.multivals,
+  shuffle=FALSE,
   cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
 )
 
