@@ -216,7 +216,7 @@ w.retro.model.weeks = (35:78) %>>%
 g.epigroups = fluview.location.spreadsheet.names %>>%
   stats::setNames(.) %>>%
   with_dimnamesnames("Location")
-last.losocv.issue = 201039L
+last.losocv.issue = 201839L
 b.backcasters = list(
   ignorant=backfill_ignorant_backsim,
   quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
