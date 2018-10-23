@@ -41,6 +41,7 @@ print("CV: generate backcasts")
 swgb.retro.full.dats = map_join(
   get_backcast,
   swg.retro.voxel.data, sw.g.retro.voxel.data, source.name, signal.name, b.backcasters,
+  use.proxy=TRUE,
   cache.prefix=file.path(epiproject.cache.dir,"swgb.retro.full.dats")
 )
 
@@ -72,6 +73,8 @@ swgtmbf.retro.component.forecast.values =
     original = .
     dim(.) <- c(dim(original)[1:2], dim(swgbf.retro.component.target.multicasts))
     dimnames(.) <- c(dimnames(original)[1:2], dimnames(swgbf.retro.component.target.multicasts))
+    rm(original) # somehow this reaches the global environment and takes up memory
+    gc()
     .
   } %>>%
   aperm(c(3:5,1:2,6:7))
@@ -99,7 +102,7 @@ swgtm.retro.observed.values = map_join(
   observed_value2,
   swg.retro.voxel.data, t.target.specs, m.forecast.types,
   swgt.retro.observed.multivals,
-  shuffle=FALSE,
+  shuffle=FALSE, lapply_variant=lapply,
   cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
 )
 
@@ -135,7 +138,7 @@ swgtme.retro.ensemble.forecast.values =
   if (file.exists(swgtme.retro.ensemble.forecast.values.file)) {
     readRDS(swgtme.retro.ensemble.forecast.values.file)
   } else {
-    parallel::mclapply(
+    lapply(
                  e.retro.ensemble.weightsets,
                  function(weightset) {
                    map_join(
