@@ -37,21 +37,23 @@ if (!dir.exists(epidata.cache.dir)) {
   dir.create(epidata.cache.dir)
 }
 fluview.baseline.info = fetchUpdatingResource(
-  function() {
-    LICENSE=RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/LICENSE")
-    wILI_Baseline=read.csv(textConnection(RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/wILI_Baseline.csv")), row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
-    cat("LICENSE for wILI_Baseline.csv:")
-    cat(LICENSE)
-    return (list(
-      LICENSE=LICENSE,
-      wILI_Baseline=wILI_Baseline
-    ))
-  },
-  function(fetch.response) {
-    return ()
-  },
-  cache.file.prefix=file.path(epidata.cache.dir,"fluview_baselines"),
-  cache.invalidation.period=as.difftime(1L, units="weeks")
+    function() {
+        LICENSE=RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/LICENSE")
+        ## wILI_Baseline=read.csv(textConnection(RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/wILI_Baseline.csv")), row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
+        wILI_Baseline=read.csv("wILI_Baseline_fixup.csv", row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
+        cat("LICENSE for wILI_Baseline.csv:")
+        cat(LICENSE)
+        return (list(
+            LICENSE=LICENSE,
+            wILI_Baseline=wILI_Baseline
+        ))
+    },
+    function(fetch.response) {
+        return ()
+    },
+    cache.file.prefix=file.path(epidata.cache.dir,"fluview_baselines"),
+    cache.invalidation.period=as.difftime(1L, units="weeks"),
+    force.cache.invalidation=TRUE
 )
 fluview.baseline.ls.mat =
   fluview.baseline.info[["wILI_Baseline"]] %>>%

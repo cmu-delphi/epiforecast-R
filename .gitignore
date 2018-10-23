@@ -148,9 +148,10 @@ man/**
 /R_pkg/epiforecast/data/**
 
 
-# (For now) offline copies of data that was fetched
-*.csv
-*.Rdata
+# # (For now) offline copies of data that was fetched
+# *.csv
+# *.Rdata
+# --- Disabled to allow "real" .csv's like sample/wILI_Baseline_fixup.csv to be noticed
 
 # R documentatation
 *.Rd
