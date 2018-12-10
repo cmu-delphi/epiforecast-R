@@ -35,7 +35,7 @@ Epidata <- (function() {
   # Helper function to request and parse epidata
   .request <- function(params) {
     # API call
-    return(httr::content(httr::GET(BASE_URL, query=params), 'parsed'))
+    return(content(GET(BASE_URL, query=params), 'parsed'))
   }
 
   # Build a `range` object (ex: dates/epiweeks)
@@ -49,7 +49,7 @@ Epidata <- (function() {
   }
 
   # Fetch FluView data
-  fluview <- function(regions, epiweeks, issues, lag) {
+  fluview <- function(regions, epiweeks, issues, lag, auth) {
     # Check parameters
     if(missing(regions) || missing(epiweeks)) {
       stop('`regions` and `epiweeks` are both required')
@@ -60,6 +60,34 @@ Epidata <- (function() {
     # Set up request
     params <- list(
       source = 'fluview',
+      regions = .list(regions),
+      epiweeks = .list(epiweeks)
+    )
+    if(!missing(issues)) {
+      params$issues <- .list(issues)
+    }
+    if(!missing(lag)) {
+      params$lag <- lag
+    }
+    if(!missing(auth)) {
+      params$auth <- auth
+    }
+    # Make the API call
+    return(.request(params))
+  }
+
+  # Fetch FluView virological data
+  fluview_clinical <- function(regions, epiweeks, issues, lag) {
+    # Check parameters
+    if(missing(regions) || missing(epiweeks)) {
+      stop('`regions` and `epiweeks` are both required')
+    }
+    if(!missing(issues) && !missing(lag)) {
+      stop('`issues` and `lag` are mutually exclusive')
+    }
+    # Set up request
+    params <- list(
+      source = 'fluview_clinical',
       regions = .list(regions),
       epiweeks = .list(epiweeks)
     )
@@ -94,45 +122,6 @@ Epidata <- (function() {
     if(!missing(lag)) {
       params$lag <- lag
     }
-    # Make the API call
-    return(.request(params))
-  }
-
-  # Fetch ILINet data
-  ilinet <- function(locations, epiweeks, version, auth) {
-    # Check parameters
-    if(missing(locations) || missing(epiweeks)) {
-      stop('`locations` and `epiweeks` are both required')
-    }
-    # Set up request
-    params <- list(
-      source = 'ilinet',
-      locations = .list(locations),
-      epiweeks = .list(epiweeks)
-    )
-    if(!missing(version)) {
-      params$version <- version
-    }
-    if(!missing(auth)) {
-      params$auth <- auth
-    }
-    # Make the API call
-    return(.request(params))
-  }
-
-  # Fetch Delphi's imputed state ILI
-  stateili <- function(auth, states, epiweeks) {
-    # Check parameters
-    if(missing(auth) || missing(states) || missing(epiweeks)) {
-      stop('`auth`, `states`, and `epiweeks` are all required')
-    }
-    # Set up request
-    params <- list(
-      source = 'stateili',
-      auth = auth,
-      states = .list(states),
-      epiweeks = .list(epiweeks)
-    )
     # Make the API call
     return(.request(params))
   }
@@ -257,6 +246,38 @@ Epidata <- (function() {
     return(.request(params))
   }
 
+  # Fetch NoroSTAT data (point data, no min/max)
+  norostat <- function(auth, location, epiweeks) {
+    # Check parameters
+    if(missing(auth) || missing(location) || missing(epiweeks)) {
+      stop('`auth`, `location`, and `epiweeks` are all required')
+    }
+    # Set up request
+    params <- list(
+        source = 'norostat',
+        auth = auth,
+        location = location,
+        epiweeks = .list(epiweeks)
+    )
+    # Make the API call
+    return(.request(params))
+  }
+
+  # Fetch NoroSTAT metadata
+  meta_norostat <- function(auth) {
+    # Check parameters
+    if(missing(auth)) {
+      stop('`auth` is required')
+    }
+    # Set up request
+    params <- list(
+      source = 'meta_norostat',
+      auth = auth
+    )
+    # Make the API call
+    return(.request(params))
+  }
+
   # Fetch NIDSS flu data
   nidss.flu <- function(regions, epiweeks, issues, lag) {
     # Check parameters
@@ -314,15 +335,15 @@ Epidata <- (function() {
     return(.request(params))
   }
 
-  # Fetch Delphi's digital surveillance signals
-  signals <- function(auth, names, locations, epiweeks) {
+  # Fetch Delphi's digital surveillance sensors
+  sensors <- function(auth, names, locations, epiweeks) {
     # Check parameters
     if(missing(auth) || missing(names) || missing(locations) || missing(epiweeks)) {
       stop('`auth`, `names`, `locations`, and `epiweeks` are all required')
     }
     # Set up request
     params <- list(
-      source = 'signals',
+      source = 'sensors',
       auth = auth,
       names = .list(names),
       locations = .list(locations),
@@ -333,14 +354,14 @@ Epidata <- (function() {
   }
 
   # Fetch Delphi's digital surveillance sensors
-  sensors <- function(auth, names, locations, epiweeks) {
+  dengue_sensors <- function(auth, names, locations, epiweeks) {
     # Check parameters
     if(missing(auth) || missing(names) || missing(locations) || missing(epiweeks)) {
       stop('`auth`, `names`, `locations`, and `epiweeks` are all required')
     }
     # Set up request
     params <- list(
-      source = 'sensors',
+      source = 'dengue_sensors',
       auth = auth,
       names = .list(names),
       locations = .list(locations),
@@ -366,6 +387,22 @@ Epidata <- (function() {
     return(.request(params))
   }
 
+  # Fetch Delphi's PAHO Dengue nowcast
+  dengue_nowcast <- function(locations, epiweeks) {
+    # Check parameters
+    if(missing(locations) || missing(epiweeks)) {
+      stop('`locations` and `epiweeks` are both required')
+    }
+    # Set up request
+    params <- list(
+      source = 'dengue_nowcast',
+      locations = .list(locations),
+      epiweeks = .list(epiweeks)
+    )
+    # Make the API call
+    return(.request(params))
+  }
+
   # Fetch API metadata
   meta <- function() {
     return(.request(list(source='meta')))
@@ -375,21 +412,23 @@ Epidata <- (function() {
   return(list(
     range = range,
     fluview = fluview,
+    fluview_clinical = fluview_clinical,
     flusurv = flusurv,
-    ilinet = ilinet,
-    stateili = stateili,
     gft = gft,
     ght = ght,
     twitter = twitter,
     wiki = wiki,
     cdc = cdc,
     quidel = quidel,
+    norostat = norostat,
+    meta_norostat = meta_norostat,
     nidss.flu = nidss.flu,
     nidss.dengue = nidss.dengue,
     delphi = delphi,
-    signals = signals,
     sensors = sensors,
+    dengue_sensors = dengue_sensors,
     nowcast = nowcast,
+    dengue_nowcast = dengue_nowcast,
     meta = meta
   ))
 })()
