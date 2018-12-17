@@ -212,7 +212,6 @@ save_spreadsheets(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  epigroup.colname,
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/spreadsheets"
 )
 
@@ -286,14 +285,14 @@ save_linlog_plots(
   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-linlog.plots-percent"
 )
 
-save_weighting_linlog_plots(
-  e.prospective.ensemble.weightsets[["target-9time-based"]],
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-weighting-plots"
-)
+## save_weighting_linlog_plots(
+##   e.prospective.ensemble.weightsets[["target-9time-based"]],
+##   swgbf.prospective.component.target.multicasts,
+##   swg.prospective.voxel.data,
+##   t.target.specs, m.forecast.types,
+##   "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-weighting-plots"
+## )
+## ## fixme there appears to be a bug causing this call to generate errors
 
 ## fixme no epiweek 18--21 predictions will be made!  this will break late-season forecasts if they want those weeks, but they apparently don't.  However, the forecast date range seems to go through when epiweek 17 is released --- this is okay, backcasting only.  But it may break the forecast targets... so these forecast weeks are omitted for now...
 ## fixme recent rates are at a lower resolution
