@@ -293,37 +293,6 @@ save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based",
                     }
                   })
 
-collab.ensemble.prospective.dir = "~/files/nosync/cdc-flusight-ensemble/model-forecasts/real-time-component-models/"
-if (!dir.exists(collab.ensemble.prospective.dir)) {
-  dir.create(collab.ensemble.prospective.dir)
-}
-save_spreadsheets(swgbf.prospective.component.target.multicasts[,,,"quantile_arx_backnowcast",,drop=FALSE],
-                  swg.prospective.voxel.data,
-                  t.target.specs, m.forecast.types,
-                  epigroup.colname,
-                  collab.ensemble.prospective.dir,
-                  function(swg.voxel.data,s,w,...) {
-                    season = swg.voxel.data[[s,w,1L]][["season"]]
-                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
-                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
-                      sprintf("%s/EW%02d-%d-%s.csv", ..2, week, year, ..2)
-                    }
-                  })
-save_spreadsheets(swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-                  swg.prospective.voxel.data,
-                  t.target.specs, m.forecast.types,
-                  epigroup.colname,
-                  collab.ensemble.prospective.dir,
-                  function(swg.voxel.data,s,w,...) {
-                    season = swg.voxel.data[[s,w,1L]][["season"]]
-                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
-                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
-                      sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
-                    }
-                  })
-
 save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
@@ -338,7 +307,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-week"
 )
 
 save_linlog_plots(
@@ -347,7 +316,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
+  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-percent"
 )
 
 save_spreadsheets(

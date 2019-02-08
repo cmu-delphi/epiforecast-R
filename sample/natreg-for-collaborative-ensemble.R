@@ -329,7 +329,7 @@ save_spreadsheets(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
+  file.path(epiproject.cache.dir, "spreadsheets")
 )
 
 save_linlog_plots(
@@ -338,7 +338,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
+  file.path(epiproject.cache.dir,"linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -347,7 +347,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots"
+  file.path(epiproject.cache.dir,"linlog.plots-percent")
 )
 
 save_spreadsheets(
@@ -355,7 +355,7 @@ save_spreadsheets(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
+  file.path(epiproject.cache.dir, "spreadsheets")
 )
 
 save_linlog_plots(
@@ -364,7 +364,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-week"
+  file.path(epiproject.cache.dir, "linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -373,7 +373,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-percent"
+  file.path(epiproject.cache.dir, "linlog.plots-percent")
 )
 
 save_spreadsheets(
@@ -381,7 +381,7 @@ save_spreadsheets(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-spreadsheets",
+  file.path(epiproject.cache.dir, "stat-spreadsheets"),
   function(swg.voxel.data,s,w,...) {
     season = swg.voxel.data[[s,w,1L]][["season"]]
     year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
@@ -396,7 +396,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-week"
+  file.path(epiproject.cache.dir, "stat-linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -405,7 +405,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-percent"
+  file.path(epiproject.cache.dir, "stat-linlog.plots-percent")
 )
 
 save_weighting_linlog_plots(
@@ -414,5 +414,5 @@ save_weighting_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-weighting-plots"
+  file.path(epiproject.cache.dir, "stat-weighting-plots")
 )
