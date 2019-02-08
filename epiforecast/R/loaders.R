@@ -362,12 +362,15 @@ fetchUpdatingResource = function(fetch.thunk.fun,
 fetchEpidataDF = function(source, area, lag=NULL,
                           first.week.of.season=NULL,
                           first.epiweek=NULL, last.epiweek=NULL,
-                          cache.file.prefix=NULL, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE, silent=FALSE) {
+                          cache.file.prefix=NULL, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE,
+                          ignore.no.results=FALSE,
+                          silent=FALSE) {
   df = fetchBasicEpidataDF(source, area, lag=lag,
                            from.epiweek=first.epiweek, to.epiweek=last.epiweek,
                            cache.file.prefix=cache.file.prefix,
                            cache.invalidation.period=cache.invalidation.period,
                            force.cache.invalidation=force.cache.invalidation,
+                           ignore.no.results=ignore.no.results,
                            silent=silent)
 
   df <- augmentWeeklyDF(df, first.week.of.season)
@@ -383,6 +386,7 @@ fetchBasicEpidataDF = function(source, epigroup, lag=NULL,
                                cache.file.prefix=NULL,
                                cache.invalidation.period=as.difftime(1L, units="days"),
                                force.cache.invalidation=FALSE,
+                               ignore.no.results=FALSE,
                                silent=FALSE) {
   if (!is.null(lag) && length(lag) > 1) stop("Fetching epidata for multiple lags simultaneously is not supported.")
 
@@ -398,8 +402,9 @@ fetchBasicEpidataDF = function(source, epigroup, lag=NULL,
       }
     },
     function(fetch.response) {
-      if (!(fetch.response$result==1L && fetch.response$message=="success")) {
-        stop(sprintf('Failed to read data; result=%d, message="%s".', fetch.response$result, fetch.response$message))
+        if (!(fetch.response$result==1L && identical(fetch.response$message,"success")) &&
+            !(ignore.no.results && fetch.response$result==-2L && identical(fetch.response$message,"no results"))) {
+            stop(sprintf('Failed to read data; result=%d, message="%s".', fetch.response$result, fetch.response$message))
       }
     },
     cache.file.prefix=cache.file.prefix,
@@ -570,6 +575,7 @@ fetchEpidataHistoryDF = function(source, area, lags,
                                  first.week.of.season=NULL,
                                  first.epiweek=NULL, last.epiweek=NULL,
                                  cache.file.prefix, cache.invalidation.period=as.difftime(1L, units="days"), force.cache.invalidation=FALSE,
+                                 ignore.no.results=FALSE,
                                  silent=FALSE) {
   fetchUpdatingResource(
     function() {
@@ -586,6 +592,7 @@ fetchEpidataHistoryDF = function(source, area, lags,
                                   first.epiweek=first.epiweek, last.epiweek=last.epiweek,
                                   ## cache.file.prefix=paste0(cache.file.prefix,"_current"), cache.invalidation.period=cache.invalidation.period, force.cache.invalidation=force.cache.invalidation,
                                   force.cache.invalidation=force.cache.invalidation,
+                                  ignore.no.results=ignore.no.results,
                                   silent=TRUE)
       history.df = dplyr::bind_rows(dplyr::bind_rows(lag.dfs), current.df) %>>%
         dplyr::distinct()
