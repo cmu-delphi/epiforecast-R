@@ -191,6 +191,23 @@ saveRDS(swgtmbf.retro.component.evaluations, file.path(epiproject.cache.dir,"swg
 ## fixme sometimes this results in errors due to NULL's appearing in the
 ## evaluations, but re-running the evaluations seems to work... memory issues? gc beforehand?
 
+
+swgt.retro.observed.multibin.values = map_join(
+    observed_value2,
+    swg.retro.voxel.data, t.target.specs, no_join(multibin.logscore.forecast.type),
+    swgt.retro.observed.multivals
+)
+
+swgtmbf.retro.component.multibin.scores = map_join(
+    get_evaluation,
+    swgtmbf.retro.component.forecast.values[,,,,"Bin",,,drop=FALSE],
+    swgt.retro.observed.multibin.values,
+    no_join(multibin.logscore.forecast.type)
+)
+mode(swgtmbf.retro.component.multibin.scores) <- "numeric"
+
+apply(swgtmbf.retro.component.multibin.scores, c(7L,6L), mean, na.rm=TRUE)
+
 swgtme.retro.ensemble.evaluations = map_join(
   get_evaluation,
   swgtme.retro.ensemble.forecast.values, swgtm.retro.observed.values, m.forecast.types
