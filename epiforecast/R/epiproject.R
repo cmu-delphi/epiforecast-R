@@ -391,13 +391,15 @@ save_linlog_plots =
            swg_.target.multicasts,
            swg.voxel.data,
            t.target.specs, m.forecast.types,
+           epigroup.colname,
            linlog.plot.dir
            ) {
     linlog.plots = map_join(
       target_multicast_linlog_plotter,
       swg_.target.multicasts,
       swg.voxel.data,
-      no_join(t.target.specs), no_join(m.forecast.types)
+      no_join(t.target.specs), no_join(m.forecast.types),
+      epigroup.colname
     )
     linlog.plot.names =
       dimnames(linlog.plots) %>>%
