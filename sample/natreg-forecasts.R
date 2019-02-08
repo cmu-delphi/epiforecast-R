@@ -227,16 +227,16 @@ b.backcasters = list(
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
   "Delphi_Uniform"=uniform_forecast,
-  "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
-  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
-    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
-           control.list=get_eb_control_list(max.match.length=4L))
-  },
-  "Delphi_BasisRegression_PackageDefaults"=br.sim,
-  "Delphi_DeltaDensity_PackageDefaults"=twkde.sim,
-  "Delphi_MarkovianDeltaDensity_PackageDefaults"=twkde.markovian.sim,
-  "Delphi_EmpiricalFutures_PackageDefaults"=empirical.futures.sim,
-  "Delphi_EmpiricalTrajectories_PackageDefaults"=empirical.trajectories.sim
+  ## "Delphi_EmpiricalBayes"=eb.sim,
+  ## "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
+  ##   eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+  ##          control.list=get_eb_control_list(max.match.length=4L))
+  ## },
+  "Delphi_BasisRegression"=br.sim,
+  "Delphi_ExtendedDeltaDensity"=twkde.sim,
+  "Delphi_MarkovianDeltaDensity"=twkde.markovian.sim,
+  "Delphi_EmpiricalFutures"=empirical.futures.sim,
+  "Delphi_EmpiricalTrajectories"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
 target_trajectory_preprocessor = flusight2016_target_trajectory_preprocessor
