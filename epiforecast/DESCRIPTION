@@ -4,8 +4,8 @@ Title: Tools for forecasting semi-regular seasonal epidemic curves and similar
     time series
 Version: 0.0.1
 Date: 2015-12-09
-Author: Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni
-    Rosenfeld
+Author: Logan C. Brooks, Sangwon Hyun, David C. Farrow, Aaron Rumack, Ryan J.
+    Tibshirani, Roni Rosenfeld
 Maintainer: Logan C. Brooks <lcbrooks@cs.cmu.edu>
 Imports:
     stats,
