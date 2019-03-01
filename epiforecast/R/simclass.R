@@ -256,13 +256,13 @@ target_forecast <- function(fit.model, ...) {
 wtd.quantile.or.na =
   function (x, weights = NULL, probs = c(0, 0.25, 0.5, 0.75, 1),
             type = c("quantile", "(i-1)/(n-1)", "i/(n+1)", "i/n"),
-            normwt = FALSE, na.rm = TRUE) {
+            na.rm = TRUE) {
   if (na.rm && all(is.na(x))) {
     ## x is empty or all NA's; return appropriate NA:
     x[NA_integer_][[1L]]
   } else {
     Hmisc::wtd.quantile(x, weights=weights, probs=probs,
-                        type=type, normwt=normwt, na.rm=na.rm)
+                        type=type, normwt=TRUE, na.rm=na.rm)
   }
 }
 
