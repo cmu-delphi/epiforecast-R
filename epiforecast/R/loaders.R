@@ -682,25 +682,70 @@ mimicPastDF1 = function(history.df,
     history.df %>>%
     dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
     dplyr::filter(.[[issue.colname]] <= mimicked.issue) %>>%
-    dplyr::group_by_(.dots=group.colnames) %>>%
-    ## try to avoid dplyr replacement max (changes type sometimes)
-    dplyr::summarize_at(issue.colname, base::max) %>>%
-    ## fixme: when there are no group.colnames and no available issues, this
-    ## summary operation results in one row with a -Inf issue instead of the
-    ## desired zero rows
-    dplyr::ungroup()
+    {
+      input.tbl = .
+      input.tbl %>>%
+        dplyr::group_by_(.dots=group.colnames) %>>%
+        ## try to avoid dplyr replacement max (changes type sometimes)
+        dplyr::summarize_at(issue.colname, base::max) %>>%
+        dplyr::ungroup() %>>%
+        ## If input.tbl has no rows and any of the grouping variables is
+        ## a factor, different versions of dplyr give different results
+        ## for `.` here: it's possible to get something with no rows, or
+        ## something with a single row with NA for the grouping
+        ## variables; post-process to ensure the former result:
+        {
+          if (nrow(input.tbl)==0L) {
+            . %>>% dplyr::filter(FALSE)
+          } else {
+            .
+          }
+        }
+    }
   future.fillin.for.missing.issues =
     history.df %>>%
     dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
     dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
-    dplyr::group_by_(.dots=group.colnames) %>>%
-    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-    dplyr::ungroup()
+    {
+      input.tbl = .
+      input.tbl %>>%
+        dplyr::group_by_(.dots=group.colnames) %>>%
+        dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+        dplyr::ungroup() %>>%
+        ## If input.tbl has no rows and any of the grouping variables is
+        ## a factor, different versions of dplyr give different results
+        ## for `.` here: it's possible to get something with no rows, or
+        ## something with a single row with NA for the grouping
+        ## variables; post-process to ensure the former result:
+        {
+          if (nrow(input.tbl)==0L) {
+            . %>>% dplyr::filter(FALSE)
+          } else {
+            .
+          }
+        }
+    }
   available.issues %>>%
     dplyr::bind_rows(future.fillin.for.missing.issues) %>>%
-    dplyr::group_by_(.dots=group.colnames) %>>%
-    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-    dplyr::ungroup() %>>%
+    {
+      input.tbl = .
+      input.tbl %>>%
+        dplyr::group_by_(.dots=group.colnames) %>>%
+        dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+        dplyr::ungroup() %>>%
+        ## If input.tbl has no rows and any of the grouping variables is
+        ## a factor, different versions of dplyr give different results
+        ## for `.` here: it's possible to get something with no rows, or
+        ## something with a single row with NA for the grouping
+        ## variables; post-process to ensure the former result:
+        {
+          if (nrow(input.tbl)==0L) {
+            . %>>% dplyr::filter(FALSE)
+          } else {
+            .
+          }
+        }
+    } %>>%
     ## dplyr::arrange_(.dots=group.colnames) %>>%
     dplyr::left_join(history.df, c(group.colnames, issue.colname)) %>>%
     magrittr::extract(colnames(history.df)) %>>%
@@ -820,9 +865,26 @@ mimicPastHistoryDF = function(history.df,
     history.df %>>%
     dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
     dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
-    dplyr::group_by_(.dots=group.colnames) %>>%
-    dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-    dplyr::ungroup()
+    {
+      input.tbl = .
+      input.tbl %>>%
+        dplyr::group_by_(.dots=group.colnames) %>>%
+        dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+        dplyr::ungroup()
+      ## If input.tbl has no rows and any of the grouping variables is
+      ## a factor, different versions of dplyr give different results
+      ## for `.` here: it's possible to get something with no rows, or
+      ## something with a single row with NA for the grouping
+      ## variables; post-process to ensure the former result:
+      {
+        if (nrow(input.tbl)==0L) {
+          . %>>% dplyr::filter(FALSE)
+        } else {
+          .
+        }
+      }
+    } %>>%
+    {.}
   future.fillin.for.missing.issues %>>%
     ## remove future fill-in for groups that have actually available issues:
     dplyr::anti_join(available.issues, group.colnames) %>>%
