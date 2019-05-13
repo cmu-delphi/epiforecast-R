@@ -161,6 +161,8 @@ swgtme.retro.ensemble.forecast.values =
 if (!file.exists(swgtme.retro.ensemble.forecast.values.file)) {
   saveRDS(swgtme.retro.ensemble.forecast.values, swgtme.retro.ensemble.forecast.values.file)
 }
+## todo in weightset application, try removing NA values rather than 0 weights? is there a way to use row/col weighted means to do the above?
+## todo speed up weightset fitting&application with Rcpp?
 ## todo use mclapply in map_join above instead of mclapply over ensembles...
 ## but broke before; need to avoid memory duplication issues
 
@@ -206,7 +208,16 @@ swgtmbf.retro.component.multibin.scores = map_join(
 )
 mode(swgtmbf.retro.component.multibin.scores) <- "numeric"
 
+swgtme.retro.ensemble.multibin.scores = map_join(
+    get_evaluation,
+    swgtme.retro.ensemble.forecast.values[,,,,"Bin",,drop=FALSE],
+    swgt.retro.observed.multibin.values,
+    no_join(multibin.logscore.forecast.type)
+)
+mode(swgtme.retro.ensemble.multibin.scores) <- "numeric"
+
 apply(swgtmbf.retro.component.multibin.scores, c(7L,6L), mean, na.rm=TRUE)
+apply(swgtme.retro.ensemble.multibin.scores, c(6L), mean, na.rm=TRUE)
 
 swgtme.retro.ensemble.evaluations = map_join(
   get_evaluation,
