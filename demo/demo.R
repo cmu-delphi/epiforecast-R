@@ -19,8 +19,8 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
-library(epiforecast)
-library(epiforecast.cpp14funs)
+library(epiforecast) # or devtools::load_all("../epiforecast") to try without installing
+library(epiforecast.cpp14funs) # or devtools::load_all("../epiforecast.cpp14funs") to try without installing
 
 ## Fetch current ILINet data for Health and Human Services (HHS) Region 1:
 area.name = "hhs1"
