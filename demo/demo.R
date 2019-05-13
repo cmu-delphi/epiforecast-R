@@ -20,24 +20,16 @@
 ## license_header end
 
 library(epiforecast)
+library(epiforecast.cpp14funs)
 
-## Make dummy csv
+## Fetch current ILINet data for Health and Human Services (HHS) Region 1:
 area.name = "hhs1"
-hhs1.dat = fetchEpidataFullDat("fluview", area.name, "wili",
+full.dat = fetchEpidataFullDat("fluview", area.name, "wili",
                                min.points.in.season=52L,
                                first.week.of.season = 21L,
                                cache.file.prefix=sprintf("fluview_%s_fetch", area.name))
 
-## Create a csv in the correct, desirable format
-filename="./correct.csv"
-hhs1.dat = lapply(hhs1.dat, function(myvec){ if(length(myvec)<53) return(c(myvec,NA))  else {return(myvec)}})
-correct.hhs1.dat = do.call(cbind, hhs1.dat)
-correct.hhs1.dat = correct.hhs1.dat[-53,]
-write.csv(correct.hhs1.dat, file=filename, row.names=FALSE)
-full.dat = read.from.file(filename)
-
-
-## Try EB with basic options
+## Try EB with basic options; evaluate line by line to see all plots
 mysim = eb.sim(full.dat, max.n.sims=1000)
 plot(mysim)
 target.forecast = target_forecast(mysim,'pht')
