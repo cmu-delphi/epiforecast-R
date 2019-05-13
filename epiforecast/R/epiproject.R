@@ -278,7 +278,7 @@ get_ensemble_weightset = function(swgtmbf.forecast.values, swgtm.observation.val
       }
       forecast.type = forecast.types[[dimnamesp(train)[[5L]]]]
       fold.coefs = forecast.type[["fit_ensemble_coefs"]](
-        instance.method.forecast.values.listmat ,
+        instance.method.forecast.values.listmat,
         instance.observation.values.list,
         ## only count separate season-location pairs as separate observations:
         prod(dim(train)[c(1L,3L)]),

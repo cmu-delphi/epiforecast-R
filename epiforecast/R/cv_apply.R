@@ -68,7 +68,7 @@ cv_apply_helper = function(train_data, test_data, indexer_list, fn, parallel_dim
            loo_oneahead={
              oneahead_start_ind = match.single.nonna.integer(indexer_val)
              if (oneahead_start_ind <= 2L || current_dim_size < oneahead_start_ind) {
-               stop ("loo_onahead argument outside the index range for the corresponding dimension, or equal to one or two, resulting in no training data for the first fold")
+               stop ("loo_oneahead argument outside the index range for the corresponding dimension, or equal to one or two, resulting in no training data for the first fold")
              }
              loo_test_inds = seq_len(oneahead_start_ind-1L)
              loo_train_inds = lapply(loo_test_inds, function(train_out_ind) {
