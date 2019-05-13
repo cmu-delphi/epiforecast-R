@@ -2,7 +2,8 @@
 NULL
 
 degenerate_em_weights = function(distr.cond.lkhds,
-                                 init.weights=rep(1/dim(distr.cond.lkhds)[2],dim(distr.cond.lkhds)[2]),
+                                 init.weights=rep(1/dim(distr.cond.lkhds)[[2L]],dim(distr.cond.lkhds)[[2L]]),
+                                 instance.weights=rep(1, dim(distr.cond.lkhds)[[1L]]),
                                  stop.eps = sqrt(.Machine[["double.eps"]])) {
   if (any(init.weights < 1e-10)) {
     stop("All init.weight's must be >=1e-10")
@@ -12,25 +13,25 @@ degenerate_em_weights = function(distr.cond.lkhds,
   }
 
   ## Set some constants:
-  n.obs = dim(distr.cond.lkhds)[1]
-  n.distr = dim(distr.cond.lkhds)[2]
+  n.obs = dim(distr.cond.lkhds)[[1L]]
+  n.distr = dim(distr.cond.lkhds)[[2L]]
   t.distr.cond.lkhds = t(distr.cond.lkhds) # dim: n.distr x n.obs
 
   ## Set initial values of variables adjusted each step:
   weights = init.weights # length: n.distr
   t.lkhds = init.weights*t.distr.cond.lkhds # dim: n.distr x n.obs
   marginals = colSums(t.lkhds) # length: n.obs
-  log.lkhd = mean(log(marginals)) # scalar
+  log.lkhd = weighted.mean(log(marginals), instance.weights) # scalar
   ## log.lkhds = list(log.lkhd)
   if (log.lkhd == -Inf) {
     stop ("All methods assigned a probability of 0 to at least one observed event.")
   } else {
     repeat {
       old.log.lkhd = log.lkhd # scalar
-      weights <- colMeans(t(t.lkhds)/marginals) # length: n.distr
+      weights <- matrixStats::colWeightedMeans(t(t.lkhds)/marginals, instance.weights) # length: n.distr
       t.lkhds <- weights*t.distr.cond.lkhds # dim: n.distr x n.obs
       marginals <- colSums(t.lkhds) # length: n.obs
-      log.lkhd <- mean(log(marginals)) # scalar
+      log.lkhd <- weighted.mean(log(marginals), instance.weights) # scalar
       ## xxx inefficient
       ## log.lkhds <- c(log.lkhds,list(log.lkhd))
       stopifnot (log.lkhd >= old.log.lkhd)
@@ -72,6 +73,12 @@ degenerate_em_weights = function(distr.cond.lkhds,
 ##   print(degenerate_em_weights(distrsToLkhds(matrix(c(1,0,1,0,1,0,1,0),2),matrix(c(0.2,0.8,0.2,0.8,0.2,0.8,0.2,0.8),2),matrix(c(1,0,1,0,1,0,1,0),2))))
 ##   print(degenerate_em_weights(matrix(c(0.2,0.2,0.2,0.2, 1,1,1,1),4)))
 ## }
+##
+## ## Test using instance.weights:
+## degenerate_em_weights(matrix(c(0.5,0.2,0.2,0.2, 0.8,0.4,0.1,0.1),,2L))
+## degenerate_em_weights(matrix(c(0.5,0.2,0.2, 0.8,0.4,0.1),,2L),instance.weights=c(1,1,2))
+## ## Scale of instance.weights does not impact the result:
+## degenerate_em_weights(matrix(c(0.5,0.2,0.2, 0.8,0.4,0.1),,2L),instance.weights=c(1,1,2)/5)
 
 ## Illustrative example/check:
 ## {
