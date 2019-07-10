@@ -721,9 +721,12 @@ add_epiweek_integer = function(epiweek, int) {
 ##' @export
 subtract_epiweek_epiweek = function(epiweek.a, epiweek.b) {
   difftime(epiweek_to_sunday(epiweek.a),
-           epiweek_to_sunday(epiweek.b), "days") %>>%
-    as.integer(units="days") %>>%
-    magrittr::divide_by_int(7L)
+           epiweek_to_sunday(epiweek.b),
+           units="days") %>>%
+      as.integer(units="days") %>>% # units="days" within as.integer appears to be ignored,
+                                    # but appears in code online;
+                                    # included here in case some R versions do use it
+      magrittr::divide_by_int(7L)
 }
 
 ##' Compute a sequence of epiweeks with the specified range
