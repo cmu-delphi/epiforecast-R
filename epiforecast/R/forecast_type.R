@@ -380,7 +380,7 @@ multibin.logscore.forecast.type =
         ## expand around centers according to multibin neighbor matrix:
         bin.info = target.spec[["bin_info_for"]](...)
         multibin.neighbor.matrix = target.spec[["multibin_neighbor_matrix"]](bin.info, ...)
-        bin.is.accepted = multibin.neighbor.matrix %*% bin.is.valid.center
+        bin.is.accepted = multibin.neighbor.matrix %*% bin.is.valid.center > 0
         ## flags to numeric:
         return (as.numeric(bin.is.accepted))
       },
