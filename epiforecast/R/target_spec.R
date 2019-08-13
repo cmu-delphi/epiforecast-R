@@ -356,7 +356,8 @@ flusurv2017.age.group.percentage.multibin.neighbor.matrices =
            ## radius = 10% of the value, with banker's rounding, or the minimum
            ## radius of 1 (whichever is higher).
            bin.inds = seq_len(n.bins)
-           bin.radii = pmax(1L, as.integer(round(bin.inds/10)))
+           bin.vals = (bin.inds-1L)/10
+           bin.radii = pmax(1L, as.integer(round(bin.vals/10*10)))
            window.froms = pmax(1L, bin.inds - bin.radii)
            window.tos = pmin(n.bins, bin.inds + bin.radii)
            windows = Map(seq, window.froms, window.tos)
