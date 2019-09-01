@@ -683,68 +683,69 @@ mimicPastDF1 = function(history.df,
     dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
     dplyr::filter(.[[issue.colname]] <= mimicked.issue) %>>%
     {
-      input.tbl = .
-      input.tbl %>>%
-        dplyr::group_by_(.dots=group.colnames) %>>%
-        ## try to avoid dplyr replacement max (changes type sometimes)
-        dplyr::summarize_at(issue.colname, base::max) %>>%
-        dplyr::ungroup() %>>%
-        ## If input.tbl has no rows and any of the grouping variables is
-        ## a factor, different versions of dplyr give different results
-        ## for `.` here: it's possible to get something with no rows, or
-        ## something with a single row with NA for the grouping
-        ## variables; post-process to ensure the former result:
-        {
-          if (nrow(input.tbl)==0L) {
-            . %>>% dplyr::filter(FALSE)
-          } else {
-            .
-          }
-        }
+      ## If `.` has no rows and any of the grouping variables is a factor,
+      ## different versions of dplyr give different results for
+      ## group_by&summarize below: it's possible to get something with no rows,
+      ## or something with a single row with NA for the grouping variables, or a
+      ## "Factor [...] contains implicit NA" warning plus an integer-type
+      ## columns in the place of factor-type grouping columns; ensure the first
+      ## result:
+      if (nrow(.) == 0L) {
+        .[c(group.colnames,issue.colname)]
+      } else {
+        . %>>%
+          dplyr::group_by_(.dots=group.colnames) %>>%
+          ## try to avoid dplyr replacement max (changes type sometimes)
+          dplyr::summarize_at(issue.colname, base::max) %>>%
+          dplyr::ungroup() %>>%
+          {.}
+      }
     }
   future.fillin.for.missing.issues =
     history.df %>>%
     dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
     dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
     {
-      input.tbl = .
-      input.tbl %>>%
-        dplyr::group_by_(.dots=group.colnames) %>>%
-        dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-        dplyr::ungroup() %>>%
-        ## If input.tbl has no rows and any of the grouping variables is
-        ## a factor, different versions of dplyr give different results
-        ## for `.` here: it's possible to get something with no rows, or
-        ## something with a single row with NA for the grouping
-        ## variables; post-process to ensure the former result:
-        {
-          if (nrow(input.tbl)==0L) {
-            . %>>% dplyr::filter(FALSE)
-          } else {
-            .
-          }
-        }
+      ## If `.` has no rows and any of the grouping variables is a factor,
+      ## different versions of dplyr give different results for
+      ## group_by&summarize below: it's possible to get something with no rows,
+      ## or something with a single row with NA for the grouping variables, or a
+      ## "Factor [...] contains implicit NA" warning plus an integer-type
+      ## columns in the place of factor-type grouping columns; ensure the first
+      ## result:
+      if (nrow(.) == 0L) {
+        .[c(group.colnames,issue.colname)]
+      } else {
+        . %>>%
+          dplyr::group_by_(.dots=group.colnames) %>>%
+          ## try to avoid dplyr replacement max (changes type sometimes)
+          dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+          dplyr::ungroup() %>>%
+          {.}
+      }
     }
-  available.issues %>>%
-    dplyr::bind_rows(future.fillin.for.missing.issues) %>>%
+  dplyr::bind_rows(
+             available.issues,
+             future.fillin.for.missing.issues
+         ) %>>%
     {
-      input.tbl = .
-      input.tbl %>>%
-        dplyr::group_by_(.dots=group.colnames) %>>%
-        dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-        dplyr::ungroup() %>>%
-        ## If input.tbl has no rows and any of the grouping variables is
-        ## a factor, different versions of dplyr give different results
-        ## for `.` here: it's possible to get something with no rows, or
-        ## something with a single row with NA for the grouping
-        ## variables; post-process to ensure the former result:
-        {
-          if (nrow(input.tbl)==0L) {
-            . %>>% dplyr::filter(FALSE)
-          } else {
-            .
-          }
-        }
+      ## If `.` has no rows and any of the grouping variables is a factor,
+      ## different versions of dplyr give different results for
+      ## group_by&summarize below: it's possible to get something with no rows,
+      ## or something with a single row with NA for the grouping variables, or a
+      ## "Factor [...] contains implicit NA" warning plus an integer-type
+      ## columns in the place of factor-type grouping columns; ensure the first
+      ## result:
+      if (nrow(.) == 0L) {
+        .[c(group.colnames,issue.colname)]
+      } else {
+        . %>>%
+          dplyr::group_by_(.dots=group.colnames) %>>%
+          ## try to avoid dplyr replacement max (changes type sometimes)
+          dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+          dplyr::ungroup() %>>%
+          {.}
+      }
     } %>>%
     ## dplyr::arrange_(.dots=group.colnames) %>>%
     dplyr::left_join(history.df, c(group.colnames, issue.colname)) %>>%
@@ -866,22 +867,22 @@ mimicPastHistoryDF = function(history.df,
     dplyr::select_(.dots=c(group.colnames, issue.colname)) %>>%
     dplyr::filter(.[[issue.colname]] > mimicked.issue | is.na(.[[issue.colname]])) %>>%
     {
-      input.tbl = .
-      input.tbl %>>%
-        dplyr::group_by_(.dots=group.colnames) %>>%
-        dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
-        dplyr::ungroup()
-      ## If input.tbl has no rows and any of the grouping variables is
-      ## a factor, different versions of dplyr give different results
-      ## for `.` here: it's possible to get something with no rows, or
-      ## something with a single row with NA for the grouping
-      ## variables; post-process to ensure the former result:
-      {
-        if (nrow(input.tbl)==0L) {
-          . %>>% dplyr::filter(FALSE)
-        } else {
-          .
-        }
+      ## If `.` has no rows and any of the grouping variables is a factor,
+      ## different versions of dplyr give different results for
+      ## group_by&summarize below: it's possible to get something with no rows,
+      ## or something with a single row with NA for the grouping variables, or a
+      ## "Factor [...] contains implicit NA" warning plus an integer-type
+      ## columns in the place of factor-type grouping columns; ensure the first
+      ## result:
+      if (nrow(.) == 0L) {
+        .[c(group.colnames,issue.colname)]
+      } else {
+        . %>>%
+          dplyr::group_by_(.dots=group.colnames) %>>%
+          ## try to avoid dplyr replacement max (changes type sometimes)
+          dplyr::summarize_at(issue.colname, min_NA_highest) %>>%
+          dplyr::ungroup() %>>%
+          {.}
       }
     } %>>%
     {.}
