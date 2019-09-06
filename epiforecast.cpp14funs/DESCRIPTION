@@ -7,6 +7,8 @@ Date: 2015-12-09
 Author: Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni
     Rosenfeld
 Maintainer: Logan C. Brooks <lcbrooks@cs.cmu.edu>
+Recommends:
+    epiforecast
 Imports:
     stats,
     utils,
@@ -39,7 +41,7 @@ Description: Tools for forecasting semi-regular seasonal epidemic curves and
     kernel density estimation on backward differences parameterized by both the
     time series measurements and the current time.
 License: GPL-2
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 Collate: 
     'RcppExports.R'
     'eb_dists.R'

@@ -18,9 +18,16 @@
 ## You should have received a copy of the GNU General Public License
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
-##' @import epiforecast
+
 ##' @import glmgen
 NULL
+
+## Note: it would make sense to import epiforecast here to get access to *.sim
+## methods, but this messes up package check unless epiforecast is included in
+## the DESCRIPTION file's `Imports:` field, which in turn breaks the checking
+## process in another way, as the epiforecast package appears to be unavailable.
+## Instead, just rely on the user to load epiforecast for these functions and
+## list it under the `Recommends:` field.
 
 seasonalGaussian = function(dat, smooth.dat) {
     ensureTRUE(is.or.why.not.smooth.dat(dat, smooth.dat))
@@ -634,6 +641,29 @@ fit.eb.control.list = function(dat, new.dat, fit.obj, time.of.forecast, control.
 ##'   length(new.dat)
 ##' @param max.n.sims maximum number of (weighted) simulated curves to produce.
 ##'   Defaults to 1000.
+##'
+##' @examples
+##' library(epiforecast)
+##' fluview.nat.recent.df =
+##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
+##'                           first.week.of.season=21L,
+##'                           cache.file.prefix="fluview_nat_allfetch"),
+##'            "wili", min.points.in.season=52L)
+##' ## Recent historical seasons + current season, minus 2009 (nonseasonal
+##' ## pandemic) season:
+##' full.dat = split(fluview.nat.recent.df$wili, fluview.nat.recent.df$season)
+##' names(full.dat) <- sprintf("S%s", names(full.dat))
+##' full.dat <- full.dat[names(full.dat)!="S2009"]
+##' ## Recent historical seasons minus 2009:
+##' dat = head(full.dat, -1L)
+##' ## Current season:
+##' new.dat = tail(full.dat, 1L)[[1]]
+##' ## Sample from conditional curve distribution estimate using CDC's 2015
+##' ## national %wILI onset threshold baseline of 2.1:
+##' sim = eb.sim(dat, new.dat, 2.1, max.n.sims=100)
+##'
+##' print(sim)
+##' plot(sim)
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'

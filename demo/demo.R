@@ -31,6 +31,7 @@ full.dat = fetchEpidataFullDat("fluview", area.name, "wili",
 
 ## Try EB with basic options; evaluate line by line to see all plots
 mysim = eb.sim(full.dat, max.n.sims=1000)
+print(mysim)
 plot(mysim)
 target.forecast = target_forecast(mysim,'pht')
 print(target.forecast)

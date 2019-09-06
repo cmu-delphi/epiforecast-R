@@ -19,8 +19,9 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
-##' @include ensemble.R
 ##' @import pipeR
+##' @include ensemble.R
+##' @include utils.R
 NULL
 
 ##' @include match.R
@@ -364,7 +365,7 @@ multibin.logscore.forecast.type =
     "Bin_start_incl_for",
     "Bin_end_notincl_for",
     "forecast_value_from_weighted_univals"
-  )] %>>%
+  )] %pipeR>>%
   c(list(
     observed_value_from_observed_multival =
       function(target.spec,
@@ -469,14 +470,14 @@ forecast_value_from_subspreadsheet =
 flusight2016.proxy.forecast.types = list(
   point.mae.forecast.type,
   distr.logscore.forecast.type
-) %>>%
+) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Type"))
 
 flusight2016.evaluation.forecast.types = list(
   point.mae.forecast.type, # not really part of FluSight 2016 evaluations;
                            # including for extra evaluation information
   multibin.logscore.forecast.type
-) %>>%
+) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Type"))
 
 forecast_value = function(target.spec, forecast.type, target.forecast, label.bins=TRUE) {

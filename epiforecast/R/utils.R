@@ -19,8 +19,12 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+##' @import pipeR
 ##' @import R.utils
 NULL
+
+## At least some versions of roxygen generate an error when documenting this package when the pipeR pipe would actually be called when sourcing in R files (rather than just appearing in generated function bodies).  Work around this by defining an un-exported copy of the pipeR pipe operator:
+`%pipeR>>%` = pipeR::`%>>%`
 
 ##' A \code{seq} variant that produces a 0-length vector when \code{!(from <=
 ##' to)}.

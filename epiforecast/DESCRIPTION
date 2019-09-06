@@ -16,6 +16,7 @@ Imports:
     glmnet,
     httr,
     Rcpp,
+    Matrix,
     rlist,
     Hmisc,
     weights,
@@ -39,7 +40,7 @@ Description: Tools for forecasting semi-regular seasonal epidemic curves and
     kernel density estimation on backward differences parameterized by both the
     time series measurements and the current time.
 License: GPL-2
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 Collate: 
     'RcppExports.R'
     'backcasters.R'

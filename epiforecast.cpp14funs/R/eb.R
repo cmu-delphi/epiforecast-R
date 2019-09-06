@@ -21,7 +21,6 @@
 
 ##' @include interface.R
 ##' @include eb_dists.R
-##' @import epiforecast
 ##' @import Rcpp
 ##' @useDynLib epiforecast.cpp14funs
 NULL

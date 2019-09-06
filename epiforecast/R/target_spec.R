@@ -20,6 +20,7 @@
 ## license_header end
 
 ##' @import pipeR
+##' @include utils.R
 NULL
 
 ##' Calculate the peak week(s) in a vector of weekly observations
@@ -327,7 +328,7 @@ flusight2016.target.specs = list(
   flusight2016_percentage_target_spec_for_lookahead(2L),
   flusight2016_percentage_target_spec_for_lookahead(3L),
   flusight2016_percentage_target_spec_for_lookahead(4L)
-) %>>%
+) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Target"))
 
 flusight2016_target_trajectory_preprocessor = function(trajectory) {
@@ -341,7 +342,7 @@ flusurv2017.age.group.percentage.bin.infos = c(
   "18-49 yr"=130L,
   "50-64 yr"=130L,
   "65+ yr"=600L
-) %>>%
+) %pipeR>>%
   lapply(function(max.bin.start.times.ten) {
     list(
       breaks=c(0:max.bin.start.times.ten/10, 100),
@@ -408,7 +409,7 @@ flusurv2017.target.specs = list(
   flusurv2017_percentage_target_spec_for_lookahead(2L),
   flusurv2017_percentage_target_spec_for_lookahead(3L),
   flusurv2017_percentage_target_spec_for_lookahead(4L)
-) %>>%
+) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Target"))
 
 flusurv2017_target_trajectory_preprocessor = function(trajectory) {
