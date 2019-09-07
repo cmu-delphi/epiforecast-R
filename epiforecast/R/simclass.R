@@ -185,23 +185,36 @@ print.sim = function(x, verbose=TRUE,...){
 
     cat(fill=TRUE)
     cat(paste0(ncol(mysim[["ys"]]), " simulated trajectories with weights produced by ", ctrmodel, " model"), fill=TRUE)
-    cat(fill=TRUE)
-    cat("====================",fill=TRUE)
-    cat("Simulation settings:",fill=TRUE)
-    cat("--------------------",fill=TRUE)
 
     print.each.control.list.item = function(x){
         stopifnot(is.list(x))
         if(!is.null(x[[1]])) { cat(names(x), "=", x[[1]], fill=T) }
     }
 
-    if(ctrmodel %in% c("Empirical Bayes", "Basis Regression")){
-        invisible(sapply(seq_along(ctrlist),
-                         function(ii) print.each.control.list.item(ctrlist[ii])))
+    cat(fill=TRUE)
+    cat("===========================",fill=TRUE)
+    cat("Stored simulation settings:",fill=TRUE)
+    cat("---------------------------",fill=TRUE)
+    if (length(ctrlist) == 0L) {
+      cat("(none)",fill=TRUE)
     } else {
-        stop(paste("print not written for --", ctrmodel, " -- yet!"))
+      sapply(seq_along(ctrlist),
+             function(ii) print.each.control.list.item(ctrlist[ii]))
     }
-    cat("====================",fill=TRUE)
+    cat("===========================",fill=TRUE)
+
+    cat(fill=TRUE)
+    cat("Default sim object components are $ys, $weights, and $control.list.",fill=TRUE)
+    additional.component.names = setdiff(names(mysim), c("ys", "weights", "control.list"))
+    cat("===============================",fill=TRUE)
+    cat("Names of additional components:",fill=TRUE)
+    cat("-------------------------------",fill=TRUE)
+    if(length(additional.component.names) == 0L) {
+      cat("(none)",fill=TRUE)
+    } else {
+      cat(paste0(sapply(additional.component.names, as.name), collapse="\n"), fill=TRUE)
+    }
+    cat("===============================",fill=TRUE)
 
     if(verbose){
         cat(fill=TRUE)
@@ -211,16 +224,6 @@ print.sim = function(x, verbose=TRUE,...){
                                  n.shown.rows = min(5L, nrow(mysim$ys)),
                                  n.shown.cols = min(5L, ncol(mysim$ys)))
     }
-
-  additional.component.names = setdiff(names(mysim), c("ys", "weights", "control.list"))
-  if(length(additional.component.names) != 0L){
-    cat(fill=TRUE)
-    cat("===============================",fill=TRUE)
-    cat("Names of additional components:",fill=TRUE)
-    cat("-------------------------------",fill=TRUE)
-    cat(paste0(sapply(additional.component.names, as.name), collapse="\n"), fill=TRUE)
-    cat("===============================",fill=TRUE)
-  }
 }
 
 
