@@ -48,7 +48,25 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
     ## Make some colors
     mycols = make_sim_ys_colors(mysim$weights[1:nplot])
 
-    if(mysim$control.list$model=="Empirical Bayes") par(mfrow=c(2,1))
+    desired.mfrow.or.null =
+      if(mysim$control.list$model=="Empirical Bayes") {
+        c(2,1)
+      } else {
+        NULL # (single-panel)
+      }
+
+    ## Save incoming mfrow par setting to restore if needed at the end, then
+    ## override if the plot for the given sim object's model type will use
+    ## multiple panels:
+    if (!is.null(desired.mfrow.or.null)) {
+      mfg.beforehand = par("mfg")
+      ## mfg is of form (row, col, #rows, #cols); completed/fresh multipane plots have row==#rows, col==#cols; ensure that this is the case if changing mfrow:
+      if (!identical(mfg.beforehand[1:2], mfg.beforehand[3:4])) {
+        stop ("This type of sim object uses multiple panes in its plots, but it appears that R is in the middle of building a multi-pane plot; refusing to continue.")
+      }
+      mfrow.beforehand = par("mfrow")
+      par(mfrow=desired.mfrow.or.null)
+    }
 
     ## Make line plot of ys
     if(type=="lineplot"){
@@ -141,6 +159,11 @@ plot.sim = function(mysim, ylab = "Disease Intensity", xlab = "Time", lty = 1,
         barplot(mytable,col="#8DD3C7")
         title("Contribution of historical seasons to simulated curves (%)")
         ## pie(mytable, main="Historical seasons")
+    }
+
+    ## Restore original mfrow par setting:
+    if (!is.null(desired.mfrow.or.null)) {
+      par(mfrow=mfrow.beforehand)
     }
 }
 
