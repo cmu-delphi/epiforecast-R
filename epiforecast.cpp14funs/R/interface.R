@@ -20,6 +20,8 @@
 ## license_header end
 
 ##' @import glmgen
+##' @include checks.R
+##' @include curve-fits.R
 NULL
 
 ## Note: it would make sense to import epiforecast here to get access to *.sim
@@ -385,10 +387,10 @@ trendfilter.cv = function(x, y, k=2, cv.rule=c("min","1se"), nfolds=5,
 ##'     \code{\link{eb.createForecasts}}
 ##'
 ##' @examples
-##'   default.control.list get_eb_control_list()
-##'   with.less.sims = get_eb_control_list(max.n.sims = 10000L)
-##'   with.less.sims.another.way = get_eb_control_list(default.control.list, max.n.sims = 10000L)
-##'   with.less.sims.and.sd.option.scale = get_eb_control_list(with.less.sims, sd.option="scale")
+##' default.control.list = get_eb_control_list()
+##' with.less.sims = get_eb_control_list(max.n.sims = 10000L)
+##' with.less.sims.another.way = get_eb_control_list(default.control.list, max.n.sims = 10000L)
+##' with.less.sims.and.sd.option.scale = get_eb_control_list(with.less.sims, sd.option="scale")
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'
@@ -643,27 +645,18 @@ fit.eb.control.list = function(dat, new.dat, fit.obj, time.of.forecast, control.
 ##'   Defaults to 1000.
 ##'
 ##' @examples
-##' library(epiforecast)
-##' fluview.nat.recent.df =
-##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
-##'                           first.week.of.season=21L,
-##'                           cache.file.prefix="fluview_nat_allfetch"),
-##'            "wili", min.points.in.season=52L)
-##' ## Recent historical seasons + current season, minus 2009 (nonseasonal
-##' ## pandemic) season:
-##' full.dat = split(fluview.nat.recent.df$wili, fluview.nat.recent.df$season)
-##' names(full.dat) <- sprintf("S%s", names(full.dat))
+##' library("epiforecast")
+##' ## National-level ILINet weighted %ILI data for recent seasons, excluding 2009 pandemic:
+##' area.name = "nat"
+##' full.dat = fetchEpidataFullDat("fluview", area.name, "wili",
+##'                                min.points.in.season = 52L,
+##'                                first.week.of.season = 31L,
+##'                                cache.file.prefix=sprintf("fluview_%s_fetch", area.name))
 ##' full.dat <- full.dat[names(full.dat)!="S2009"]
-##' ## Recent historical seasons minus 2009:
-##' dat = head(full.dat, -1L)
-##' ## Current season:
-##' new.dat = tail(full.dat, 1L)[[1]]
-##' ## Sample from conditional curve distribution estimate using CDC's 2015
-##' ## national %wILI onset threshold baseline of 2.1:
-##' sim = eb.sim(dat, new.dat, 2.1, max.n.sims=100)
-##'
+##' ## Sample from conditional curve distribution estimate using the above data and CDC's 2015 national %wILI onset threshold baseline of 2.1:
+##' sim = eb.sim(full.dat, baseline=2.1, max.n.sims=100)
 ##' print(sim)
-##' plot(sim)
+##' plot(sim, type="lineplot")
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'

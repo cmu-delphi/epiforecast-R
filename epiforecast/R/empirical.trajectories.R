@@ -25,23 +25,17 @@
 ##' @template sim.method_template
 ##'
 ##' @examples
-##' fluview.nat.recent.df =
-##'    trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
-##'                           first.week.of.season=21L,
-##'                           cache.file.prefix="fluview_nat_allfetch"),
-##'            "wili", min.points.in.season=52L)
-##' ## Recent historical seasons + current season, minus 2009 (nonseasonal
-##' ## pandemic) season:
-##' full.dat = split(fluview.nat.recent.df$wili, fluview.nat.recent.df$season)
-##' names(full.dat) <- sprintf("S%s", names(full.dat))
+##' ## National-level ILINet weighted %ILI data for recent seasons, excluding 2009 pandemic:
+##' area.name = "nat"
+##' full.dat = fetchEpidataFullDat("fluview", area.name, "wili",
+##'                                min.points.in.season = 52L,
+##'                                first.week.of.season = 31L,
+##'                                cache.file.prefix=sprintf("fluview_%s_fetch", area.name))
 ##' full.dat <- full.dat[names(full.dat)!="S2009"]
-##' ## Recent historical seasons minus 2009:
-##' dat = head(full.dat, -1L)
-##' ## Current season:
-##' new.dat = tail(full.dat, 1L)[[1]]
-##' ## Sample from conditional curve distribution estimate using CDC's 2015
-##' ## national %wILI onset threshold baseline of 2.1:
-##' sim = empirical.trajectories.sim(dat, new.dat, 2.1, max.n.sims=50)
+##' ## Sample from conditional curve distribution estimate using the above data and CDC's 2015 national %wILI onset threshold baseline of 2.1:
+##' sim = empirical.trajectories.sim(full.dat, baseline=2.1, max.n.sims=100)
+##' print(sim)
+##' plot(sim, type="lineplot")
 ##'
 ##' @author Logan C. Brooks, David C. Farrow, Sangwon Hyun, Ryan J. Tibshirani, Roni Rosenfeld
 ##'

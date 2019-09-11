@@ -47,7 +47,6 @@ Collate:
     'match.R'
     'utils.R'
     'br.R'
-    'checks.R'
     'cv.R'
     'cv_apply.R'
     'delphi_epidata.R'

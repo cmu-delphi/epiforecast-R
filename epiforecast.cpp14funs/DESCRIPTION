@@ -44,6 +44,8 @@ License: GPL-2
 RoxygenNote: 6.1.1
 Collate: 
     'RcppExports.R'
+    'checks.R'
+    'curve-fits.R'
     'eb_dists.R'
     'interface.R'
     'eb.R'
