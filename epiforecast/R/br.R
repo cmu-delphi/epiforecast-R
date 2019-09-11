@@ -24,6 +24,15 @@
 NULL
 
 ##' Generates control list for BR
+##'
+##' @param parent another BR control  list or \code{NULL} (default);  a control
+##'     list to base this one off of; arguments unspecified in the function call
+##'     will be inherited from \code{parent}; if \code{parent} is \code{NULL}, a
+##'     control list containing  default values for all settings is  used in its
+##'     place.
+##' @template param_max.n.sims
+##' @param n.out length-1 integer-valued vector; the length of the trajectories
+##'     to produce in simulations
 ##' @param smooth logical; if TRUE, past observations and future
 ##'   "pseudo-observations" (predictions) will be smoothed; if FALSE, the
 ##'   observations and pseudo-observations will be returned unsmoothed.
@@ -120,6 +129,7 @@ get_br_control_list = function(parent = NULL,
 ##' basis elements to produce a single curve that provides estimates for
 ##' \code{dat.obj[[cur.season]]} where it is \code{NA}.
 ##'
+##' @template param_full.dat
 ##' @param dat.obj assumed to be a list, of length equal to number of past
 ##'   seasons. Each item here is itself a list, each component containing a
 ##'   vector of "signals" for that seasons.
@@ -268,7 +278,8 @@ br.smoothedCurve = function(full.dat, dat.obj, cur.season,
 ##'                                first.week.of.season = 31L,
 ##'                                cache.file.prefix=sprintf("fluview_%s_fetch", area.name))
 ##' full.dat <- full.dat[names(full.dat)!="S2009"]
-##' ## Sample from conditional curve distribution estimate using the above data and CDC's 2015 national %wILI onset threshold baseline of 2.1:
+##' ## Sample from conditional curve distribution estimate using the above data
+##' ## and CDC's 2015 national %wILI onset threshold baseline of 2.1:
 ##' sim = br.sim(full.dat, baseline=2.1, max.n.sims=100)
 ##' print(sim)
 ##' plot(sim, type="lineplot")

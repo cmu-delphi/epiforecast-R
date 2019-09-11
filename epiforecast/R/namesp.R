@@ -236,7 +236,10 @@ vector_as_named_array = function(vector,
 ##'     with_dimnamesnames(c("First dimension", "Second dimension", "Third dimension"))
 ##' matrix(1:6, 2,3) %>>%
 ##'     with_dimnamesnames(c("First dimension", "Second dimension"))
-##' ## Vectors are converted to arrays by with_dimnamesnames; the dimnames names are set properly whether or not the vector is already has names, but the print function will not show the dimnames names for the result if the vector was originally unnamed:
+##' ## Vectors are converted to arrays by with_dimnamesnames; the dimnames names
+##' ## are set properly whether or not the vector is already has names, but the
+##' ## print function will not show the dimnames names for the result if the
+##' ## vector was originally unnamed:
 ##' from.named.vector = c(a=1,b=2) %>>% with_dimnamesnames("Only dimension")
 ##' class(from.named.vector) # "array"
 ##' print(from.named.vector) # shows dimnames names
@@ -304,7 +307,8 @@ with_dimnames = function(arraylike, dimnames) {
 ##' array(1:5, 5) %>>%
 ##'     with_dimnames(list(letters[1:5])) %>>%
 ##'     named_arrayvec_to_name_arrayvec()
-##' ## Conversion to arrays is attempted for non-array inputs, e.g., the two expressions below should be exchangeable:
+##' ## Conversion to arrays is attempted for non-array inputs, e.g., the two
+##' ## expressions below should be exchangeable:
 ##' stats::setNames(1:5, letters[1:5]) %>>%
 ##'     as.array() %>>%
 ##'     named_arrayvec_to_name_arrayvec()
@@ -336,7 +340,11 @@ named_arrayvec_to_name_arrayvec =
 ##'                        c("f","g","h","i"),
 ##'                        NULL)) %>>%
 ##'     named_array_to_name_arrayvecs()
-##' ## Some unusual inputs may give surprising output that may not have the exact same properties as for more common cases shown above.  Behavior on these cases likely may change in subsequent versions of this package.  In particular, behavior for arrays with names assigned to elements of dimnames may be surprising and should be considered unstable functionality:
+##' ## Some unusual inputs may give surprising output that may not have the exact
+##' ## same properties as for more common cases shown above. Behavior on these cases
+##' ## likely may change in subsequent versions of this package. In particular,
+##' ## behavior for arrays with names assigned to elements of dimnames may be
+##' ## surprising and should be considered unstable functionality:
 ##' array(1:24, 2:4) %>>%
 ##'     with_dimnames(list("Unusual dimension"=c(A="a",B="b"),
 ##'                        c("c","d","e"),

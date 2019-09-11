@@ -32,7 +32,8 @@
 ##'                                first.week.of.season = 31L,
 ##'                                cache.file.prefix=sprintf("fluview_%s_fetch", area.name))
 ##' full.dat <- full.dat[names(full.dat)!="S2009"]
-##' ## Sample from conditional curve distribution estimate using the above data and CDC's 2015 national %wILI onset threshold baseline of 2.1:
+##' ## Sample from conditional curve distribution estimate using the above data
+##' ## and CDC's 2015 national %wILI onset threshold baseline of 2.1:
 ##' sim = empirical.futures.sim(full.dat, baseline=2.1, max.n.sims=100)
 ##' print(sim)
 ##' plot(sim, type="lineplot")

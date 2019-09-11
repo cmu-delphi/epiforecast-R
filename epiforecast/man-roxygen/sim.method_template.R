@@ -1,7 +1,6 @@
 ##' @template param_full.dat
 ##' @template param_baseline
-##' @param max.n.sims single non-\code{NA} integer value or \code{NULL}: the
-##'   number of curves to sample from the inferred distribution
+##' @template param_max.n.sims
 ##' @return a sim object --- a list with two components:
 ##'
 ##' \code{ys}: a numeric matrix, typically with multiple columns; each column is

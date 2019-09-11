@@ -298,7 +298,7 @@ match.new.dat.sim = function(new.dat.sim) {
 ##' If \code{choices} is a character vector, this performs partial matches;
 ##' otherwise, it checks for \code{arg}'s that are \code{all.equal} with
 ##' \code{check.attributes=FALSE}.
-##' 
+##'
 ##' @param arg the argument to match to a choice; should
 ##'
 ##' @param choices a positive-length vector; if it contains \code{NULL}, first
@@ -313,7 +313,7 @@ match.new.dat.sim = function(new.dat.sim) {
 ##' @examples
 ##' library(testthat)
 ##' @example /tests/testthat/test_match.arg.or.default.R
-##' 
+##'
 ##' @export
 match.arg.else.default = function(arg, choices) {
   ## Assume this usage: parent_fun = function(parent_arg[=parent_choices]) {

@@ -134,19 +134,23 @@ dat.to.matrix = dat.to.matrix3
 ##'
 ##' @examples
 ##' arraylike = array(1:2^5, rep(2,5))
-##' dimnames(arraylike) <- list(A=c("a1","a2"),B=c("b1","b2"),C=c("c1","c2"),D=c("d1","d2"),E=c("e1","e2"))
+##' dimnames(arraylike) <-
+##'   list(A=c("a1","a2"), B=c("b1","b2"), C=c("c1","c2"),
+##'        D=c("d1","d2"), E=c("e1","e2")
+##'   )
 ##' ## Collapsing A&B, C&D:
 ##' dimnames(unite_arraylike(arraylike, list(c("A","B"), c("C","D"))))
 ##' ## Adjusting `sep` changes resulting dimnames and dimnames names:
 ##' dimnames(unite_arraylike(arraylike, list(c("A","B"), c("C","D")), sep="__"))
 ##' ## Result dimnames names can be manually specified:
 ##' names(dimnames(unite_arraylike(arraylike, list(c("A","B"), DVD=c("C","D")), sep="__")))
-##' ## Singleton sets can be used to permute dimensions, optionally renaming them (changing the dimnames names):
-##' ##  Place dimension A at end:
+##' ## Singleton sets can be used to permute dimensions, optionally renaming
+##' ## them (changing the dimnames names):
+##' ##   Place dimension A at end:
 ##' names(dimnames(unite_arraylike(arraylike, list("A"))))
-##' ##  Permute all dims:
+##' ##   Permute all dims:
 ##' names(dimnames(unite_arraylike(arraylike, list("E","D","C","B","A"))))
-##' ##  Place some dimensions at end and rename one:
+##' ##   Place some dimensions at end and rename one:
 ##' names(dimnames(unite_arraylike(arraylike, list("A","EEE"="E"))))
 ##' ## Collapsing and permuting are actually the same operation and can be mixed:
 ##' names(dimnames(unite_arraylike(arraylike, list(c("C","D"),"A","EEE"="E"))))

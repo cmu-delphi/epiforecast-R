@@ -211,9 +211,9 @@ trimPartialPastSeasons = function(df, signal.ind, min.points.in.season) {
 ##'   using the cache result (unless \code{force.cache.invalidation=TRUE})
 ##' @param force.cache.invalidation \code{TRUE} to force a cache update, even if
 ##'   the cache invalidation period has not passed; otherwise \code{FALSE}
-##' @param do.display.message \code{TRUE} or \code{FALSE}; \code{TRUE} to enable
+##' @param silent \code{TRUE} or \code{FALSE} (default); \code{TRUE} to disable
 ##'   messages about whether the cache is being used or not, or \code{FALSE} to
-##'   disable these messages
+##'   enable these messages
 ##'
 ##' @export
 fetchUpdatingResource = function(fetch.thunk.fun,
@@ -554,7 +554,7 @@ fetchEpidataFullDat = function(source,
 ##' (unlagged) epidata data frame and combine them together into a single data
 ##' frame (\code{tbl_df}).  There are two major uses:
 
-##' * Preparing an \link{epidata.history.df} for
+##' * Preparing an \code{epidata.history.df} for
 ##' \code{\link{mimicPastEpidataDF}}: \code{lags} should include all possible
 ##' \code{lag} values that could contain revisions; however, larger \code{lag}
 ##' values may appear in the resulting data frame from the current epidata data
@@ -773,7 +773,7 @@ mimicPastDF1 = function(history.df,
 ##'   \code{time.index.colnames}; data with time indices above the corresponding
 ##'   limits is filtered out this \code{time.index.limit}, using lexicographical
 ##'   ordering when multiple time indices are specified
-##' @param additional.group.colnames character vector; names of columns
+##' @param nontime.index.colnames character vector; names of columns
 ##'   containing any non-time-related observation indices (e.g., locations)
 ##'
 ##' @export
