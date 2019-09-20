@@ -422,8 +422,18 @@ subspreadsheet_from_forecast_value = function(forecast.value,
   }
 }
 
+subspreadsheet_bin_numeric_canonicalization = function(subspreadsheet) {
+  subspreadsheet %>>%
+    dplyr::mutate_at(dplyr::vars(bin_start_incl, bin_end_notincl), function(col) {
+      col.as.numeric = suppressWarnings(as.numeric(col))
+      seems.nonna.numeric = !is.na(col.as.numeric)
+      col[seems.nonna.numeric] <- as.character(col.as.numeric[seems.nonna.numeric])
+      col
+    })
+}
+
 forecast_value_from_subspreadsheet =
-  function(subspreadsheet, target.spec, forecast.type, ...) {
+  function(subspreadsheet, target.spec, forecast.type, numeric.canonicalization=FALSE, reorder=FALSE, ignore.unit=FALSE, value_conversion_error_handler=NULL, ...) {
     ## tibble::tibble acts a bit slow in this case; forming and converting a
     ## data.frame instead is faster
     index.tbl =
@@ -437,48 +447,109 @@ forecast_value_from_subspreadsheet =
         stringsAsFactors=FALSE
       ) %>>%
       tibble::as_tibble() %>>%
-      stats::setNames(tolower(names(.)))
+      stats::setNames(tolower(names(.))) %>>%
+      {
+        if (numeric.canonicalization) {
+          subspreadsheet_bin_numeric_canonicalization(.)
+        } else {
+          .
+        }
+      } %>>%
+      {
+        if (ignore.unit) {
+          .[names(.) != "unit"]
+        } else {
+          .
+        }
+      } %>>%
+      {.}
     if (anyDuplicated(tolower(names(subspreadsheet))) != 0L) {
       stop ("Duplicate names in subspreadsheet when case-insensitive; need them to be unique after lower-casing")
     }
     subspreadsheet <- subspreadsheet %>>%
-      stats::setNames(tolower(names(.)))
+      stats::setNames(tolower(names(.))) %>>%
+      {
+        if (numeric.canonicalization) {
+          subspreadsheet_bin_numeric_canonicalization(.)
+        } else {
+          .
+        }
+      } %>>%
+      {
+        if (reorder) {
+          if (!identical(sort(index.tbl[["bin_start_incl"]]),
+                         sort(.[["bin_start_incl"]]))) {
+            print(index.tbl[["bin_start_incl"]])
+            print(.[["bin_start_incl_for"]])
+            stop ('Mismatch between expected&encountered bin_start_incl values.')
+          }
+          .[match(index.tbl[["bin_start_incl"]], .[["bin_start_incl"]]),]
+        } else {
+          .
+        }
+      } %>>%
+      {.}
     if (!identical(index.tbl, subspreadsheet[names(index.tbl)])) {
-      print("AAA")
+        print("Error reading subspreadsheet; debug info follows:")
+        print(isTRUE(all.equal(index.tbl, subspreadsheet[names(index.tbl)])))
+        print(isTRUE(all.equal(index.tbl%>>%as.data.frame(),
+                               subspreadsheet[names(index.tbl)]%>>%as.data.frame(),
+                               check.attributes=TRUE)))
+        print(identical(index.tbl, subspreadsheet[names(index.tbl)]))
+        subspreadsheet.cols = subspreadsheet[names(index.tbl)]
+        attributes(index.tbl) <- attributes(index.tbl)[order(names(attributes(index.tbl)))]
+        attributes(subspreadsheet.cols) <- attributes(subspreadsheet.cols)[order(names(attributes(subspreadsheet.cols)))]
+      print("index.tbl:")
       print(index.tbl)
-      print("BBB")
+      print(index.tbl%>>%head()%>>%as.list())
+      print("corresponding columns of subspreadsheet:")
       print(subspreadsheet[names(index.tbl)])
-      print("CCC")
+      print(subspreadsheet[names(index.tbl)]%>>%head()%>>%as.list())
+      print("performing missing/extra entry checks...")
       missing.indices =
         dplyr::anti_join(index.tbl, subspreadsheet, names(index.tbl))
-      if (nrow(missing.indices) != 0L) {
-        stop (paste0("Missing indices:\n", paste(capture.output(print(missing.indices)),collapse="\n")))
-      }
       extra.entries =
         dplyr::anti_join(subspreadsheet, index.tbl, names(index.tbl))
-      if (nrow(extra.entries) != 0L) {
-        stop (paste0("Extra/mislabeled entries:\n", paste(capture.output(print(extra.entries)),collapse="\n")))
+      if (nrow(missing.indices) != 0L || nrow(extra.entries) != 0L) {
+          stop (paste0("Missing indices:\n",
+                       paste(capture.output(print(missing.indices)),collapse="\n"),
+                       "\nExtra/mislabeled entries:\n",
+                       paste(capture.output(print(extra.entries)),collapse="\n")))
       }
       if (nrow(index.tbl) != nrow(subspreadsheet)) {
         stop ("Number of rows in spreadsheet did not match the expected value; should be due to duplicate indices in subspreadsheet.")
       }
+      print("check.attributes silently ignored for all.equal on tibbles; some all.equal checks with and without converting to data.frames first:")
+      print(all.equal(index.tbl, subspreadsheet[names(index.tbl)]))
+      print(all.equal(as.data.frame(index.tbl), as.data.frame(subspreadsheet[names(index.tbl)])))
       stop (paste0("(After lowercasing colnames) index columns were not identical to expectations; feedback from all.equal (which may not cover all differences): ", capture.output(str(all.equal(subspreadsheet[names(index.tbl)], index.tbl, check.attributes=TRUE, ignore.col.order=FALSE, ignore.row.order=FALSE, tolerance=0)))))
     }
-    forecast.type[["forecast_value_from_Value"]](subspreadsheet[["value"]], target.spec, ...)
+    if (!is.null(value_conversion_error_handler)) {
+      tryCatch(forecast.type[["forecast_value_from_Value"]](subspreadsheet[["value"]], target.spec, ...),
+               error=value_conversion_error_handler)
+    } else {
+      forecast.type[["forecast_value_from_Value"]](subspreadsheet[["value"]], target.spec, ...)
+    }
   }
 
+##' @export
 flusight2016.proxy.forecast.types = list(
   point.mae.forecast.type,
   distr.logscore.forecast.type
 ) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Type"))
+##' @export
+flusight2018.proxy.forecast.types = flusight2016.proxy.forecast.types
 
+##' @export
 flusight2016.evaluation.forecast.types = list(
   point.mae.forecast.type, # not really part of FluSight 2016 evaluations;
                            # including for extra evaluation information
   multibin.logscore.forecast.type
 ) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Type"))
+##' @export
+flusight2018.evaluation.forecast.types = flusight2016.evaluation.forecast.types
 
 forecast_value = function(target.spec, forecast.type, target.forecast, label.bins=TRUE) {
   if (length(target.forecast[["target.values"]]) != 1L) {

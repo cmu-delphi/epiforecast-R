@@ -339,6 +339,28 @@ get_evaluation = function(forecast.value, observation.value, forecast.type) {
   forecast.type[["evaluate_forecast_value"]](forecast.value, observation.value)
 }
 
+evaluation_time_window2 = function(evaluation.voxel.data, target_trajectory_preprocessor, target.spec, evaluation.trajectory) {
+    target.settings = evaluation.voxel.data[["target.settings"]]
+    evaluation.time.mask.window =
+        do.call(
+            target.spec[["evaluation_time_mask_window"]],
+            c(list(
+                target_trajectory_preprocessor(evaluation.trajectory)
+            ), target.settings)
+        )
+    c(max(evaluation.time.mask.window[[1L]], target.settings[["first.submission.time"]]),
+      min(evaluation.time.mask.window[[2L]], target.settings[["last.submission.time"]]))
+}
+
+observed_multival2 = function(voxel.data, target_trajectory_preprocessor, target.spec, observed.trajectory) {
+    do.call(
+        target.spec[["for_processed_trajectory"]],
+        c(list(
+            target_trajectory_preprocessor(observed.trajectory)
+        ), voxel.data[["target.settings"]])
+    )
+}
+
 save_spreadsheets =
   function(swg_.target.multicasts,
            swg.voxel.data,

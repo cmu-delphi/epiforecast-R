@@ -19,9 +19,12 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+epiproject.run.name = "flusight-state-eval-run"
+
 library("pipeR")
 
 devtools::load_all("../epiforecast")
+devtools::load_all("../epiforecast.cpp14funs")
 
 ## Set up parallel:
 options(mc.cores=parallel::detectCores()-1L)
@@ -32,20 +35,22 @@ fluview.epigroup.name.mapping =
   tibble::tibble(
             abbreviation =
               state.abb %>>%
-              c("AS","MP","DC","GU","PR","VI","ORD","LAX","JFK"),
+              c("AS","MP","DC","GU","PR","VI","ORD","LAX","JFK","NY_MINUS_JFK"),
             name = state.name %>>%
-              c("American Samoa", "Commonwealth of the Northern Mariana Islands", "District of Columbia", "Guam", "Puerto Rico", "Virgin Islands", "Chicago", "Los Angeles", "New York City")
+              {.[.=="New York"] <- "Entire New York"; .} %>>%
+              c("American Samoa", "Commonwealth of the Northern Mariana Islands", "District of Columbia", "Guam", "Puerto Rico", "Virgin Islands", "Chicago", "Los Angeles", "New York City", "New York")
           ) %>>%
-  dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX","JFK")) %>>%
-  dplyr::mutate(in.first.training = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX")) %>>%
-  ## fixme JFK shouldn't have been here; but maybe we should predict everything
-  ## with data available and filter the resulting spreadsheet; e.g., add FL
-  dplyr::filter(in.first.training) %>>%
+  dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX","NY")) %>>%
+  dplyr::filter(in.spreadsheet) %>>%
   dplyr::arrange(name)
 fluview.all.location.epidata.names = tolower(fluview.epigroup.name.mapping[["abbreviation"]])
 fluview.all.location.spreadsheet.names = fluview.epigroup.name.mapping[["name"]]
 
 ## Load in the epidata (takes a while):
+epidata.cache.dir = "~/.epiforecast-cache"
+if (!dir.exists(epidata.cache.dir)) {
+    dir.create(epidata.cache.dir)
+}
 fluview.all.current.dfs = fluview.all.location.epidata.names %>>%
   setNames(fluview.all.location.spreadsheet.names) %>>%
   lapply(function(fluview.location.epidata.name) {
@@ -70,16 +75,24 @@ fluview.all.current.dfs = fluview.all.location.epidata.names %>>%
         .
       }
   })
-selected.location.inds =
-  sapply(fluview.all.current.dfs,
-         function(df) median(df[["num_providers"]], na.rm=TRUE)) %>>%
-  {which(. <= median(.))}
+fluview.some.history.dfs =
+    fluview.all.location.epidata.names %>>%
+    setNames(fluview.all.location.spreadsheet.names) %>>%
+    lapply(function(fluview.location.epidata.name) {
+        fetchEpidataHistoryDF(
+            "fluview", fluview.location.epidata.name, 0:51,
+            first.week.of.season=usa.flu.first.week.of.season,
+            ## force.cache.invalidation = TRUE,
+            cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_",fluview.location.epidata.name))
+        )
+    })
+selected.location.inds = rep(TRUE, length(fluview.all.current.dfs))
 fluview.location.epidata.names = fluview.all.location.epidata.names[selected.location.inds]
 fluview.location.spreadsheet.names = fluview.all.location.spreadsheet.names[selected.location.inds]
 g.fluview.current.dfs =
-  fluview.all.current.dfs[fluview.location.spreadsheet.names ]
+  fluview.all.current.dfs[fluview.location.spreadsheet.names]
 g.fluview.history.dfs =
-  g.fluview.current.dfs
+  fluview.some.history.dfs[fluview.location.spreadsheet.names]
 ## fluview.location.epidata.names %>>%
   ## setNames(fluview.location.spreadsheet.names) %>>%
   ## lapply(function(fluview.location.epidata.name) {
@@ -134,7 +147,13 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
     target.settings = list(
       baseline = baseline,
       is.inseason = is.inseason,
-      forecast.time = forecast.time
+      forecast.time = forecast.time,
+      first.submission.time = first.submission.epi.week %>>%
+          epi_week_to_model_week(usa.flu.first.week.of.season, lastWeekNumber(season,3L)) %>>%
+          model_week_to_time(usa.flu.first.week.of.season),
+      last.submission.time = last.submission.epi.week %>>%
+          epi_week_to_model_week(usa.flu.first.week.of.season, lastWeekNumber(season,3L)) %>>%
+          model_week_to_time(usa.flu.first.week.of.season)
     ),
     ## todo move to setting/task/dataset?:
     first.week.of.season = usa.flu.first.week.of.season
@@ -142,6 +161,9 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
 }
 
 signal.name = "wili" # xxx should use "ili" rather than "wili" (above as well)
+
+first.submission.epi.week = flusight2018ilinet.first.submission.epi.week
+last.submission.epi.week = flusight2018ilinet.last.submission.epi.week
 
 get_observed_trajectory = function(season, epigroup) {
   ## Use the current issue's version of a trajectory as the "observed" (vs. a
@@ -187,8 +209,8 @@ f.forecasters = list(
   "Delphi_EmpiricalTrajectories_PackageDefaults"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
-target_trajectory_preprocessor = flusight2016_target_trajectory_preprocessor
-t.target.specs = flusight2016.target.specs %>>%
+target_trajectory_preprocessor = flusight2018ilinet_target_trajectory_preprocessor
+t.target.specs = flusight2018state.target.specs %>>%
   with_dimnamesnames("Target")
 ## fixme remove Season onset
 m.forecast.types = flusight2016.proxy.forecast.types %>>%
@@ -205,94 +227,3 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
-
-epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-low-state-run"
-
-source("generate-retro-and-prospective-forecasts.R")
-
-## save_spreadsheets(
-##   swgbf.prospective.component.target.multicasts,
-##   swg.prospective.voxel.data,
-##   t.target.specs, m.forecast.types,
-##   epigroup.colname,
-##   "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/spreadsheets"
-## )
-
-## save_linlog_plots(
-##   target_multicast_week_plot,
-##   swgbf.prospective.component.target.multicasts,
-##   swg.prospective.voxel.data,
-##   t.target.specs, m.forecast.types,
-##   epigroup.colname,
-##   "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/linlog.plots-week"
-## )
-
-## save_linlog_plots(
-##   target_multicast_percent_plot,
-##   swgbf.prospective.component.target.multicasts,
-##   swg.prospective.voxel.data,
-##   t.target.specs, m.forecast.types,
-##   epigroup.colname,
-##   "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/linlog.plots-percent"
-## )
-
-## save_spreadsheets(
-##   swge.prospective.ensemble.target.multicasts,
-##   swg.prospective.voxel.data,
-##   t.target.specs, m.forecast.types,
-##   epigroup.colname,
-##   "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/spreadsheets"
-## )
-
-## save_linlog_plots(
-##   target_multicast_week_plot,
-##   swge.prospective.ensemble.target.multicasts,
-##   swg.prospective.voxel.data,
-##   t.target.specs, m.forecast.types,
-##   epigroup.colname,
-##   "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/linlog.plots-week"
-## )
-
-## save_linlog_plots(
-##   target_multicast_percent_plot,
-##   swge.prospective.ensemble.target.multicasts,
-##   swg.prospective.voxel.data,
-##   t.target.specs, m.forecast.types,
-##   epigroup.colname,
-##   "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/linlog.plots-percent"
-## )
-
-save_spreadsheets(
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/stat-spreadsheets"
-)
-
-save_linlog_plots(
-  target_multicast_week_plot,
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/stat-linlog.plots-week"
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/stat-linlog.plots-percent"
-)
-
-save_weighting_linlog_plots(
-  e.prospective.ensemble.weightsets[["target-9time-based"]],
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-low-state-run/stat-weighting-plots"
-)

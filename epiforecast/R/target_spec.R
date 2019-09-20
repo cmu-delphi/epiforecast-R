@@ -76,6 +76,13 @@ ons = function(trajectory, baseline, is.inseason, ...) {
   return (which(is.inseason & next.three.above.baseline)[1L][[1L]])
 }
 
+##' @export
+epi_end = function(trajectory, baseline, is.inseason, ...) {
+    above.baseline = trajectory >= baseline
+    in.inseason.times.above.baseline = which(is.inseason & above.baseline)
+    return (in.inseason.times.above.baseline[length(in.inseason.times.above.baseline)][[1L]])
+}
+
 ##' Calculate the duration of a trajectory
 ##'
 ##' @param trajectory a vector
@@ -257,6 +264,14 @@ flusight2016.onset.target.spec = list(
     fixed_radius_multibin_neighbor_matrix(bin.info, bin.radius=1L)
   }
 )
+flusight2018natreg.onset.target.spec =
+    flusight2016.onset.target.spec %pipeR>>%
+    c(list(
+        evaluation_time_mask_window = function(processed.evaluation.trajectory, baseline, is.inseason, ...) {
+            onset.time = ons(processed.evaluation.trajectory, baseline, is.inseason)
+            c(1L, onset.time+6L)
+        }
+    ))
 
 flusight2016.peak.week.target.spec = list(
   Target = "Season peak week",
@@ -279,6 +294,15 @@ flusight2016.peak.week.target.spec = list(
     fixed_radius_multibin_neighbor_matrix(bin.info, bin.radius=1L)
   }
 )
+flusight2018natreg.peak.week.target.spec =
+    flusight2016.peak.week.target.spec %>>%
+    c(list(
+        evaluation_time_mask_window = function(processed.evaluation.trajectory, baseline, is.inseason, ...) {
+            epi.end.time = epi_end(processed.evaluation.trajectory, baseline, is.inseason)
+            ## xxx vs. just epi.end.time
+            c(1L, epi.end.time+1L)
+        }
+    ))
 
 flusight2016.percentage.bin.info = list(
   breaks=c(0:130/10, 100),
@@ -303,6 +327,15 @@ flusight2016.peak.percentage.target.spec = list(
     flusight2016.percentage.multibin.neighbor.matrix
   }
 )
+flusight2018natreg.peak.percentage.target.spec =
+    flusight2016.peak.percentage.target.spec %pipeR>>%
+    c(list(
+        evaluation_time_mask_window = function(processed.evaluation.trajectory, baseline, is.inseason, ...) {
+            epi.end.time = epi_end(processed.evaluation.trajectory, baseline, is.inseason)
+            ## xxx vs. just epi.end.time
+            c(1L, epi.end.time+1L)
+        }
+    ))
 
 flusight2016_percentage_target_spec_for_lookahead = function(lookahead) {
   list(
@@ -319,7 +352,28 @@ flusight2016_percentage_target_spec_for_lookahead = function(lookahead) {
     }
   )
 }
+flusight2018natreg_percentage_target_spec_for_lookahead = function(lookahead) {
+    flusight2016_percentage_target_spec_for_lookahead(lookahead) %>>%
+        c(list(
+            evaluation_time_mask_window = function(processed.evaluation.trajectory, baseline, is.inseason, ...) {
+                onset.time = ons(processed.evaluation.trajectory, baseline, is.inseason)
+                end.time = epi_end(processed.evaluation.trajectory, baseline, is.inseason)
+                c(onset.time-4L, end.time+3L)
+            }
+        ))
+}
 
+##' @export
+flusight2018ilinet.first.submission.epi.week = 42L
+##' @export
+flusight2018ilinet.last.submission.epi.week = 18L
+
+##' @export
+flusight2018flusurv.first.submission.epi.week = 49L
+##' @export
+flusight2018flusurv.last.submission.epi.week = 16L
+
+##' @export
 flusight2016.target.specs = list(
   flusight2016.onset.target.spec,
   flusight2016.peak.week.target.spec,
@@ -331,11 +385,49 @@ flusight2016.target.specs = list(
 ) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Target"))
 
-flusight2016_target_trajectory_preprocessor = function(trajectory) {
+##' @export
+flusight2018natreg.target.specs = list(
+    flusight2018natreg.onset.target.spec,
+    flusight2018natreg.peak.week.target.spec,
+    flusight2018natreg.peak.percentage.target.spec,
+    flusight2018natreg_percentage_target_spec_for_lookahead(1L),
+    flusight2018natreg_percentage_target_spec_for_lookahead(2L),
+    flusight2018natreg_percentage_target_spec_for_lookahead(3L),
+    flusight2018natreg_percentage_target_spec_for_lookahead(4L)
+) %pipeR>>%
+    setNames(sapply(., magrittr::extract2, "Target"))
+
+##' @export
+with_no_effective_evaluation_time_mask_window =
+    function(target.spec) {
+        target.spec[["evaluation_time_mask_window"]] <-
+            function(processed.evaluation.trajectory, ...) {
+                c(1L, length(processed.evaluation.trajectory))
+            }
+        target.spec
+    }
+
+##' @export
+flusight2018state.target.specs = list(
+    flusight2018natreg.peak.week.target.spec,
+    flusight2018natreg.peak.percentage.target.spec,
+    flusight2018natreg_percentage_target_spec_for_lookahead(1L),
+    flusight2018natreg_percentage_target_spec_for_lookahead(2L),
+    flusight2018natreg_percentage_target_spec_for_lookahead(3L),
+    flusight2018natreg_percentage_target_spec_for_lookahead(4L)
+) %pipeR>>%
+    lapply(with_no_effective_evaluation_time_mask_window) %pipeR>>%
+    setNames(sapply(., magrittr::extract2, "Target"))
+
+##' @export
+flusight2016ilinet_target_trajectory_preprocessor = function(trajectory) {
   round(pmin(pmax(trajectory, 0), 100), 1L)
 }
+##' @export
+flusight2018ilinet_target_trajectory_preprocessor =
+    flusight2016ilinet_target_trajectory_preprocessor
 
-flusurv2017.age.group.percentage.bin.infos = c(
+flusight2017flusurv.age.group.percentage.bin.infos = c(
   "Overall"=130L,
   "0-4 yr"=130L,
   "5-17 yr"=130L,
@@ -350,8 +442,8 @@ flusurv2017.age.group.percentage.bin.infos = c(
       rightmost.closed=TRUE, include.na=FALSE
     )
   })
-flusurv2017.age.group.percentage.multibin.neighbor.matrices =
-  lapply(flusurv2017.age.group.percentage.bin.infos,
+flusight2017flusurv.age.group.percentage.multibin.neighbor.matrices =
+  lapply(flusight2017flusurv.age.group.percentage.bin.infos,
          function(bin.info) {
            n.bins = length(bin.info[["break.bin.representatives"]])
            ## radius = 10% of the value, with banker's rounding, or the minimum
@@ -370,23 +462,25 @@ flusurv2017.age.group.percentage.multibin.neighbor.matrices =
          }
          )
 
-flusurv2017.peak.week.target.spec = flusight2016.peak.week.target.spec
+flusight2017flusurv.peak.week.target.spec = flusight2016.peak.week.target.spec %pipeR>>%
+    with_no_effective_evaluation_time_mask_window()
 
-flusurv2017.peak.percentage.target.spec = list(
+flusight2017flusurv.peak.percentage.target.spec = list(
   Target = "Season peak percentage",
   unit = percentage.unit,
   for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
     return (pht(processed.trajectory, is.inseason, ...))
   },
   bin_info_for = function(age.group, ...) {
-    return (flusurv2017.age.group.percentage.bin.infos[[age.group]])
+    return (flusight2017flusurv.age.group.percentage.bin.infos[[age.group]])
   },
   multibin_neighbor_matrix = function(bin.info, age.group, ...) {
-    return (flusurv2017.age.group.percentage.multibin.neighbor.matrices [[age.group]])
+    return (flusight2017flusurv.age.group.percentage.multibin.neighbor.matrices [[age.group]])
   }
-)
+) %pipeR>>%
+    with_no_effective_evaluation_time_mask_window()
 
-flusurv2017_percentage_target_spec_for_lookahead = function(lookahead) {
+flusight2017flusurv_percentage_target_spec_for_lookahead = function(lookahead) {
   list(
     Target = paste0(lookahead, " wk ahead"),
     unit = percentage.unit,
@@ -394,25 +488,28 @@ flusurv2017_percentage_target_spec_for_lookahead = function(lookahead) {
       return (processed.trajectory[[forecast.time+lookahead]])
     },
     bin_info_for = function(age.group, ...) {
-      return (flusurv2017.age.group.percentage.bin.infos[[age.group]])
+      return (flusight2017flusurv.age.group.percentage.bin.infos[[age.group]])
     },
     multibin_neighbor_matrix = function(bin.info, age.group, ...) {
-      return (flusurv2017.age.group.percentage.multibin.neighbor.matrices [[age.group]])
+      return (flusight2017flusurv.age.group.percentage.multibin.neighbor.matrices [[age.group]])
     }
-  )
+  ) %pipeR>>%
+    with_no_effective_evaluation_time_mask_window()
 }
 
-flusurv2017.target.specs = list(
-  flusurv2017.peak.week.target.spec,
-  flusurv2017.peak.percentage.target.spec,
-  flusurv2017_percentage_target_spec_for_lookahead(1L),
-  flusurv2017_percentage_target_spec_for_lookahead(2L),
-  flusurv2017_percentage_target_spec_for_lookahead(3L),
-  flusurv2017_percentage_target_spec_for_lookahead(4L)
+##' @export
+flusight2017flusurv.target.specs = list(
+  flusight2017flusurv.peak.week.target.spec,
+  flusight2017flusurv.peak.percentage.target.spec,
+  flusight2017flusurv_percentage_target_spec_for_lookahead(1L),
+  flusight2017flusurv_percentage_target_spec_for_lookahead(2L),
+  flusight2017flusurv_percentage_target_spec_for_lookahead(3L),
+  flusight2017flusurv_percentage_target_spec_for_lookahead(4L)
 ) %pipeR>>%
   setNames(sapply(., magrittr::extract2, "Target"))
 
-flusurv2017_target_trajectory_preprocessor = function(trajectory) {
+##' @export
+flusight2017flusurv_target_trajectory_preprocessor = function(trajectory) {
   result = c(rep(NA_real_, 9L), round(pmin(pmax(trajectory, 0), 100), 1L), rep(NA_real_, 13))
   if (length(result) != 52L && length(result) != 53L) {
     stop ("Trajectory is the wrong length, or there was an error in appending NA's to the ends.")
