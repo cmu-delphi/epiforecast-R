@@ -239,7 +239,7 @@ f.forecasters = list(
   "Delphi_EmpiricalTrajectories"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
-target_trajectory_preprocessor = flusight2016_target_trajectory_preprocessor
+target_trajectory_preprocessor = flusight2016ilinet_target_trajectory_preprocessor
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
 m.forecast.types = flusight2016.proxy.forecast.types %>>%

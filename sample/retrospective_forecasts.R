@@ -236,7 +236,7 @@ flusight2016_location_forecast_values_obj_from_sim =
         target.name=target.name,
         target.fun=target[["for_processed_trajectory"]],
         ## xxx could move preprocessing out to flusight2016_location_spreadsheet_from_sim:
-        target_trajectory_preprocessor=flusight2016_target_trajectory_preprocessor,
+        target_trajectory_preprocessor=flusight2016ilinet_target_trajectory_preprocessor,
         target.value.formatter=target[["to_string"]],
         baseline=flusight2016.settings[["baseline"]],
         is.inseason=flusight2016.settings[["is.inseason"]],
