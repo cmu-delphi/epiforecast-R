@@ -420,6 +420,12 @@ flusight2018state.target.specs = list(
     setNames(sapply(., magrittr::extract2, "Target"))
 
 ##' @export
+flusight2016_target_trajectory_preprocessor = function(trajectory) {
+    .Deprecated("flusight2016ilinet_target_trajectory_preprocessor")
+    flusight2016ilinet_target_trajectory_preprocessor(trajectory)
+}
+
+##' @export
 flusight2016ilinet_target_trajectory_preprocessor = function(trajectory) {
   round(pmin(pmax(trajectory, 0), 100), 1L)
 }
