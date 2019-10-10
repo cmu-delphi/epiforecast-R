@@ -55,6 +55,11 @@ fluview.baseline.info = fetchUpdatingResource(
     cache.invalidation.period=as.difftime(1L, units="weeks"),
     force.cache.invalidation=TRUE
 )
+# Manually correct for bad formatting of file
+#n = names(fluview.baseline.info[["wILI_Baseline"]])[2:13]
+#fluview.baseline.info[["wILI_Baseline"]] = fluview.baseline.info[["wILI_Baseline"]][,1:12]
+#names(fluview.baseline.info[["wILI_Baseline"]]) = n
+
 fluview.baseline.ls.mat =
   fluview.baseline.info[["wILI_Baseline"]] %>>%
   as.matrix() %>>%
@@ -257,12 +262,12 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
 
-epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-run"
+epiproject.cache.dir = "../../../epiforecast-epiproject/flusight-natreg-run"
 
 source("generate-retro-and-prospective-forecasts.R")
 
 ## Output prospective forecast spreadsheets, plots:
-collab.ensemble.retro.dir = "~/files/nosync/collaborative-ensemble-potential-submission-4"
+collab.ensemble.retro.dir = "../../../collaborative-ensemble-potential-submission-4"
 if (!dir.exists(collab.ensemble.retro.dir)) {
   dir.create(collab.ensemble.retro.dir)
 }
@@ -292,65 +297,27 @@ save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based",
                       sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
                     }
                   })
+save_spreadsheets(swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
+                  swg.prospective.voxel.data,
+                  t.target.specs, m.forecast.types,
+                  epigroup.colname,
+                  collab.ensemble.prospective.dir,
+                  function(swg.voxel.data,s,w,...) {
+                    season = swg.voxel.data[[s,w,1L]][["season"]]
+                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
+                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
+                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
+                      sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
+                    }
+                  })
 
-save_spreadsheets(
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
-)
-
-save_linlog_plots(
-  target_multicast_week_plot,
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-week"
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-percent"
-)
-
-save_spreadsheets(
-  swge.prospective.ensemble.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/spreadsheets"
-)
-
-save_linlog_plots(
-  target_multicast_week_plot,
-  swge.prospective.ensemble.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-week"
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swge.prospective.ensemble.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/linlog.plots-percent"
-)
 
 save_spreadsheets(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-spreadsheets",
+  file.path(epiproject.cache.dir,"stat-spreadsheets"),
   function(swg.voxel.data,s,w,...) {
     season = swg.voxel.data[[s,w,1L]][["season"]]
     year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
@@ -359,13 +326,52 @@ save_spreadsheets(
   }
 )
 
+save_spreadsheets(
+  swge.prospective.ensemble.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  epigroup.colname,
+  file.path(epiproject.cache.dir,"spreadsheets")
+)
+
+save_linlog_plots(
+  target_multicast_week_plot,
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  file.path(epiproject.cache.dir,"linlog.plots")
+)
+
+save_linlog_plots(
+  target_multicast_percent_plot,
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  file.path(epiproject.cache.dir,"linlog.plots")
+)
+
+save_linlog_plots(
+  target_multicast_week_plot,
+  swge.prospective.ensemble.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  file.path(epiproject.cache.dir,"linlog.plots-week")
+)
+
+save_linlog_plots(
+  target_multicast_percent_plot,
+  swge.prospective.ensemble.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  file.path(epiproject.cache.dir,"linlog.plots-percent")
+)
+
 save_linlog_plots(
   target_multicast_week_plot,
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-week"
+  file.path(epiproject.cache.dir,"stat-linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -373,8 +379,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-linlog.plots-percent"
+  file.path(epiproject.cache.dir,"stat-linlog.plots-percent")
 )
 
 save_weighting_linlog_plots(
@@ -382,6 +387,5 @@ save_weighting_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-natreg-run/stat-weighting-plots"
+  file.path(epiproject.cache.dir,"stat-weighting-plots")
 )

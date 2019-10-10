@@ -162,7 +162,7 @@ w.retro.model.weeks = (40:65) %>>%
 g.epigroups = flusurv.age.spreadsheet.names %>>%
   stats::setNames(.) %>>%
   with_dimnamesnames("Location")
-last.losocv.issue = 201739L
+last.losocv.issue = 201839L
 b.backcasters = list(
   ignorant=backfill_ignorant_backsim,
   quantile_arx_backcast=quantile_arx_pancaster(FALSE, 0L),
@@ -203,34 +203,24 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
 
-epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run"
+epiproject.cache.dir = "../../../epiforecast-epiproject/flusurv-network_all-run"
 
 source("generate-retro-and-prospective-forecasts.R")
 
 save_spreadsheets(
-  swgbf.prospective.component.target.multicasts,
+  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/spreadsheets"
+  file.path(epiproject.cache.dir,"stat-spreadsheets")
 )
 
-save_linlog_plots(
-  target_multicast_week_plot,
+save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-week"
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-percent"
+  file.path(epiproject.cache.dir,"spreadsheets")
 )
 
 save_spreadsheets(
@@ -238,7 +228,25 @@ save_spreadsheets(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/spreadsheets"
+  file.path(epiproject.cache.dir,"spreadsheets")
+)
+
+save_linlog_plots(
+  target_multicast_week_plot,
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  epigroup.colname,
+  file.path(epiproject.cache.dir,"linlog.plots-week")
+)
+
+save_linlog_plots(
+  target_multicast_percent_plot,
+  swgbf.prospective.component.target.multicasts,
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  epigroup.colname,
+  file.path(epiproject.cache.dir,"linlog.plots-percent")
 )
 
 save_linlog_plots(
@@ -247,7 +255,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-week"
+  file.path(epiproject.cache.dir,"linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -256,15 +264,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/linlog.plots-percent"
-)
-
-save_spreadsheets(
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-spreadsheets"
+  file.path(epiproject.cache.dir,"linlog.plots-percent")
 )
 
 save_linlog_plots(
@@ -273,7 +273,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-linlog.plots-week"
+  file.path(epiproject.cache.dir,"stat-linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -282,7 +282,7 @@ save_linlog_plots(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusurv-network_all-run/stat-linlog.plots-percent"
+  file.path(epiproject.cache.dir,"stat-linlog.plots-percent")
 )
 
 ## save_weighting_linlog_plots(

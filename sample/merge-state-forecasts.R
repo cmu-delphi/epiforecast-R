@@ -32,7 +32,7 @@ fluview.epigroup.name.mapping =
             name = state.name %>>%
               c("American Samoa", "Commonwealth of the Northern Mariana Islands", "District of Columbia", "Guam", "Puerto Rico", "Virgin Islands", "Chicago", "Los Angeles", "New York City")
           ) %>>%
-  dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX","JFK")) %>>%
+  dplyr::mutate(in.spreadsheet = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX")) %>>%
   dplyr::mutate(in.first.training = ! abbreviation %in% c("FL","AS","MP","GU","ORD","LAX")) %>>%
   ## fixme JFK shouldn't have been here; but maybe we should predict everything
   ## with data available and filter the resulting spreadsheet; e.g., add FL
@@ -164,8 +164,8 @@ map_join_(
     in.filename = paste(s, w, desired.weighting.scheme.name, sep=".") %>>%
       stringr::str_replace_all("/","-") %>>%
       paste0(".csv")
-    low.file = file.path("~/files/nosync/epiforecast-epiproject/flusight-low-state-run/stat-spreadsheets",in.filename)
-    high.file = file.path("~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-spreadsheets",in.filename)
+    low.file = file.path("../../../epiforecast-epiproject/flusight-low-state-run/stat-spreadsheets",in.filename)
+    high.file = file.path("../../../epiforecast-epiproject/flusight-high-state-run/stat-spreadsheets",in.filename)
     low.df = readr::read_csv(low.file)
     high.df = readr::read_csv(high.file)
     combined.df = dplyr::bind_rows(low.df, high.df) %>>%
@@ -178,7 +178,7 @@ map_join_(
       dplyr::arrange(Location)
     year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
     week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-    out.dir = "~/files/nosync/epiforecast-epiproject/flusight-state-run/stat-spreadsheets"
+    out.dir = "../../../epiforecast-epiproject/flusight-state-run/stat-spreadsheets"
     if (!dir.exists(out.dir)) {
       dir.create(out.dir, recursive=TRUE)
     }
@@ -189,7 +189,7 @@ map_join_(
   lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE)
 
 ## spreadsheet.to.check = map.join.df.result[[1L]] %>>% readr::type_convert()
-## spreadsheet.template = readr::read_csv("~/files/nosync/epiforecast-epiproject/stateili_submission_template_1718_v3.csv")
+## spreadsheet.template = readr::read_csv("../../../epiforecast-epiproject/stateili_submission_template_1718_v3.csv")
 ## class(spreadsheet.to.check[["Value"]])==class(spreadsheet.template[["Value"]])
 ## identical(sapply(readr::type_convert(spreadsheet.to.check), class), sapply(spreadsheet.template, class))
 ## identical(sapply(spreadsheet.to.check, typeof), sapply(spreadsheet.template, typeof))

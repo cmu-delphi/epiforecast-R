@@ -25,15 +25,7 @@ get_completed_fluview_state_df = function(epigroup, first.week.of.season=31L) {
   if (st != "fl" && st != "la") {
     st.dat = fetchEpidataDF("fluview", st, first.week.of.season = first.week.of.season,
                             cache.file.prefix=sprintf("fluview_%s_fetch", st))
-    if (st == "ms") {
-      ms.now = fetchEpidataDF("nowcast","ms",first.week.of.season = first.week.of.season)
-      last.has.epiweek = tail(st.dat$epiweek[!is.na(st.dat$ili)],1)
-      nowcast.epiweeks = tail(ms.now$epiweek[!is.na(ms.now$value)],1)
-      st.mask = st.dat$epiweek > last.has.epiweek & st.dat$epiweek < nowcast.epiweeks
-      now.mask = ms.now$epiweek > last.has.epiweek & ms.now$epiweek < nowcast.epiweeks
-      st.dat$ili[st.mask] = ms.now$value[now.mask]
-      st.dat$wili[st.mask] = ms.now$value[now.mask]
-    } else if (st == "pr") {
+    if (st == "pr") {
       ## Estimate seasons 2010-2013 using other epigroups in Region 2
       njili = get_completed_fluview_state_df("nj",first.week.of.season = first.week.of.season)$ili
       nyili = get_completed_fluview_state_df("ny",first.week.of.season = first.week.of.season)$ili
@@ -92,7 +84,7 @@ get_completed_fluview_state_df = function(epigroup, first.week.of.season=31L) {
     st.dat = cbind(rdat[(rdat["epiweek"] >= firstepiweek),]) # Default values are that of the region
     st.dat$region = st
     for (v in vars) {
-      st.dat$v = get(v,st.dat) - rowSums(x[colnames(x)==v],na.rm=FALSE) # Subtract the sum of the other states in the region
+      st.dat[[v]] = get(v,st.dat) - rowSums(x[colnames(x)==v],na.rm=FALSE) # Subtract the sum of the other states in the region
     }
     st.dat$wili = st.dat$num_ili * 100 / st.dat$num_patients # Reset %ILI and wILI
     st.dat$ili = st.dat$wili

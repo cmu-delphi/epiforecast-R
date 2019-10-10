@@ -27,6 +27,11 @@ devtools::load_all("../epiforecast")
 options(mc.cores=parallel::detectCores()-1L)
 ## options(mc.cores=parallel::detectCores()-3L)
 
+epidata.cache.dir = "~/.epiforecast-cache"
+if (!dir.exists(epidata.cache.dir)) {
+  dir.create(epidata.cache.dir)
+}
+
 ## different location naming schemes:
 fluview.epigroup.name.mapping =
   tibble::tibble(
@@ -70,33 +75,163 @@ fluview.all.current.dfs = fluview.all.location.epidata.names %>>%
         .
       }
   })
+
+## If median number of providers changes in season, a state can flip from low to high
+## Use inds to avoid this issue
 selected.location.inds =
   sapply(fluview.all.current.dfs,
          function(df) median(df[["num_providers"]], na.rm=TRUE)) %>>%
   {which(. > median(.))}
+#inds = fluview.all.location.epidata.names %in% c("al","az","ca","ga","il","in","ks","la","me","ma","mi","ms","nv","nm","ny","jfk","nc","oh","pa","sd","tn","tx","ut","va","wv","wi")
 fluview.location.epidata.names = fluview.all.location.epidata.names[selected.location.inds]
 fluview.location.spreadsheet.names = fluview.all.location.spreadsheet.names[selected.location.inds]
 g.fluview.current.dfs =
-  fluview.all.current.dfs[fluview.location.spreadsheet.names ]
-g.fluview.history.dfs =
-  g.fluview.current.dfs
-## fluview.location.epidata.names %>>%
-  ## setNames(fluview.location.spreadsheet.names) %>>%
-  ## lapply(function(fluview.location.epidata.name) {
-  ##   fetchEpidataHistoryDF(
-  ##     "fluview", fluview.location.epidata.name, 0:51,
-  ##     first.week.of.season=usa.flu.first.week.of.season,
-  ##     ## force.cache.invalidation = TRUE,
-  ##     cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_",fluview.location.epidata.name))
-  ##   )
-  ## })
+  fluview.all.current.dfs
+
+r1 = c("me","ma","vt","ct","nh","ri")
+r2 = c("ny","nj","pr","vi","jfk")
+r3 = c("de","dc","md","pa","va","wv")
+r4 = c("al","ga","fl","ms","nc","sc","ky","tn")
+r5 = c("mi","mn","wi","il","in","oh")
+r6 = c("tx","la","ok","ar","nm")
+r7 = c("ia","ks","mo","ne")
+r8 = c("mt","wy","nd","sd","co","ut")
+r9 = c("ca","az","nv","hi")
+r10 = c("ak","wa","or","id")
+reg.list = list(r1,r2,r3,r4,r5,r6,r7,r8,r9,r10)
 
 epigroup.colname = "Location"
+
+g.region.fluview.current.dfs = paste0("hhs",1:10) %>>%
+  setNames(paste0("HHS Region ",1:10)) %>>%
+  lapply(function(fluview.location.epidata.name) {
+    fetchEpidataDF(
+      "fluview", fluview.location.epidata.name,
+      first.week.of.season=usa.flu.first.week.of.season,
+      cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_current_",fluview.location.epidata.name))
+    )
+  })
+
+g.fluview.history.dfs =
+  fluview.all.location.epidata.names %>>%
+  setNames(fluview.all.location.spreadsheet.names) %>>%
+  lapply(function(fluview.location.epidata.name) {
+    tryCatch( {fetchEpidataHistoryDF(
+      "fluview", fluview.location.epidata.name, 0:51,
+      first.week.of.season=usa.flu.first.week.of.season,
+      ## force.cache.invalidation = TRUE,
+      cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_",fluview.location.epidata.name))
+    )}, error=function(e){
+      return (g.fluview.current.dfs[fluview.location.spreadsheet.names[which(fluview.location.epidata.names == fluview.location.epidata.name)]])
+    })
+  })
+nowcast.lead = 1L
+g.nowcast.current.dfs = fluview.location.epidata.names %>>%
+  setNames(fluview.location.spreadsheet.names) %>>%
+  lapply(function(fluview.location.epidata.name) {
+  fetchEpidataDF(
+    "nowcast", fluview.location.epidata.name,
+    first.week.of.season=usa.flu.first.week.of.season,
+    cache.file.prefix=file.path(epidata.cache.dir,paste0("nowcast_",fluview.location.epidata.name))
+  ) %>>%
+    dplyr::mutate(issue = add_epiweek_integer(epiweek, -nowcast.lead)) %>>%
+    dplyr::mutate(lag = subtract_epiweek_epiweek(issue, epiweek))
+})
+
+reg.history.dfs = 1:10 %>>% lapply(function(reg.num) {
+  fetchEpidataHistoryDF("fluview",
+                         paste0("hhs",reg.num),0:51,
+                         first.week.of.season=usa.flu.first.week.of.season,
+                         cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_hhs",reg.num))
+  )}) %>>%
+  setNames(paste0("HHS Region ",1:10))
+reg.current.dfs = 1:10 %>>% lapply(function(reg.num) {
+  fetchEpidataDF(
+    "fluview", paste0("hhs",reg.num),
+    first.week.of.season=usa.flu.first.week.of.season,
+    cache.file.prefix=file.path(epidata.cache.dir,paste0("fluview_current_hhs",reg.num))
+  )}) %>>%
+  setNames(paste0("HHS Region ",1:10))
+
+g.epigroups = fluview.all.location.spreadsheet.names %>>%
+  stats::setNames(.) %>>%
+  with_dimnamesnames("Location")
+l.lags = 1:20 %>>% stats::setNames(.) %>>% with_dimnamesnames("Lag")
+gl.stats = map_join(
+  function(st,lag) {
+    df = g.fluview.history.dfs[[st]]
+    df1 = df[df[["lag"]]==lag,c("epiweek","wili")]
+    df2 = g.fluview.current.dfs[[st]][,c("epiweek","wili")]
+    df = dplyr::left_join(df1,df2,by="epiweek")
+    lst = df[df[["epiweek"]]>=201740,][["wili.x"]] - df[df[["epiweek"]]>=201740,][["wili.y"]]
+    return(c(mean(lst,na.rm=TRUE),sd(lst,na.rm=TRUE)))
+  }, g.epigroups, l.lags)
+
+census_weights = readRDS("census_weights.rds")
+census_weights = census_weights[,-10,]
+sim_backfill = function(season,reg,lag) {
+  reg.current = reg.current.dfs[[reg]]
+  reg.history = reg.history.dfs[[reg]]
+  reg.history = reg.history[reg.history[["season"]]==season & reg.history[["lag"]]==lag,c("epiweek","wili")]
+  reg.current = reg.current[reg.current[["season"]]==season,c("epiweek","wili")]
+  df = dplyr::left_join(reg.history,reg.current,by="epiweek")
+  reg.backfill = df[["wili.x"]] - df[["wili.y"]]
+  wts = census_weights[season-2009,,reg]
+  wts = wts[wts!=0] / sum(wts)
+  dim(wts) = length(wts)
+  reg.names = fluview.all.location.spreadsheet.names[census_weights[season-2009,,reg]>0]
+  state.backfill = rep(reg.backfill,length(reg.names))
+  dim(state.backfill) = c(length(reg.backfill),length(reg.names))
+  state.backfill = t(state.backfill)
+
+  # See https://arxiv.org/pdf/1607.04751.pdf
+  # Didn't check proof, in practice works somewhat
+  mu = as.numeric(lapply(gl.stats[reg.names,1],function(lst) { lst[[1]]}))
+  sig = diag(as.numeric(lapply(gl.stats[reg.names,1],function(lst) { lst[[2]]})))
+  for (i in 1:length(reg.backfill)) {
+    y = MASS::mvrnorm(1,mu,sig)
+    alpha = solve(wts %*% sig %*% wts, reg.backfill[[i]] - wts %*% y)
+    state.backfill[,i] = y + (sig %*% wts) %*% alpha
+  }
+  return(list(state.backfill,reg.names,df[["epiweek"]]))
+}
+
+insert_backfill = function(ili, lag, ews, reg, st) {
+  reg.hist = reg.history.dfs[[reg]]
+  reg.df = reg.hist[reg.hist[["epiweek"]] %in% ews & reg.hist[["lag"]]==lag,]
+  st.df = reg.df
+  st.df[["region"]] = fluview.all.location.epidata.names[fluview.all.location.spreadsheet.names==st]
+  st.df[["ili"]] = ili
+  st.df[["wili"]] = ili
+  st.df[c("num_providers","num_patients","num_age_0","num_age_1","num_age_2","num_age_3","num_age_4","num_age_5","num_ili")] = NA
+  g.fluview.history.dfs[[st]] <<- rbind(g.fluview.history.dfs[[st]],st.df)
+}
+
+for (s in 2010:2016) {
+  for (r in 1:10) {
+    for (lag in l.lags) {
+      backfill = sim_backfill(s,r,lag)
+      ili.change = backfill[[1]]
+      st.names = backfill[[2]]
+      ews = backfill[[3]]
+      dimnames(ili.change) = list(st.names,1:(dim(ili.change)[[2]]))
+      for (st.name in st.names) {
+        st.current = g.fluview.current.dfs[[st.name]]
+        st.current = st.current[st.current[["epiweek"]] %in% ews,c("epiweek","wili")]
+        st.change = data.frame(ews,ili.change[st.name,])
+        names(st.change) = c("epiweek","wili.change")
+        joined.df = dplyr::left_join(st.current,st.change,by="epiweek")
+        insert_backfill(joined.df[["wili"]]+joined.df[["wili.change"]], lag, joined.df[["epiweek"]], r, st.name)
+      }
+    }
+  }
+}
 
 get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   current.epidata.history.df = g.fluview.history.dfs[[epigroup]][
     c("season","model.week","epiweek","issue","lag","wili")
   ]
+  current.nowcast.df = g.nowcast.current.dfs[[epigroup]]
   issue = season_model.week_to_epiweek(
     season, model.week, usa.flu.first.week.of.season, 3L)
   forward.looking.history.df = mimicPastHistoryDF(
@@ -118,18 +253,44 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   )
   epidata.df =
     dplyr::bind_rows(losocv.extra.epidata.df, forward.looking.epidata.df)
+  forward.looking.nowcast.df = mimicPastDF(
+    current.nowcast.df,
+    "issue", issue,
+    "epiweek", add_epiweek_integer(issue, nowcast.lead)
+  ) %>>%
+    augmentWeeklyDF()
+  losocv.extra.nowcast.df = mimicPastDF(
+    current.nowcast.df,
+    "issue", last.losocv.issue,
+    "epiweek", add_epiweek_integer(last.losocv.issue, nowcast.lead)
+  ) %>>%
+    {.[.[["season"]] > season,]} %>>%
+    augmentWeeklyDF()
+  nowcast.df =
+    dplyr::bind_rows(losocv.extra.nowcast.df, forward.looking.nowcast.df)
   baseline = 0
   n.weeks.in.season = lastWeekNumber(season, 3L)
   is.inseason = usa_flu_inseason_flags(n.weeks.in.season)
   forecast.time = model_week_to_time(
     model.week, usa.flu.first.week.of.season)
+  max.lag = 51L
   return (list(
     season = season,
     model.week = model.week,
     epigroup = epigroup,
     issue = issue,
-    epidata.df = epidata.df,
-    epidata.history.df = epidata.history.df,
+    source.name = "fluview",
+    signal.name = "wili",
+    #epidata.df = epidata.df,
+    #epidata.history.df = epidata.history.df,
+    epidata.dfs = list(
+      fluview=epidata.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
+      nowcast=nowcast.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag))
+    ),
+    epidata.history.dfs = list(
+      fluview=epidata.history.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag)),
+      nowcast=nowcast.df %>>% dplyr::mutate(lag.group=pmin(lag, max.lag))
+    ),
     baseline = baseline,
     target.settings = list(
       baseline = baseline,
@@ -141,6 +302,31 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   ))
 }
 
+get_observation_values = function(voxel.data, target_trajectory_preprocessor, target.spec, forecast.type) {
+  observation.issue = (voxel.data[["season"]]+1L)*100L + 40L
+  season = voxel.data[["season"]]
+  epigroup = voxel.data[["epigroup"]]
+  ## todo g.fluview.history.dfs as separate argument or curried argument in this
+  ## method and get_voxel_data
+  ## epidata.df = mimicPastEpidataDF(
+  ##   g.fluview.history.dfs[[epigroup]], observation.issue)
+  ## xxx check that this doesn't change anything:
+  epidata.df = g.fluview.current.dfs[[epigroup]]
+  observed.trajectory = epidata.df %>>%
+    {.[["wili"]][.[["season"]]==season]}
+  observation.as.target.forecast = target_forecast2(
+    voxel.data, target_trajectory_preprocessor, target.spec,
+    match.new.dat.sim(observed.trajectory))
+  observation.as.target.forecast[["method.settings"]] <-
+    c(observation.as.target.forecast[["method.settings"]],
+      uniform.pseudoweight.total=0,
+      smooth.sim.targets=FALSE)
+  observion.values =
+    forecast_value2(voxel.data, target.spec, forecast.type, observation.as.target.forecast)
+  return (observion.values)
+}
+
+source.name = "fluview"
 signal.name = "wili" # xxx should use "ili" rather than "wili" (above as well)
 
 get_observed_trajectory = function(season, epigroup) {
@@ -170,16 +356,18 @@ g.epigroups = fluview.location.spreadsheet.names %>>%
   with_dimnamesnames("Location")
 last.losocv.issue = 201739L
 b.backcasters = list(
-  ignorant=backfill_ignorant_backsim
+  ignorant=backfill_ignorant_backsim,
+  quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
+  quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
   "Delphi_Uniform"=uniform_forecast,
-  "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
-  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
-    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
-           control.list=get_eb_control_list(max.match.length=4L))
-  },
+#  "Delphi_EmpiricalBayes_PackageDefaults"=eb.sim,
+#  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
+#    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+#           control.list=get_eb_control_list(max.match.length=4L))
+#  },
   "Delphi_BasisRegression_PackageDefaults"=br.sim,
   "Delphi_DeltaDensity_PackageDefaults"=twkde.sim,
   "Delphi_MarkovianDeltaDensity_PackageDefaults"=twkde.markovian.sim,
@@ -206,16 +394,24 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
 
-epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-high-state-run"
+epiproject.cache.dir = "../../../epiforecast-epiproject/flusight-high-state-run"
 
 source("generate-retro-and-prospective-forecasts.R")
 
 save_spreadsheets(
+  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
+  swg.prospective.voxel.data,
+  t.target.specs, m.forecast.types,
+  epigroup.colname,
+  file.path(epiproject.cache.dir,"stat-spreadsheets")
+)
+
+save_spreadsheets(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/spreadsheets"
+  file.path(epiproject.cache.dir,"spreadsheets")
 )
 
 save_linlog_plots(
@@ -223,8 +419,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-week"
+  file.path(epiproject.cache.dir,"linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -232,8 +427,7 @@ save_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-percent"
+  file.path(epiproject.cache.dir,"linlog.plots-percent")
 )
 
 save_spreadsheets(
@@ -241,7 +435,7 @@ save_spreadsheets(
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
   epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/spreadsheets"
+  file.path(epiproject.cache.dir,"spreadsheets")
 )
 
 save_linlog_plots(
@@ -249,8 +443,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-week"
+  file.path(epiproject.cache.dir,"linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -258,17 +451,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/linlog.plots-percent"
-)
-
-save_spreadsheets(
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-spreadsheets"
+  file.path(epiproject.cache.dir,"linlog.plots-percent")
 )
 
 save_linlog_plots(
@@ -276,8 +459,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-linlog.plots-week"
+  file.path(epiproject.cache.dir,"stat-linlog.plots-week")
 )
 
 save_linlog_plots(
@@ -285,8 +467,7 @@ save_linlog_plots(
   swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-linlog.plots-percent"
+  file.path(epiproject.cache.dir,"stat-linlog.plots-percent")
 )
 
 save_weighting_linlog_plots(
@@ -294,6 +475,5 @@ save_weighting_linlog_plots(
   swgbf.prospective.component.target.multicasts,
   swg.prospective.voxel.data,
   t.target.specs, m.forecast.types,
-  epigroup.colname,
-  "~/files/nosync/epiforecast-epiproject/flusight-high-state-run/stat-weighting-plots"
+  file.path(epiproject.cache.dir,"stat-weighting-plots")
 )

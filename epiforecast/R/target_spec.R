@@ -433,6 +433,139 @@ flusight2016ilinet_target_trajectory_preprocessor = function(trajectory) {
 flusight2018ilinet_target_trajectory_preprocessor =
     flusight2016ilinet_target_trajectory_preprocessor
 
+ehr.percentage.unit = list(
+  Unit = "percent",
+  to_binlabelstart = function(x, ...) as.character(x, ...),
+  to_binlabelend = function(x, ...) as.character(x, ...),
+  from_binlabel = function(x, ...) as.numeric(x, ...),
+  to_point = function(x, ...) x,
+  from_point = function(x, ...) as.numeric(x),
+  shift_for_smoothing = function(x, ...) {
+    x
+  }
+)
+
+fixed_radius_multibin_neighbor_matrix = function(bin.info, bin.radius) {
+  n.non.na.bins = length(bin.info[["break.bin.representatives"]])
+  non.na.neighbor.matrix = Matrix::bandSparse(n.non.na.bins,,-bin.radius:bin.radius)
+  if (bin.info[["include.na"]]) {
+    ## Assumes NA bin is at end and is its only neighbor regardless of bin radius:
+    Matrix::bdiag(non.na.neighbor.matrix, Matrix::bandSparse(1L,,0:0))
+  } else {
+    non.na.neighbor.matrix
+  }
+}
+
+ehr.onset.target.spec = list(
+  Target = "Season onset",
+  unit = week.unit,
+  for_processed_trajectory = function(processed.trajectory, baseline, is.inseason, ...) {
+    if (length(is.inseason) != length(processed.trajectory)) {
+      print("traj")
+      print(processed.trajectory)
+      print(length(processed.trajectory))
+      print("seas")
+      print(is.inseason)
+      print(length(is.inseason))
+      stop ("length(is.inseason) != length(processed.trajectory)")
+    }
+    if (!all(0 <= processed.trajectory & processed.trajectory <= 100 &
+             round(processed.trajectory, 1L) == processed.trajectory)) {
+      stop ("Observations in processed.trajectory must lie between 0 and 100, inclusive, and be rounded to the first decimal place.")
+    }
+    return (ons(processed.trajectory, baseline, is.inseason))
+  },
+  bin_info_for = function(is.inseason, ...) {
+    ## 1 bin per in-season week (need to add a break at the end of the in-season
+    ## week indices for the last week index), plus an NA(=none) bin:
+    breaks = which(is.inseason) %>>% c(.[[length(.)]]+1L)
+    return (list(
+      breaks=breaks,
+      break.bin.representatives=head(breaks, -1L),
+      rightmost.closed=FALSE, include.na=TRUE
+    ))
+  },
+  multibin_neighbor_matrix = function(bin.info, ...) {
+    fixed_radius_multibin_neighbor_matrix(bin.info, bin.radius=1L)
+  }
+)
+
+ehr.peak.week.target.spec = list(
+  Target = "Season peak week",
+  unit = week.unit,
+  for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
+    return (pwk(processed.trajectory, is.inseason, ...))
+  },
+  bin_info_for = function(is.inseason, ...) {
+    ## 1 bin per in-season week (need to add a break at the end of the in-season
+    ## week indices for the last week index), with no NA(=none) bin (unlike
+    ## Season onset):
+    breaks = which(is.inseason) %>>% c(.[[length(.)]]+1L)
+    return (list(
+      breaks=breaks,
+      break.bin.representatives=head(breaks, -1L),
+      rightmost.closed=FALSE, include.na=FALSE
+    ))
+  },
+  multibin_neighbor_matrix = function(bin.info, ...) {
+    fixed_radius_multibin_neighbor_matrix(bin.info, bin.radius=1L)
+  }
+)
+
+ehr.percentage.bin.info = list(
+  breaks=c(0:130/20, 100),
+  break.bin.representatives = 0:130/20,
+  rightmost.closed=TRUE, include.na=FALSE
+)
+ehr.percentage.multibin.neighbor.matrix =
+  fixed_radius_multibin_neighbor_matrix(
+    ehr.percentage.bin.info, bin.radius=5L
+  )
+
+ehr.peak.percentage.target.spec = list(
+  Target = "Season peak percentage",
+  unit = ehr.percentage.unit,
+  for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
+    return (pht(processed.trajectory, is.inseason, ...))
+  },
+  bin_info_for = function(...) {
+    return (ehr.percentage.bin.info)
+  },
+  multibin_neighbor_matrix = function(bin.info, ...) {
+    ehr.percentage.multibin.neighbor.matrix
+  }
+)
+
+ehr_percentage_target_spec_for_lookahead = function(lookahead) {
+  list(
+    Target = paste0(lookahead, " wk ahead"),
+    unit = percentage.unit,
+    for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
+      return (processed.trajectory[[forecast.time+lookahead]])
+    },
+    bin_info_for = function(...) {
+      return (ehr.percentage.bin.info)
+    },
+    multibin_neighbor_matrix = function(bin.info, ...) {
+      ehr.percentage.multibin.neighbor.matrix
+    }
+  )
+}
+
+ehr.target.specs = list(
+  ehr.peak.week.target.spec,
+  ehr.peak.percentage.target.spec,
+  ehr_percentage_target_spec_for_lookahead(1L),
+  ehr_percentage_target_spec_for_lookahead(2L),
+  ehr_percentage_target_spec_for_lookahead(3L),
+  ehr_percentage_target_spec_for_lookahead(4L)
+) %>>%
+  setNames(sapply(., magrittr::extract2, "Target"))
+
+ehr_target_trajectory_preprocessor = function(trajectory) {
+  round(pmin(pmax(trajectory, 0), 100), 2L)
+}
+
 flusight2017flusurv.age.group.percentage.bin.infos = c(
   "Overall"=130L,
   "0-4 yr"=130L,
