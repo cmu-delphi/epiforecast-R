@@ -37,6 +37,7 @@ fluview.epigroup.name.mapping =
   tibble::tibble(
             abbreviation =
               state.abb %>>%
+              dplyr::recode('NY'='NY_MINUS_JFK') %>>%
               c("AS","MP","DC","GU","PR","VI","ORD","LAX","JFK"),
             name = state.name %>>%
               c("American Samoa", "Commonwealth of the Northern Mariana Islands", "District of Columbia", "Guam", "Puerto Rico", "Virgin Islands", "Chicago", "Los Angeles", "New York City")
@@ -89,7 +90,7 @@ g.fluview.current.dfs =
   fluview.all.current.dfs
 
 r1 = c("me","ma","vt","ct","nh","ri")
-r2 = c("ny","nj","pr","vi","jfk")
+r2 = c("ny_minus_jfk","nj","pr","vi","jfk")
 r3 = c("de","dc","md","pa","va","wv")
 r4 = c("al","ga","fl","ms","nc","sc","ky","tn")
 r5 = c("mi","mn","wi","il","in","oh")
