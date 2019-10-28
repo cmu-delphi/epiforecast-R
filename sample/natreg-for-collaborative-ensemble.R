@@ -39,8 +39,8 @@ if (!dir.exists(epidata.cache.dir)) {
 fluview.baseline.info = fetchUpdatingResource(
   function() {
     LICENSE=RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/LICENSE")
-    ## wILI_Baseline=read.csv(textConnection(RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/wILI_Baseline.csv")), row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
-    wILI_Baseline=read.csv("wILI_Baseline_fixup.csv", row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
+    wILI_Baseline=read.csv(textConnection(RCurl::getURL("https://raw.githubusercontent.com/cdcepi/FluSight-forecasts/master/wILI_Baseline.csv")), row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
+    ## wILI_Baseline=read.csv("wILI_Baseline_fixup.csv", row.names=1L, check.names=FALSE, stringsAsFactors=FALSE)
     cat("LICENSE for wILI_Baseline.csv:")
     cat(LICENSE)
     return (list(
@@ -52,7 +52,7 @@ fluview.baseline.info = fetchUpdatingResource(
     return ()
   },
   cache.file.prefix=file.path(epidata.cache.dir,"fluview_baselines"),
-  cache.invalidation.period=as.difftime(1L, units="weeks"),
+  cache.invalidation.period=as.difftime(2L, units="days"),
   force.cache.invalidation=TRUE
 )
 fluview.baseline.ls.mat =
@@ -258,8 +258,7 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 ## oneahead on seasons >= 2010L (train on seasons < test season)
 retro.season.indexer = list(loo_oneahead=match(2010L,s.retro.seasons))
 
-epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-collab-run-2018"
-## epiproject.cache.dir = "~/Dropbox/private/epiforecast-epiproject/flusight-natreg-collab-run-2018"
+epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-collab-run-2019"
 
 source("generate-retro-and-prospective-forecasts.R")
 
