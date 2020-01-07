@@ -45,19 +45,20 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
     lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE
   )
   g.observed.history = map_join(
-    g.voxel.data,
-    f=function(voxel.data) {
-      lapply(voxel.data[["epidata.history.dfs"]], function(epidata.history.df) {
-        epidata.history.df %>>%
-          dplyr::group_by(epiweek, lag.group) %>>%
-          dplyr::filter(order(-lag)==1L) %>>%
-          dplyr::ungroup() %>>%
-          dplyr::group_by(epiweek) %>>%
-          dplyr::mutate(lag.groups.from.latest=order(-lag.group)-1L) %>>%
-          dplyr::ungroup()
-      })
-    },
-    lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE
+      g.voxel.data,
+      f=function(voxel.data) {
+          lapply(voxel.data[["epidata.history.dfs"]], function(epidata.history.df) {
+              epidata.history.df %>>%
+                  dplyr::group_by(epiweek, lag.group) %>>%
+                  dplyr::arrange(-lag) %>>%
+                  dplyr::filter(seq_along(lag)==1L) %>>%
+                  dplyr::ungroup() %>>%
+                  dplyr::group_by(epiweek) %>>%
+                  dplyr::mutate(lag.groups.from.latest=rank(-lag.group,,"min")-1L) %>>%
+                  dplyr::ungroup()
+          })
+      },
+      lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE
   )
   request_availabilities = function(requests, g.latest, g.history, reference.epiweek) {
     requests %>>%
