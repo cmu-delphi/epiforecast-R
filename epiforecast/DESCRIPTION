@@ -44,6 +44,7 @@ RoxygenNote: 6.1.1
 Collate: 
     'RcppExports.R'
     'backcasters.R'
+    'backcasters_new.R'
     'match.R'
     'utils.R'
     'br.R'

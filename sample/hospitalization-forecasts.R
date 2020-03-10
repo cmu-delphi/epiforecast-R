@@ -186,6 +186,7 @@ f.forecasters = list(
 ) %>>%
   with_dimnamesnames("Forecaster")
 target_trajectory_preprocessor = flusight2017flusurv_target_trajectory_preprocessor
+full_dat_fixup = identity # avoid methods requiring fixup for now
 t.target.specs = flusight2017flusurv.target.specs %>>%
   with_dimnamesnames("Target")
 m.forecast.types = flusight2016.proxy.forecast.types %>>%

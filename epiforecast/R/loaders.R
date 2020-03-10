@@ -640,7 +640,7 @@ fetchBasicEpidataHistoryDF = function(source, epigroup, lags,
     force.cache.invalidation=force.cache.invalidation,
     silent=silent
   ) %>>%
-    augmentWeeklyDFWithTimingSynonyms()
+    {.}
 }
 
 min_NA_highest = function(x) {

@@ -19,13 +19,19 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+epiproject.run.name = "flusight-natreg-with-eb-run"
+epiprojects.base.dir = "~/files/nosync/epiforecast-epiproject"
+epiproject.cache.dir = file.path(epiprojects.base.dir, epiproject.run.name)
+
 library("pipeR")
 
 devtools::load_all("../epiforecast")
+devtools::load_all("../epiforecast.cpp14funs")
 
 ## Set up parallel:
 options(mc.cores=parallel::detectCores()-1L)
 ## options(mc.cores=parallel::detectCores()-3L)
+## options(mc.cores=parallel::detectCores()-4L)
 
 ## different location naming schemes:
 fluview.location.epidata.names = c("nat", paste0("hhs",1:10))
@@ -213,29 +219,42 @@ current.issue.sw =
   dplyr::filter(model.week == max(model.week)) %>>%
   dplyr::select(season, model.week)
 
-s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
+## s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
+s.retro.seasons = seq.int(2010L,current.issue.sw[["season"]]-1L) %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
-w.retro.model.weeks = (35:78) %>>%
+## w.retro.model.weeks = (35:78) %>>%
+w.retro.model.weeks = (40:73) %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
 g.epigroups = fluview.location.spreadsheet.names %>>%
   stats::setNames(.) %>>%
   with_dimnamesnames("Location")
-last.losocv.issue = 201839L
+last.losocv.issue = 201939L
 b.backcasters = list(
   ignorant=backfill_ignorant_backsim,
+  ## quantile_arx_backcast=quantile_arx_pancaster(FALSE, 0L),
   quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
-  quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
+  quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L),
+  ## quantile_arx_backcast_noaux_new=quantile_arx_thinning_whitening_pancaster(FALSE, 0L, method="lasso", lambda=1),
+  ## quantile_arx_backnowcast_new=quantile_arx_thinning_whitening_pancaster(TRUE, 1L, method="lasso", lambda=1),
+  ## quantile_arx_pancast_new=quantile_arx_thinning_whitening_pancaster(TRUE, 53L, method="lasso", lambda=1),
+  ## quantile_arx_pancast_noaux_new=quantile_arx_thinning_whitening_pancaster(FALSE, 53L, method="lasso", lambda=1),
+  quantile_arx_backcast_noaux_new2=quantile_arx_thinning_whitening_pancaster(0L, FALSE, FALSE, method="br"),
+  quantile_arx_backnowcast_new2=quantile_arx_thinning_whitening_pancaster(1L, TRUE, FALSE, method="br"),
+  quantile_arx_pancast_new2=quantile_arx_thinning_whitening_pancaster(53L, TRUE, FALSE, method="br"),
+  quantile_arx_pancast_noaux_new2=quantile_arx_thinning_whitening_pancaster(53L, FALSE, FALSE, method="br"),
+  ## quantile_arx_pancast_sirs_new2=quantile_arx_thinning_whitening_pancaster(53L, TRUE, TRUE, method="br")
+  quantile_arx_pancast_sirs_new2_fix1=quantile_arx_thinning_whitening_pancaster(53L, TRUE, TRUE, method="br")
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
   "Delphi_Uniform"=uniform_forecast,
-  ## "Delphi_EmpiricalBayes"=eb.sim,
-  ## "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
-  ##   eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
-  ##          control.list=get_eb_control_list(max.match.length=4L))
-  ## },
+  "Delphi_EmpiricalBayes"=eb.sim,
+  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
+    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+           control.list=get_eb_control_list(max.match.length=4L))
+  },
   "Delphi_BasisRegression"=br.sim,
   "Delphi_ExtendedDeltaDensity"=twkde.sim,
   "Delphi_MarkovianDeltaDensity"=twkde.markovian.sim,
@@ -244,7 +263,15 @@ f.forecasters = list(
 ) %>>%
   with_dimnamesnames("Forecaster")
 target_trajectory_preprocessor = flusight2016ilinet_target_trajectory_preprocessor
-full_dat_fixup = identity # avoid methods requiring fixup for now
+full_dat_fixup = function(full.dat) {
+   full.dat[[length(full.dat)]][["ys"]] <-
+    full.dat[[length(full.dat)]][["ys"]] %>>%
+    {.[is.nan(.)] <- zoo::na.locf(.)[is.nan(.)]; .} %>>%
+    pmax(0) %>>%
+    pmin(100) %>>%
+    {.}
+  full.dat
+}
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
 m.forecast.types = flusight2016.proxy.forecast.types %>>%
@@ -261,131 +288,3 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
-
-epiproject.cache.dir = "../../../epiforecast-epiproject/flusight-natreg-run"
-
-source("generate-retro-and-prospective-forecasts.R")
-
-## Output prospective forecast spreadsheets, plots:
-collab.ensemble.retro.dir = "../../../collaborative-ensemble-potential-submission-4"
-if (!dir.exists(collab.ensemble.retro.dir)) {
-  dir.create(collab.ensemble.retro.dir)
-}
-save_spreadsheets(swgbf.retro.component.target.multicasts[,,,"quantile_arx_backnowcast",,drop=FALSE],
-                  swg.retro.voxel.data,
-                  t.target.specs, m.forecast.types,
-                  epigroup.colname,
-                  collab.ensemble.retro.dir,
-                  function(swg.voxel.data,s,w,...) {
-                    season = swg.voxel.data[[s,w,1L]][["season"]]
-                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
-                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
-                      sprintf("%s/EW%02d-%d-%s.csv", ..2, week, year, ..2)
-                    }
-                  })
-save_spreadsheets(swge.retro.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-                  swg.retro.voxel.data,
-                  t.target.specs, m.forecast.types,
-                  epigroup.colname,
-                  collab.ensemble.retro.dir,
-                  function(swg.voxel.data,s,w,...) {
-                    season = swg.voxel.data[[s,w,1L]][["season"]]
-                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
-                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
-                      sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
-                    }
-                  })
-save_spreadsheets(swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-                  swg.prospective.voxel.data,
-                  t.target.specs, m.forecast.types,
-                  epigroup.colname,
-                  collab.ensemble.prospective.dir,
-                  function(swg.voxel.data,s,w,...) {
-                    season = swg.voxel.data[[s,w,1L]][["season"]]
-                    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
-                    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-                    if (season >= 2010L && !dplyr::between(week,21L,39L)) {
-                      sprintf("%s/EW%02d-%d-%s.csv", "Delphi_Stat_FewerComponentsNoBackcastNoNowcast", week, year, "Delphi_Stat_FewerComponentsNoBackcastNoNowcast")
-                    }
-                  })
-
-
-save_spreadsheets(
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  file.path(epiproject.cache.dir,"stat-spreadsheets"),
-  function(swg.voxel.data,s,w,...) {
-    season = swg.voxel.data[[s,w,1L]][["season"]]
-    year = swg.voxel.data[[s,w,1L]][["issue"]] %/% 100L
-    week = swg.voxel.data[[s,w,1L]][["issue"]] %% 100L
-    sprintf("EW%02d-%s-%s.csv", week, "Delphi-Stat", Sys.Date())
-  }
-)
-
-save_spreadsheets(
-  swge.prospective.ensemble.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  epigroup.colname,
-  file.path(epiproject.cache.dir,"spreadsheets")
-)
-
-save_linlog_plots(
-  target_multicast_week_plot,
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"linlog.plots")
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"linlog.plots")
-)
-
-save_linlog_plots(
-  target_multicast_week_plot,
-  swge.prospective.ensemble.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"linlog.plots-week")
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swge.prospective.ensemble.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"linlog.plots-percent")
-)
-
-save_linlog_plots(
-  target_multicast_week_plot,
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"stat-linlog.plots-week")
-)
-
-save_linlog_plots(
-  target_multicast_percent_plot,
-  swge.prospective.ensemble.target.multicasts[,,,"target-9time-based",drop=FALSE],
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"stat-linlog.plots-percent")
-)
-
-save_weighting_linlog_plots(
-  e.prospective.ensemble.weightsets[["target-9time-based"]],
-  swgbf.prospective.component.target.multicasts,
-  swg.prospective.voxel.data,
-  t.target.specs, m.forecast.types,
-  file.path(epiproject.cache.dir,"stat-weighting-plots")
-)

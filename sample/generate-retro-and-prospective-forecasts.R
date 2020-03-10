@@ -54,6 +54,7 @@ swgbf.retro.component.target.multicasts = map_join(
   target_trajectory_preprocessor,
   no_join(t.target.specs),
   no_join(m.forecast.types),
+  full_dat_fixup=full_dat_fixup,
   ## lapply_variant = lapply,
   cache.prefix=file.path(epiproject.cache.dir,"swgbf.retro.component.target.multicasts"),
   shuffle=FALSE,
@@ -88,6 +89,7 @@ sg.retro.observed.trajectories = map_join(
   cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories")
 )
 
+gc()
 swgt.retro.observed.multivals = map_join(
   observed_multival2,
   swg.retro.voxel.data,
@@ -98,6 +100,7 @@ swgt.retro.observed.multivals = map_join(
   cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals")
 )
 
+gc()
 swgtm.retro.observed.values = map_join(
   observed_value2,
   swg.retro.voxel.data, t.target.specs, m.forecast.types,
@@ -114,9 +117,13 @@ e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists =
       list(each=NULL), # separately for each forecast type
       list(all=NULL, all=NULL) # always group together all backcasters, forecasters
       )
-  }, e.ensemble.partial.weighting.scheme.wgt.indexer.lists)
+  }, e.ensemble.partial.weighting.scheme.wgt.indexer.lists,
+  lapply_variant=lapply, shuffle=FALSE, show.progress=FALSE
+  )
 
 ## Calculate CV ensemble weights:
+old.mc.cores = getOption("mc.cores")
+options("mc.cores"=min(2L,old.mc.cores))
 print("CV: fit weightsets")
 e.retro.ensemble.weightsets = map_join(
   function(weighting.scheme.indexer.list) {
@@ -129,6 +136,7 @@ e.retro.ensemble.weightsets = map_join(
   lapply_variant=lapply,
   cache.prefix=file.path(epiproject.cache.dir,"e.retro.ensemble.weightsets")
 )
+options("mc.cores"=old.mc.cores)
 
 ## Calculate CV ensemble forecasts as forecast.value's
 print("CV: generate ensemble forecasts")
@@ -183,6 +191,8 @@ if (!file.exists(swge.retro.ensemble.target.multicasts.file)) {
 }
 
 print("Analysis: calculate CV evaluations")
+old.mc.cores = getOption("mc.cores")
+options("mc.cores"=min(2L,old.mc.cores))
 gc()
 swgtmbf.retro.component.evaluations = map_join(
   get_evaluation,
@@ -190,6 +200,7 @@ swgtmbf.retro.component.evaluations = map_join(
 )
 mode(swgtmbf.retro.component.evaluations) <- "numeric"
 saveRDS(swgtmbf.retro.component.evaluations, file.path(epiproject.cache.dir,"swgtmbf.retro.component.evaluations.rds"))
+options("mc.cores"=old.mc.cores)
 ## fixme sometimes this results in errors due to NULL's appearing in the
 ## evaluations, but re-running the evaluations seems to work... memory issues? gc beforehand?
 
@@ -208,6 +219,8 @@ swgtmbf.retro.component.multibin.scores = map_join(
 )
 mode(swgtmbf.retro.component.multibin.scores) <- "numeric"
 
+saveRDS(swgtmbf.retro.component.multibin.scores, file.path(epiproject.cache.dir,"swgtmbf.retro.component.multibin.scores.rds"))
+
 swgtme.retro.ensemble.multibin.scores = map_join(
     get_evaluation,
     swgtme.retro.ensemble.forecast.values[,,,,"Bin",,drop=FALSE],
@@ -215,6 +228,8 @@ swgtme.retro.ensemble.multibin.scores = map_join(
     no_join(multibin.logscore.forecast.type)
 )
 mode(swgtme.retro.ensemble.multibin.scores) <- "numeric"
+
+saveRDS(swgtme.retro.ensemble.multibin.scores, file.path(epiproject.cache.dir,"swgtme.retro.ensemble.multibin.scores.rds"))
 
 apply(swgtmbf.retro.component.multibin.scores, c(7L,6L), mean, na.rm=TRUE)
 apply(swgtme.retro.ensemble.multibin.scores, c(6L), mean, na.rm=TRUE)
@@ -227,6 +242,10 @@ mode(swgtme.retro.ensemble.evaluations) <- "numeric"
 saveRDS(swgtme.retro.ensemble.evaluations, file.path(epiproject.cache.dir,"swgtme.retro.ensemble.evaluations.rds"))
 
 ## ## apply(swgtmbf.retro.component.evaluations, 5:7, mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.evaluations[,,,,"Bin",,,drop=FALSE], c(7L,6L), mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.evaluations[,,,,"Bin",,,drop=FALSE]%>>%pmax(-10), c(7L,6L), mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.evaluations[,,,,"Bin",,,drop=FALSE]%>>%pmax(-10), c(6L,7L), mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.evaluations[names(s.retro.seasons)[s.retro.seasons>=2010L],,,,"Bin",,,drop=FALSE]%>>%pmax(-10), c(7L,6L), mean, na.rm=TRUE)
 apply(swgtmbf.retro.component.evaluations, c(7L,5L), mean, na.rm=TRUE)
 apply(swgtme.retro.ensemble.evaluations, 6:5, mean, na.rm=TRUE)
 
@@ -320,6 +339,7 @@ swgbf.prospective.component.target.multicasts = map_join(
   target_trajectory_preprocessor,
   no_join(t.target.specs),
   no_join(m.forecast.types),
+  full_dat_fixup=full_dat_fixup,
   cache.prefix=file.path(epiproject.cache.dir,"swgbf.prospective.component.target.multicasts")
 )
 

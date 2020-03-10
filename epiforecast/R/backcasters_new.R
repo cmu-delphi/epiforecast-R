@@ -1,31 +1,114 @@
 
-## backfill_ignorant_backsim = function(voxel.data, signal.name) {
-backfill_ignorant_backsim = function(voxel.data, g.voxel.data, source.name, signal.name) {
-  ## old.dat = voxel.data[["epidata.df"]] %>>%
-  old.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
-    dplyr::filter(season != voxel.data[["season"]]) %>>%
-    split(.[["season"]]) %>>%
-    magrittr::extract(
-                sapply(., function(season.df) {
-                  !any(is.na(season.df[[signal.name]]))
-                })
-              ) %>>%
-    dplyr::bind_rows() %>>%
-    {split(.[[signal.name]], .[["Season"]])}
-  ## new.dat = voxel.data[["epidata.df"]] %>>%
-  new.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
-    dplyr::filter(season == voxel.data[["season"]]) %>>%
-    magrittr::extract2(signal.name)
-  new.dat.sim = match.new.dat.sim(new.dat)
-  voxel.Season = season_to_Season(
-    voxel.data[["season"]], voxel.data[["first.week.of.season"]])
-  ## concatenate new.dat.sim onto old.dat, setting the :
-  full.dat = c(old.dat,
-               setNames(list(new.dat.sim), voxel.Season))
-  return (full.dat)
+na_fill0_and_indicate_with_no_interactions = function(df, which.cols=names(df)) {
+    df %>>%
+        dplyr::mutate_at(which.cols, list(missing=function(col) as.numeric(is.na(col)))) %>>%
+        dplyr::mutate_at(which.cols, dplyr::coalesce, 0) %>>%
+        dplyr::rename_at(which.cols, paste0, "_fill0") %>>%
+        {.}
 }
 
-quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3, tol=1e-3, n.sims=200L) function(voxel.data, g.voxel.data, source.name, signal.name) {
+fit_quantile_coefmat_thin_whiten = function(x, y, taus, method, weights=NULL, dtolrelmaxconstant=1e-6, whitening.approach=c("ud","u"), ...) {
+    whitening.approach <- match.arg(whitening.approach)
+    ## xxx not actually whitening... not centering...
+    ## todo center xs instead of whitening w/ intercept?
+    ## xxx order of y and maybe (Intercept) is important here:
+    Xy = dplyr::bind_cols(y, `(Intercept)`=rep(1,nrow(y)), x)
+    ## Remove instances with NA Xs or ys:
+    Xyp = na.omit(Xy)
+    if (is.null(weights)) {
+        weightsp = NULL
+    } else if (is.null(attr(Xyp,"na.action"))) {
+        weightsp = weights
+    } else {
+        weightsp = weights[-attr(Xyp,"na.action")]
+    }
+    Xpmat = as.matrix(Xyp[,-1L])
+    ypvec = Xyp[[1L]]
+    ## todo look into different orthogonalization, whitening, and thinning approaches
+    ## Prevent singular X matrix errors in quantreg::rq fits (based on rank provided by `qr`) by working off of singular vectors with significantly nonzero values instead of original features:
+    svd.Xpmat = svd(Xpmat)
+    Up = svd.Xpmat[["u"]]
+    dp = svd.Xpmat[["d"]]
+    Vp = svd.Xpmat[["v"]]
+    dtolrelmax = max(dim(Xpmat)) * dtolrelmaxconstant
+    ## `qr` may use a rule with .Machine[["double.eps"]]; expand this by at least 10x to try to ensure it will not complain about various fix-ups we might pass it based on the trimmed SVD:
+    if (dtolrelmax < 10*.Machine[["double.eps"]]) {
+        stop ('dtolrelmaxconstant led to dtolrelmax low enough that we might not expect to avoid singular design matrix errors for some thinning approaches.')
+    }
+    dp.inclusion.flags = dp >= dtolrelmax*max(dp)
+    stopifnot(sum(dp.inclusion.flags) >= 1L)
+    Upp = Up[,dp.inclusion.flags,drop=FALSE]
+    dpp = dp[dp.inclusion.flags]
+    Vpp = Vp[,dp.inclusion.flags,drop=FALSE]
+    Phipp = switch(whitening.approach,
+                   ud=t(dpp*t(Upp)),
+                   u=Upp
+                   )
+    yppvec = ypvec
+    weightspp = weightsp
+    ##
+    fit_for_tau =
+        if (is.null(weights)) {
+            function(tau) {
+                quantreg::rq.fit(Phipp, yppvec, tau, method=method, ...)[["coefficients"]]
+            }
+        } else {
+            function(tau) {
+                quantreg::rq.wfit(Phipp, yppvec, tau, weightspp, method=method, ...)[["coefficients"]]
+            }
+        }
+    coefmat =
+        taus %>>%
+        sapply(fit_for_tau) %>>%
+        {
+            switch(whitening.approach,
+                   ud = Vpp %*% .,
+                   u = Vpp %*% (./dpp)
+                   )
+        } %>>%
+        magrittr::set_rownames(colnames(Xpmat)) %>>%
+        {.}
+    coefmat
+}
+
+augment_with_sirs_covariates = function(df, covariate.availabilities) {
+  df %>>%
+    {
+      if (covariate.availabilities %>>%
+          {match("stable@s-1", .[["variable.name"]])} %>>%
+          {is.na(.) || !covariate.availabilities[["request.available"]][[.]]}
+      ) {
+        . # stable@s-1 not available; can't form any SIRS-inspired covariates
+      } else {
+        . %>>%
+          ## add the SIRS-inspired covariates that are only conditioned on 1stable@s-11
+          dplyr::mutate(
+                 `(stable@s-1)(stable@s-1)` = `stable@s-1`*`stable@s-1`
+          ) %>>%
+          {
+            if (covariate.availabilities %>>%
+                {match("stable@s-2", .[["variable.name"]])} %>>%
+                {is.na(.) || !covariate.availabilities[["request.available"]][[.]]}
+            ) {
+              . # stable@s-2 not available; can't form rest of SIRS-inspired covariates
+            } else {
+              ## add the rest of the SIRS-inspired covariates, with care to make relative delta NA when denominator is around 0 or below.
+              . %>>%
+                dplyr::mutate(
+                       `(stable@s-1)(stable@s-2)` = `stable@s-1`*`stable@s-2`,
+                       `(stable@s-1)(reldiff@s-1)` = `stable@s-1`*(`stable@s-1`-`stable@s-2`)/dplyr::if_else(`stable@s-2` > 1e-3, `stable@s-2`, NA_real_)
+                )
+            }
+          }
+      }
+    }
+}
+
+quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.nowcast, include.sirs.inspired, n.sims=200L, ...) function(voxel.data, g.voxel.data, source.name, signal.name) {
+  max.weeks.ahead <- match.single.nonna.integer(max.weeks.ahead)
+  if (!is.logical(include.nowcast) || !is.logical(include.sirs.inspired)) {
+    stop ('include.* args should be logical')
+  }
   model.week.shift.range = c(-4L, +4L)
   target.epigroup = voxel.data[["epigroup"]]
   target.source.name = voxel.data[["source.name"]]
@@ -230,44 +313,17 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
         {.}
       train.data =
         full.train.tbl %>>%
+        {
+          if (!include.sirs.inspired) {
+            . # SIRS-inspired covariates not enabled; return existing df
+          } else {
+            . %>>% augment_with_sirs_covariates(covariate.availabilities)
+          }
+        } %>>%
         dplyr::select(-reference.epiweek) %>>%
-        {
-          ## filter out columns with too many NA's (also considering NA's in
-          ## previously okay'd columns; earlier columns are favored for
-          ## inclusion over later ones; "y" col must be included):
-          original.nrow = nrow(.)
-          min.nrow = max(10, original.nrow*0.10)
-          running.dat = .[!is.na(.[["y"]]),]
-          if (nrow(running.dat) < min.nrow) {
-            stop ("Not enough non-NA y's for training.")
-          }
-          included.colnames = character(0L) # "y" should be grabbed at end
-          for (colname in colnames(.)) {
-              col.available = !is.na(running.dat[[colname]])
-              if (sum(col.available) >= min.nrow) {
-                  included.colnames <- c(included.colnames, colname)
-                  running.dat <- running.dat[col.available,]
-              }
-          }
-          ## print(included.colnames)
-          running.dat[included.colnames]
-        } %>>%
-        na.omit() %>>%
-        ## Throw out features that appear to be redundant (preventing singular
-        ## matrix errors later):
-        {
-          ## todo lm is slower than, e.g., .lm.fit; cut formula processing out
-          lm.fit = lm(y~., ., tol=tol)
-          beta = coefficients(lm.fit)
-          stopifnot(names(beta)[[1L]] == "(Intercept)" &&
-                    length(beta) - 1L == ncol(.) - 1L &&
-                    names(.)[[ncol(.)]] == "y")
-          .[c(!is.na(beta)[-1L],TRUE)]
-        } %>>%
-        ## Try to avoid more insidious sources of singular matrices in quantile
-        ## regression with jitter:
-        dplyr::mutate_at(dplyr::vars(dplyr::everything()),
-                         function(col) col+rnorm(length(col),,sd(col)*1e-3)) %>>%
+        dplyr::filter(!is.na(y)) %>>%
+        ## todo allow for different NA handling routines
+        na_fill0_and_indicate_with_no_interactions(colnames(.)[colnames(.)!="y"]) %>>%
         {.}
       covariate.test.tbl =
         covariate.availabilities %>>%
@@ -278,37 +334,27 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
         }) %>>%
         tibble::as_tibble() %>>%
         {.}
-      ## fit = lm(y~., train.data)
-      ## print(train.data)
-      ## sigma = sqrt(mean(residuals(fit)^2))
-      ## print(fit)
-      ## print(anova(fit))
-      ## print(sigma)
-      ## lm.fit = lm(y~., train.data)
-      ## print(anova(lm.fit))
-      ## taus = runif(n.sims)
-      ## simulated.values =
-      ##   sapply(seq_len(n.sims), function(sim.i) {
-      ##     ## fit = quantreg::rq(y~., taus[[sim.i]], train.data)
-      ##     fit = quantreg::rq(y~., taus[[sim.i]], train.data, method="lasso", lambda=1e-6)
-      ##     predict(fit, newdata=covariate.test.tbl[sim.i,,drop=FALSE])
-      ##     ## predict(fit, newdata=covariate.test.tbl[sim.i,,drop=FALSE]) + rnorm(1L, sigma)
-      ##   }) %>>% unname()
-      ## xxx calculates n.sims^2 outputs instead f just n.sims!... but faster than above for current n.sims...
+      test.covariate.data =
+          covariate.test.tbl %>>%
+          {
+              if (!include.sirs.inspired) {
+                  . # SIRS-inspired covariates not enabled; return existing df
+              } else {
+                  . %>>% augment_with_sirs_covariates(covariate.availabilities)
+              }
+          } %>>%
+          na_fill0_and_indicate_with_no_interactions() %>>%
+          {.}
       ## todo base on deltas, etc.
       ## todo sliding window average / exponential average of observations / deltas
       taus = runif(n.sims)
-      fit = tryCatch(
-          ## todo quantreg::rq is slower than underlying fitting functions; cut formula processing out
-          ## todo try hqreg
-          ## fixme does rq w/ method lasso only use one tau?!?
-          quantreg::rq(y~., taus, train.data, method="lasso", lambda=lambda),
-          error=function(e) {
-              ## todo iterate through taus, weight on recent data
-              quantreg::rq(y~., taus, train.data, method="fn")
-          }
-      )
-      simulated.values = predict(fit, newdata=covariate.test.tbl)[cbind(seq_len(n.sims),seq_len(n.sims))]
+      coefmat = fit_quantile_coefmat_thin_whiten(train.data[names(train.data)!="y"], train.data["y"], taus, ...)
+      intercept.row.i = 1L
+      stopifnot(rownames(coefmat)[[intercept.row.i]] == "(Intercept)")
+      stopifnot(isTRUE(all.equal(rownames(coefmat), c("(Intercept)",colnames(test.covariate.data)))))
+      simulated.values =
+          coefmat[intercept.row.i,,drop=TRUE] +
+          colSums(coefmat[-intercept.row.i,,drop=FALSE]*t(as.matrix(test.covariate.data)))
       g.obs.sim.latest[[response.description[["epigroup"]]]][["simulations"]] <-
         dplyr::bind_rows(g.obs.sim.latest[[response.description[["epigroup"]]]][["simulations"]],
                          tibble::tribble(~epiweek, ~lag.group, ~y,
@@ -348,3 +394,5 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
                setNames(list(new.dat.sim), voxel.Season))
   return (full.dat)
 }
+
+## todo weight based on season, week, #nonmissing features, feature values, ...

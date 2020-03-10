@@ -192,3 +192,9 @@
 ## xxx should use =rq= for constrainedLADPtPredFit with the R= r= args if
 ## possible; it's probably faster
 ## todo weighted versions of ensemble weight fitting algorithms
+
+###############################
+## DESCRIPTION/*-forecasts.R ##
+###############################
+
+## consider byte-compilation

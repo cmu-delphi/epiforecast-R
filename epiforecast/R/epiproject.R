@@ -78,8 +78,9 @@ forecast_value2 = function(voxel.data, target.spec, forecast.type, target.foreca
   forecast_value(target.spec, forecast.type, target.forecast, label.bins=label.bins)
 }
 
-target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_preprocessor, target.specs, forecast.types, method.settings.overrides=list()) {
+target_multicast = function(voxel.data, full.dat, forecaster, target_trajectory_preprocessor, target.specs, forecast.types, method.settings.overrides=list(), full_dat_fixup=identity) {
   set.seed(42L)
+  full.dat <- full_dat_fixup(full.dat)
   simlike = forecaster(full.dat, baseline=voxel.data[["baseline"]])
   target.forecasts = map_join(
     target_forecast2,

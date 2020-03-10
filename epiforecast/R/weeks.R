@@ -172,7 +172,7 @@ yearWeekWdayVecsToDate = function(year, week, wday, first.wday, owning.wday, err
   }
 
   if (error.on.wrap) {
-    if (any(!is.na(week) & week <= 0)) {
+    if (any(!is.na(week) & week <= 0L)) {
       stop ("Week numbers must be positive (in particular, week 0 is not supported) when |error.on.wrap| is TRUE.")
     } else if (any(!is.na(week) & week > lastWeekNumber(year, owning.wday))) {
       stop ("Week numbers must not exceed the last week number in the corresponding year unless |error.on.wrap| is FALSE.")
@@ -183,25 +183,25 @@ yearWeekWdayVecsToDate = function(year, week, wday, first.wday, owning.wday, err
   ## weekday, and owning weekday.  R's |%%| on testing system appears to
   ## take sign of RHS, which is what we want; however, just in case,
   ## make sure:
-  first.to.input = (wday - first.wday + 7) %% 7
-  first.to.owning = (owning.wday - first.wday + 7) %% 7
+  first.to.input = (wday - first.wday + 7L) %% 7L
+  first.to.owning = (owning.wday - first.wday + 7L) %% 7L
   if (!all(is.na(first.to.input) | first.to.input %in% 0:6) || !all(is.na(first.to.owning) | first.to.owning %in% 0:6)) {
     stop ("Bug detected: logic error when determining weekday shifts.")
   }
 
   jan1 = as.Date(sprintf("%d-01-01",year))
   ## lubridate assigns wday 1 to Sunday; adjust:
-  jan1.wday = lubridate::wday(jan1) - 1
-  jan1.to.owning = (owning.wday - jan1.wday + 7) %% 7
-  if (!all(is.na(jan1.to.owning) | jan1.to.owning %in% 0:6)) {
-    stop ("Bug detected: logic error when determining weekday shifts.")
-  }
+  jan1.wday = lubridate::wday(jan1) - 1L
+  jan1.to.owning = (owning.wday - jan1.wday + 7L) %% 7L
+  ## if (!all(is.na(jan1.to.owning) | jan1.to.owning %in% 0:6)) {
+  ##   stop ("Bug detected: logic error when determining weekday shifts.")
+  ## }
   week1.owning = jan1 + jan1.to.owning
 
   date = week1.owning + (week-1)*7 - first.to.owning + first.to.input
-  if (!all(is.na(date) | as.integer(format(date,"%w"))==wday)) {
-    stop ("Bug detected: logic error when determining weekday shifts.")
-  }
+  ## if (!all(is.na(date) | as.integer(format(date,"%w"))==wday)) {
+  ##   stop ("Bug detected: logic error when determining weekday shifts.")
+  ## }
 
   names(date) <- n
   return (date)
@@ -765,4 +765,16 @@ season_to_Season = function(season, first.week.of.season) {
   } else {
     paste0(season,"/",season+1L)
   }
+}
+
+curr_or_next_week = function(yearweek, desired.week) {
+    year = yearweek %/% 100L
+    week = yearweek %% 100L
+    dplyr::if_else(week <= desired.week, year, year+1L)*100L + desired.week
+}
+
+prev_or_curr_week = function(yearweek, desired.week) {
+    year = yearweek %/% 100L
+    week = yearweek %% 100L
+    dplyr::if_else(week >= desired.week, year, year-1L)*100L + desired.week
 }

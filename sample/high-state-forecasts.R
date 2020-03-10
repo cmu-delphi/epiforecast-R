@@ -377,6 +377,7 @@ f.forecasters = list(
 ) %>>%
   with_dimnamesnames("Forecaster")
 target_trajectory_preprocessor = flusight2016ilinet_target_trajectory_preprocessor
+full_dat_fixup = identity # avoid methods requiring fixup for now
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
 ## fixme remove Season onset

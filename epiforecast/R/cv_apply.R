@@ -196,3 +196,6 @@ cv_apply = function(data, indexer_list, fn, parallel_dim_i=0L, ...) {
   }
   return (result)
 }
+
+## todo don't subset at each dimension; prepare all indices then subset once? or once @ parallel dimension & once @ last dimension?
+## todo try explicitly constructing cluster and things to export
