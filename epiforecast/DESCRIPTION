@@ -24,6 +24,7 @@ Imports:
     plotrix,
     tibble,
     dplyr,
+    tidyr,
     pipeR,
     matrixStats,
     quantreg,

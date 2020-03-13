@@ -1,21 +1,71 @@
 
-## backfill_ignorant_backsim = function(voxel.data, signal.name) {
-backfill_ignorant_backsim = function(voxel.data, g.voxel.data, source.name, signal.name) {
-  ## old.dat = voxel.data[["epidata.df"]] %>>%
-  old.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
+chop_by_season = function(epidata.df) {
+  epidata.df %>>%
+    ## tidyr::chop(-dplyr::one_of("Season","season")) %>>%
+    ## todo Above does not work as Season is not set properly for the unobserved portion of the latest season in the epidata df.  Should fix this and/or move to remove the concept of an epidata df with fill-in for missing portions of seasons.
+    tidyr::chop(-season) %>>%
+    ## xxx to try not to break old code, keep sorting from old implementation that used split:
+    dplyr::arrange(season) %>>%
+    {.}
+}
+
+chop_and_extend_by_season = function(first_epiweek_of_season, last_epiweek_of_season, custom_season_to_Season) function(epidata.df) {
+    season.epiweek.df = epidata.df %>>%
+        dplyr::group_by(season) %>>%
+        dplyr::slice(1L) %>>%
+        dplyr::select(season, first.model.week=model.week) %>>%
+        dplyr::group_by(season, first.model.week) %>>%
+        dplyr::mutate(epiweek=list(epiweek_Seq(first_epiweek_of_season(season), last_epiweek_of_season(season)))) %>>%
+        dplyr::mutate(model.week = list(first.model.week + seq_along(epiweek[[1L]]) - 1L)) %>>%
+        dplyr::ungroup() %>>%
+        dplyr::select(-first.model.week) %>>%
+        tidyr::unchop(-season) %>>%
+        {.}
+    epidata.df %>>%
+        dplyr::select(-dplyr::one_of("Season","season","model.week")) %>>%
+        dplyr::right_join(season.epiweek.df, by="epiweek") %>>%
+        ## xxx to try not to break old code, keep sorting from old implementation that used split:
+        dplyr::mutate(Season = custom_season_to_Season(season)) %>>%
+        chop_by_season() %>>%
+        {.}
+}
+
+backfill_ignorant_backsim_old = function(voxel.data, g.voxel.data, source.name, signal.name) {
+    ## old.dat = voxel.data[["epidata.df"]] %>>%
+    old.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
+        dplyr::filter(season != voxel.data[["season"]]) %>>%
+        split(.[["season"]]) %>>%
+        magrittr::extract(
+                      sapply(., function(season.df) {
+                          !any(is.na(season.df[[signal.name]]))
+                      })
+                  ) %>>%
+        dplyr::bind_rows() %>>%
+        {split(.[[signal.name]], .[["Season"]])}
+    ## new.dat = voxel.data[["epidata.df"]] %>>%
+    new.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
+        dplyr::filter(season == voxel.data[["season"]]) %>>%
+        magrittr::extract2(signal.name)
+    new.dat.sim = match.new.dat.sim(new.dat)
+    voxel.Season = season_to_Season(
+        voxel.data[["season"]], voxel.data[["first.week.of.season"]])
+    ## concatenate new.dat.sim onto old.dat, setting the :
+    full.dat = c(old.dat,
+                 setNames(list(new.dat.sim), voxel.Season))
+    return (full.dat)
+}
+
+backfill_ignorant_backsim = function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
+  source.epidata.df = voxel.data[["epidata.dfs"]][[source.name]]
+  source.nested.trajectory.df = epidata_df_to_chopped_trajectory_df(source.epidata.df)
+  old.dat = source.nested.trajectory.df %>>%
     dplyr::filter(season != voxel.data[["season"]]) %>>%
-    split(.[["season"]]) %>>%
-    magrittr::extract(
-                sapply(., function(season.df) {
-                  !any(is.na(season.df[[signal.name]]))
-                })
-              ) %>>%
-    dplyr::bind_rows() %>>%
-    {split(.[[signal.name]], .[["Season"]])}
-  ## new.dat = voxel.data[["epidata.df"]] %>>%
-  new.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
+    dplyr::filter(vapply(.[[signal.name]], function(trajectory) !any(is.na(trajectory)), logical(1L))) %>>%
+    ## xxx regenerating Season labels, indicates suboptimal interface; see additional notes in season chopper above
+    {stats::setNames(.[[signal.name]], season_to_Season(.[["season"]], voxel.data[["first.week.of.season"]]))}
+  new.dat = source.nested.trajectory.df %>>%
     dplyr::filter(season == voxel.data[["season"]]) %>>%
-    magrittr::extract2(signal.name)
+    {.[[signal.name]][[1L]]}
   new.dat.sim = match.new.dat.sim(new.dat)
   voxel.Season = season_to_Season(
     voxel.data[["season"]], voxel.data[["first.week.of.season"]])

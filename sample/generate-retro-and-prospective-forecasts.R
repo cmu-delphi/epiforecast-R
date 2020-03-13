@@ -41,6 +41,7 @@ print("CV: generate backcasts")
 swgb.retro.full.dats = map_join(
   get_backcast,
   swg.retro.voxel.data, sw.g.retro.voxel.data, source.name, signal.name, b.backcasters,
+  epidata_df_to_chopped_trajectory_df=epidata_df_to_chopped_trajectory_df,
   use.proxy=TRUE,
   cache.prefix=file.path(epiproject.cache.dir,"swgb.retro.full.dats")
 )

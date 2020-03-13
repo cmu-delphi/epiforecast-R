@@ -19,19 +19,13 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
-epiproject.run.name = "flusight-natreg-with-eb-run"
-epiprojects.base.dir = "~/files/nosync/epiforecast-epiproject"
-epiproject.cache.dir = file.path(epiprojects.base.dir, epiproject.run.name)
-
 library("pipeR")
 
 devtools::load_all("../epiforecast")
-devtools::load_all("../epiforecast.cpp14funs")
 
 ## Set up parallel:
 options(mc.cores=parallel::detectCores()-1L)
 ## options(mc.cores=parallel::detectCores()-3L)
-## options(mc.cores=parallel::detectCores()-4L)
 
 ## different location naming schemes:
 fluview.location.epidata.names = c("nat", paste0("hhs",1:10))
@@ -121,6 +115,15 @@ g.nowcast.current.dfs = fluview.location.epidata.names %>>%
 
 epigroup.colname = "Location"
 
+extended_season_flags = function(n.weeks.in.regular.season) {
+    n.weeks.in.extended.season = n.weeks.in.regular.season + last.extended.epi.week-usa.flu.first.week.of.season+1L
+    seq_len(n.weeks.in.extended.season ) %>>%
+        time_to_model_week(usa.flu.first.week.of.season) %>>%
+        model_week_to_epi_week(usa.flu.first.week.of.season, n.weeks.in.extended.season) %>>%
+        dplyr::between(10L, 37L) %>>%
+        return()
+}
+
 get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
   current.epidata.history.df = g.fluview.history.dfs[[epigroup]][
     c("season","model.week","epiweek","issue","lag","wili")
@@ -166,8 +169,9 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
     dplyr::filter(Location == epigroup) %>>%
     mimicPastDF("season", season, nontime.index.colnames="Location") %>>%
     magrittr::extract2("baseline")
-  n.weeks.in.season = lastWeekNumber(season, 3L)
-  is.inseason = usa_flu_inseason_flags(n.weeks.in.season)
+  n.weeks.in.regular.season = lastWeekNumber(season, 3L)
+  ## todo change naming here
+  is.inseason = extended_season_flags(n.weeks.in.regular.season)
   forecast.time = model_week_to_time(
     model.week, usa.flu.first.week.of.season)
   max.lag = 51L
@@ -203,14 +207,23 @@ get_voxel_data = function(season, model.week, epigroup, last.losocv.issue) {
 source.name = "fluview"
 signal.name = "wili"
 
-get_observed_trajectory = function(season, epigroup) {
-  ## Use the current issue's version of a trajectory as the "observed" (vs. a
-  ## fixed issue after the season's end):
-  epidata.df = g.fluview.current.dfs[[epigroup]]
-  observed.trajectory = epidata.df %>>%
-    {.[[signal.name]][.[["season"]]==season]}
-  return (observed.trajectory)
-}
+## last.extended.epi.week = 37L
+## last.extended.epi.week = 44L
+last.extended.epi.week = 46L
+epidata_df_to_chopped_trajectory_df = chop_and_extend_by_season(function(season) season*100L+usa.flu.first.week.of.season,
+                                                                function(season) (season+1L)*100L+last.extended.epi.week,
+                                                                function(season) season_to_Season(season, usa.flu.first.week.of.season)
+                                                                )
+
+## todo fix:
+## get_observed_trajectory = function(season, epigroup) {
+##   ## Use the current issue's version of a trajectory as the "observed" (vs. a
+##   ## fixed issue after the season's end):
+##   epidata.df = g.fluview.current.dfs[[epigroup]]
+##   observed.trajectory = epidata.df %>>%
+##     {.[[signal.name]][.[["season"]]==season]}
+##   return (observed.trajectory)
+## }
 
 current.issue.sw =
   g.fluview.current.dfs[[1L]] %>>%
@@ -219,59 +232,43 @@ current.issue.sw =
   dplyr::filter(model.week == max(model.week)) %>>%
   dplyr::select(season, model.week)
 
-## s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
-s.retro.seasons = seq.int(2010L,current.issue.sw[["season"]]-1L) %>>%
+s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
-## w.retro.model.weeks = (35:78) %>>%
-w.retro.model.weeks = (40:73) %>>%
+w.retro.model.weeks = (35:78) %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
 g.epigroups = fluview.location.spreadsheet.names %>>%
   stats::setNames(.) %>>%
   with_dimnamesnames("Location")
-last.losocv.issue = 201939L
+last.losocv.issue = 201839L
 b.backcasters = list(
-  ignorant=backfill_ignorant_backsim,
-  ## quantile_arx_backcast=quantile_arx_pancaster(FALSE, 0L),
-  quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
-  quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L),
-  ## quantile_arx_backcast_noaux_new=quantile_arx_thinning_whitening_pancaster(FALSE, 0L, method="lasso", lambda=1),
-  ## quantile_arx_backnowcast_new=quantile_arx_thinning_whitening_pancaster(TRUE, 1L, method="lasso", lambda=1),
-  ## quantile_arx_pancast_new=quantile_arx_thinning_whitening_pancaster(TRUE, 53L, method="lasso", lambda=1),
-  ## quantile_arx_pancast_noaux_new=quantile_arx_thinning_whitening_pancaster(FALSE, 53L, method="lasso", lambda=1),
-  quantile_arx_backcast_noaux_new2=quantile_arx_thinning_whitening_pancaster(0L, FALSE, FALSE, method="br"),
-  quantile_arx_backnowcast_new2=quantile_arx_thinning_whitening_pancaster(1L, TRUE, FALSE, method="br"),
-  quantile_arx_pancast_new2=quantile_arx_thinning_whitening_pancaster(53L, TRUE, FALSE, method="br"),
-  quantile_arx_pancast_noaux_new2=quantile_arx_thinning_whitening_pancaster(53L, FALSE, FALSE, method="br"),
-  ## quantile_arx_pancast_sirs_new2=quantile_arx_thinning_whitening_pancaster(53L, TRUE, TRUE, method="br")
-  quantile_arx_pancast_sirs_new2_fix1=quantile_arx_thinning_whitening_pancaster(53L, TRUE, TRUE, method="br")
+  ignorant=backfill_ignorant_backsim#,
+  ## todo adjust these as well:
+  ## quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
+  ## quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
   "Delphi_Uniform"=uniform_forecast,
-  "Delphi_EmpiricalBayes"=eb.sim,
-  "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
-    eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
-           control.list=get_eb_control_list(max.match.length=4L))
-  },
+  ## "Delphi_EmpiricalBayes"=eb.sim,
+  ## "Delphi_EmpiricalBayes_Cond4"=function(full.dat, baseline=0, max.n.sims=2000L) {
+  ##   eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+  ##          control.list=get_eb_control_list(max.match.length=4L))
+  ## },
   "Delphi_BasisRegression"=br.sim,
-  "Delphi_ExtendedDeltaDensity"=twkde.sim,
+  "Delphi_DeltaDensity_ExpandWindows"=function(full.dat, baseline=0, max.n.sims=1000L) {
+      twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
+                max.shifts=c(0L,0:25,24:0)[(usa.flu.first.week.of.season+seq_len(53L+last.extended.epi.week)-1L)%%52L+1L])
+  },
   "Delphi_MarkovianDeltaDensity"=twkde.markovian.sim,
   "Delphi_EmpiricalFutures"=empirical.futures.sim,
   "Delphi_EmpiricalTrajectories"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
+## todo adjust:
 target_trajectory_preprocessor = flusight2016ilinet_target_trajectory_preprocessor
-full_dat_fixup = function(full.dat) {
-   full.dat[[length(full.dat)]][["ys"]] <-
-    full.dat[[length(full.dat)]][["ys"]] %>>%
-    {.[is.nan(.)] <- zoo::na.locf(.)[is.nan(.)]; .} %>>%
-    pmax(0) %>>%
-    pmin(100) %>>%
-    {.}
-  full.dat
-}
+full_dat_fixup = identity # avoid methods requiring fixup for now
 t.target.specs = flusight2016.target.specs %>>%
   with_dimnamesnames("Target")
 m.forecast.types = flusight2016.proxy.forecast.types %>>%
@@ -288,3 +285,7 @@ e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
 
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
+
+epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-extended-run"
+
+source("generate-retro-and-prospective-forecasts.R")
