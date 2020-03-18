@@ -329,9 +329,8 @@ print("Current season: generate backcasts")
 swgb.prospective.full.dats = map_join(
   get_backcast,
   swg.prospective.voxel.data, sw.g.prospective.voxel.data, source.name, signal.name, b.backcasters,
-  cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats"),
-  shuffle=FALSE
   epidata_df_to_chopped_trajectory_df=epidata_df_to_chopped_trajectory_df
+  , shuffle=FALSE
 )
 
 print("Current season: generate component forecasts")
@@ -341,8 +340,8 @@ swgbf.prospective.component.target.multicasts = map_join(
   target_trajectory_preprocessor,
   no_join(t.target.specs),
   no_join(m.forecast.types),
-  full_dat_fixup=full_dat_fixup,
-  cache.prefix=file.path(epiproject.cache.dir,"swgbf.prospective.component.target.multicasts")
+  full_dat_fixup=full_dat_fixup
+  , cache.prefix=file.path(epiproject.cache.dir,"swgbf.prospective.component.target.multicasts")
 )
 
 swgtmbf.prospective.component.forecast.values =
@@ -375,16 +374,16 @@ e.prospective.ensemble.weightsets = map_join(
                            m.forecast.types,
                            weighting.scheme.indexer.list)
   },
-  e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-  cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets")
+  e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists
+  , cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets")
 )
 
 ## e.prospective.ensemble.weightsets = map_join(
 ##   function(weighting.scheme.indexer.list) {
 ##     stop ("Result was not computed yet.")
 ##   },
-##   e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists,
-##   cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets")
+##   e.prospective.ensemble.weighting.scheme.swgtmbf.indexer.lists
+##   , cache.prefix=file.path(epiproject.cache.dir,"e.prospective.ensemble.weightsets")
 ## )
 
 print("Current season: generate ensemble forecasts")
