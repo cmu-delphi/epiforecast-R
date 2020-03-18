@@ -208,7 +208,7 @@ week.unit = list(
   }
 )
 
-percentage.unit = list(
+flusight.ilinet.percentage.unit = list(
   Unit = "percent",
   to_binlabelstart = function(x, ...) as.character(x, ...),
   to_binlabelend = function(x, ...) as.character(x, ...),
@@ -216,8 +216,39 @@ percentage.unit = list(
   to_point = function(x, ...) x,
   from_point = function(x, ...) as.numeric(x),
   shift_for_smoothing = function(x, ...) {
+    ## The bin start and end are for rounded values. While x is expected to
+    ## contain target values that have already been rounded (by a target
+    ## trajectory preprocessor function), the target kernel smoothing step
+    ## treats these as continuous values and uses the bin start and end values
+    ## for rounded values for the resulting _unrounded_ values. This introduces
+    ## bias. Compensate for this bias by offsetting by the typical bias.
+    ##
+    ## TODO consider eliminating preprocessors, instead using only trajectory
+    ## fixups to constrain values to be in range; perform rounding in each
+    ## target calculation; remove this smoothing shift. Alternatively,
+    ## distinguish between bin start and end labels and effective boundaries for
+    ## unrounded versions of targets. Alternatively, distinguish between coding
+    ## and display values for targets and/or trajectory values. Week-based
+    ## targets may require different tactics. Brainstorm nice ways to frame
+    ## this. Remove or document influence of bin info on unit definition; maybe
+    ## just move shift_for_smoothing to the target_spec?
     x + 0.05
   }
+)
+## Coincidentally, the FluSight ILINet percentage unit seems to work for FluSurv-NET as well:
+flusight.flusurv.percentage.unit = flusight.ilinet.percentage.unit
+## ILINet forecasting for COVID-19 pandemic is similar, but no rounding.
+covid19ilinet.percentage.unit = list(
+    Unit = "percent",
+    to_binlabelstart = function(x, ...) as.character(x, ...),
+    to_binlabelend = function(x, ...) as.character(x, ...),
+    from_binlabel = function(x, ...) as.numeric(x, ...),
+    to_point = function(x, ...) x,
+    from_point = function(x, ...) as.numeric(x),
+    ## There is no rounding, so using the "display" bin start and end labels
+    ## causes no issues with bias when kernel smoothing target values; there is
+    ## no need to shift values for smoothing:
+    shift_for_smoothing = function(x, ...) x
 )
 
 fixed_radius_multibin_neighbor_matrix = function(bin.info, bin.radius) {
@@ -306,7 +337,7 @@ flusight2018natreg.peak.week.target.spec =
 
 flusight2016.percentage.bin.info = list(
   breaks=c(0:130/10, 100),
-  break.bin.representatives = 0:130/10,
+  break.bin.representatives=0:130/10,
   rightmost.closed=TRUE, include.na=FALSE
 )
 flusight2016.percentage.multibin.neighbor.matrix =
@@ -316,7 +347,7 @@ flusight2016.percentage.multibin.neighbor.matrix =
 
 flusight2016.peak.percentage.target.spec = list(
   Target = "Season peak percentage",
-  unit = percentage.unit,
+  unit = flusight.ilinet.percentage.unit,
   for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
     return (pht(processed.trajectory, is.inseason, ...))
   },
@@ -340,7 +371,7 @@ flusight2018natreg.peak.percentage.target.spec =
 flusight2016_percentage_target_spec_for_lookahead = function(lookahead) {
   list(
     Target = paste0(lookahead, " wk ahead"),
-    unit = percentage.unit,
+    unit = flusight.ilinet.percentage.unit,
     for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
       return (processed.trajectory[[forecast.time+lookahead]])
     },
@@ -441,7 +472,8 @@ ehr.percentage.unit = list(
   to_point = function(x, ...) x,
   from_point = function(x, ...) as.numeric(x),
   shift_for_smoothing = function(x, ...) {
-    x
+    ## See notes in another shift_for_smoothing.  Here, rounding is to the hundredths place, while bins are every 0.05.  Consider a "smoothing" method that evenly places mass within the "rounding bin" associated with each possible rounded value, then assigning this mass to Bins.  Values like XY.Z{1,2,3,4,6,7,8,9} will have all their mass placed in the same bin the original rounded value belonged to.  Values like XY.Z{0,5} will have half their mass placed in a lower bin, a "movement" of -1/20 that happens to half of a fifth of values.  This works out to a -0.005 movement downward on average across all original rounded values (-1/20/2/5=-0.01/2).  Shift upward to realign and make the Bin movement vanish in this thought experiment for at least Bins except the rightmost/highest one:
+    x + 0.005
   }
 )
 
@@ -514,7 +546,7 @@ ehr.peak.week.target.spec = list(
 
 ehr.percentage.bin.info = list(
   breaks=c(0:130/20, 100),
-  break.bin.representatives = 0:130/20,
+  break.bin.representatives=0:130/20,
   rightmost.closed=TRUE, include.na=FALSE
 )
 ehr.percentage.multibin.neighbor.matrix =
@@ -539,7 +571,7 @@ ehr.peak.percentage.target.spec = list(
 ehr_percentage_target_spec_for_lookahead = function(lookahead) {
   list(
     Target = paste0(lookahead, " wk ahead"),
-    unit = percentage.unit,
+    unit = ehr.percentage.unit,
     for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
       return (processed.trajectory[[forecast.time+lookahead]])
     },
@@ -606,7 +638,7 @@ flusight2017flusurv.peak.week.target.spec = flusight2016.peak.week.target.spec %
 
 flusight2017flusurv.peak.percentage.target.spec = list(
   Target = "Season peak percentage",
-  unit = percentage.unit,
+  unit = flusight.flusurv.percentage.unit,
   for_processed_trajectory = function(processed.trajectory, is.inseason, ...) {
     return (pht(processed.trajectory, is.inseason, ...))
   },
@@ -622,7 +654,7 @@ flusight2017flusurv.peak.percentage.target.spec = list(
 flusight2017flusurv_percentage_target_spec_for_lookahead = function(lookahead) {
   list(
     Target = paste0(lookahead, " wk ahead"),
-    unit = percentage.unit,
+    unit = flusight.flusurv.percentage.unit,
     for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
       return (processed.trajectory[[forecast.time+lookahead]])
     },
