@@ -331,6 +331,7 @@ swgb.prospective.full.dats = map_join(
   swg.prospective.voxel.data, sw.g.prospective.voxel.data, source.name, signal.name, b.backcasters,
   cache.prefix=file.path(epiproject.cache.dir,"swgb.prospective.full.dats"),
   shuffle=FALSE
+  epidata_df_to_chopped_trajectory_df=epidata_df_to_chopped_trajectory_df
 )
 
 print("Current season: generate component forecasts")
