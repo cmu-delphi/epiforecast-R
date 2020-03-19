@@ -190,8 +190,11 @@ twkde.sim = function(full.dat,
                      decay.factor=0.7,
                      diff.decay.factor=0.5,
                      max.shifts=c(rep(10L,10L),10:1,rep(0L,3L),1:10,rep(10L,20L)),
-                     shift.decay.factor = 0.7,
-                     tradeoff.weights=c(0.5, 0.25, 0.25, 0.5)) {
+                     shift.decay.factor=0.7,
+                     tradeoff.weights=c(0.5, 0.25, 0.25, 0.5),
+                     uniform.weight.factor=0.1,
+                     y.shrink=0.1
+                     ) {
   ## extract historical data and future data from full.dat
   dat = head(full.dat, -1L)
   dat <- match.dat(dat)
@@ -280,27 +283,26 @@ twkde.sim = function(full.dat,
         weights = exp(log.weights-max(log.weights))
         ## print(max(weights)/sum(weights))
         weights <- weights/sum(weights)
-        weights <- 0.9*weights+0.1/length(weights)
+        weights <- (1-uniform.weight.factor)*weights+uniform.weight.factor/length(weights)
         index = sample.int(ncol(diff.obs.mat), 1, prob=weights, replace=TRUE)
         ## ys[time.of.obs,sim.i] <-
         ##     ys[time.of.obs-1,sim.i] + diff.obs.mat[model.time.of.obs-1,index] +
         ##     rnorm(1, 0, diff.obs.bws[model.time.of.obs-1])
-        y.shrink = 0.9
         ## ys[time.of.obs,sim.i] <-
-        ##     y.shrink*(ys[time.of.obs-1,sim.i] + diff.obs.mat[model.time.of.obs-1,index] +
-        ##               rnorm(1, 0, diff.obs.bws[model.time.of.obs-1])
+        ##     (1-y.shrink)*(ys[time.of.obs-1,sim.i] + diff.obs.mat[model.time.of.obs-1,index] +
+        ##                   rnorm(1, 0, diff.obs.bws[model.time.of.obs-1])
         ##     ) +
-        ##     (1-y.shrink)*(obs.mat[model.time.of.obs,index] +
-        ##                   rnorm(1, 0, obs.bws[model.time.of.obs])
+        ##     y.shrink*(obs.mat[model.time.of.obs,index] +
+        ##               rnorm(1, 0, obs.bws[model.time.of.obs])
         ##     )
         index2 = sample.int(ncol(obs.mat), 1)
         ys[time.of.obs,sim.i] <-
-          y.shrink*(ys[time.of.obs-1,sim.i] +
-                    diff.obs.mat[model.time.of.obs-1,index] +
-                    rnorm(1, 0, diff.obs.bws[model.time.of.obs-1])
+          (1-y.shrink)*(ys[time.of.obs-1,sim.i] +
+                        diff.obs.mat[model.time.of.obs-1,index] +
+                        rnorm(1, 0, diff.obs.bws[model.time.of.obs-1])
           ) +
-          (1-y.shrink)*(obs.mat[model.time.of.obs,index2] +
-                        rnorm(1, 0, obs.bws[model.time.of.obs])
+          y.shrink*(obs.mat[model.time.of.obs,index2] +
+                    rnorm(1, 0, obs.bws[model.time.of.obs])
           )
       }
     }

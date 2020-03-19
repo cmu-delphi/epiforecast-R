@@ -243,10 +243,36 @@ g.epigroups = fluview.location.spreadsheet.names %>>%
   with_dimnamesnames("Location")
 last.losocv.issue = 201839L
 b.backcasters = list(
-  ignorant=backfill_ignorant_backsim#,
-  ## todo adjust these as well:
-  ## quantile_arx_backnowcast=quantile_arx_pancaster(TRUE, 1L),
-  ## quantile_arx_pancast=quantile_arx_pancaster(TRUE, 53L)
+  "RevisionIgnorant"=backfill_ignorant_backsim,
+  "RevisionIgnorantWithT2Nowcast"=backfill_ignorant_student_t2_nowcast_backcaster(n.sims=1000L),
+  "QARXBackcastAllShiftsNoILINearby"=quantile_arx_pancaster(
+      include.nowcast=FALSE,
+      max.weeks.ahead=0L,
+      lambda=1e-3, tol=1e-3,
+      model.week.shift.range=NULL,
+      n.sims=200L
+  ),
+  "QARXBacknowcastAllShiftsNoILINearby"=quantile_arx_pancaster(
+      include.nowcast=FALSE,
+      max.weeks.ahead=1L,
+      lambda=1e-3, tol=1e-3,
+      model.week.shift.range=NULL,
+      n.sims=200L
+  ),
+  "QARXBacknowcastAllShifts"=quantile_arx_pancaster(
+      include.nowcast=TRUE,
+      max.weeks.ahead=1L,
+      lambda=1e-3, tol=1e-3,
+      model.week.shift.range=NULL,
+      n.sims=200L
+  ),
+  "QARXPancastAllShifts"=quantile_arx_pancaster(
+      include.nowcast=TRUE,
+      max.weeks.ahead=53L+last.extended.epi.week-usa.flu.first.week.of.season+1L,
+      lambda=1e-3, tol=1e-3,
+      model.week.shift.range=NULL,
+      n.sims=200L
+  )
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
@@ -257,9 +283,21 @@ f.forecasters = list(
   ##          control.list=get_eb_control_list(max.match.length=4L))
   ## },
   "Delphi_BasisRegression"=br.sim,
-  "Delphi_DeltaDensity_ExpandWindows"=function(full.dat, baseline=0, max.n.sims=1000L) {
-      twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
-                max.shifts=c(0L,0:25,24:0)[(usa.flu.first.week.of.season+seq_len(53L+last.extended.epi.week)-1L)%%52L+1L])
+  "Delphi_ExtendedDeltaDensity_ExpandWindows"=function(full.dat, baseline=0, max.n.sims=1000L) {
+      twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims
+              ## , max.shifts=c(0L,0:25,24:0)[(usa.flu.first.week.of.season+seq_len(53L+last.extended.epi.week)-1L)%%52L+1L]
+              ## Holiday-aware shifts above will only use things after the holidays for modeling deltas around the end of the season; the quickest adjustment is just to include the holiday-impacted data after all:
+              , max.shifts=rep(27L,53L+last.extended.epi.week-usa.flu.first.week.of.season+1L)
+              ## Choose shift decay factor to weight data from the opposite time of year by 0.5:
+              , shift.decay.factor=0.5^(1/27)
+              ## Do not use the non-exponential sum-of-observations-so-far covariate; this is meant to relate to immunity but non-COVID-19 ILI may impart no, very weak, and/or short-term resistance to COVID-19 (although we might say the same for categories of ILI in a regular season, but to a lesser extent overall); additionally, this sum-so-far doesn't seem the most relevant when calculated over more than a season's worth of data.  Additionally, reduce the weight assigned to the exponential moving average of values covariate and tighten the weighting pattern it uses, for similar reasons.
+              , tradeoff.weights=c(0.5, 0.0, 0.25, 0.25)
+              , decay.factor=0.5
+              , diff.decay.factor=0.5 # (same as default 0.5)
+              ## Reduce re-weighting and blending heuristic weights from the default 0.1 to 0.01.  The default for the first combined with the expanded max.shifts pushes values too far toward typical values over all data.  The default for the second pushes too strongly toward typical values for the time of season.
+              , uniform.weight.factor=0.01
+              , y.shrink=0.01
+                )
   },
   "Delphi_MarkovianDeltaDensity"=twkde.markovian.sim,
   "Delphi_EmpiricalFutures"=empirical.futures.sim,
@@ -267,25 +305,35 @@ f.forecasters = list(
 ) %>>%
   with_dimnamesnames("Forecaster")
 ## todo adjust:
-target_trajectory_preprocessor = flusight2016ilinet_target_trajectory_preprocessor
+target_trajectory_preprocessor = covid19ilinet_target_trajectory_preprocessor
 full_dat_fixup = identity # avoid methods requiring fixup for now
-t.target.specs = flusight2016.target.specs %>>%
+t.target.specs = covid19ilinet.202003.202008.target.specs  %>>%
   with_dimnamesnames("Target")
-m.forecast.types = flusight2016.proxy.forecast.types %>>%
+m.forecast.types = covid19ilinet.forecast.types %>>%
   with_dimnamesnames("Type")
 
 ## Specify portions of cv_apply indexer lists corresponding to model week,
 ## epigroup, target:
 e.ensemble.partial.weighting.scheme.wgt.indexer.lists = list(
-  ## "constant-weights" = list(all=NULL, all=NULL, all=NULL),
-  "target-based" = list(all=NULL, all=NULL, each=NULL),
-  "target-3time-based" = list(smear=-1:1, all=NULL, each=NULL),
-  "target-9time-based" = list(smear=-4:4, all=NULL, each=NULL)
+  "constant-weights" = list(all=NULL, all=NULL, all=NULL),
+  "target-based" = list(all=NULL, all=NULL, each=NULL)#,
+  ## "target-3time-based" = list(smear=-1:1, all=NULL, each=NULL),
+  ## "target-9time-based" = list(smear=-4:4, all=NULL, each=NULL)
 ) %>>% with_dimnamesnames("Ensemble weighting scheme")
 
 ## Use LOSOCV on all seasons but current
 retro.season.indexer = list(loo=NULL)
 
-epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/flusight-natreg-extended-run"
+epiproject.cache.dir = "~/files/nosync/epiforecast-epiproject/covid19ilinet-202003-202008-natreg-run"
 
-source("generate-retro-and-prospective-forecasts.R")
+## source("generate-retro-and-prospective-forecasts.R")
+source("gen-prospective-component-forecasts.R")
+
+
+
+
+## todo sin-cos-intercept-holidayindicatorinteraction pancaster
+## todo use different version of nowcast
+## todo other locations
+## todo spreadsheet format
+## todo plotting and sanity checks

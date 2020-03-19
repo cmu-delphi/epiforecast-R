@@ -21,6 +21,7 @@
 
 ##' @import pipeR
 ##' @include utils.R
+##' @include weeks.R
 NULL
 
 ##' Calculate the peak week(s) in a vector of weekly observations
@@ -344,6 +345,11 @@ flusight2016.percentage.multibin.neighbor.matrix =
   fixed_radius_multibin_neighbor_matrix(
     flusight2016.percentage.bin.info, bin.radius=5L
   )
+covid19ilinet.percentage.bin.info = list(
+    breaks=c(0:250/10, 100),
+    break.bin.representatives=0:250/10 + 0.05,
+    rightmost.closed=TRUE, include.na=FALSE
+)
 
 flusight2016.peak.percentage.target.spec = list(
   Target = "Season peak percentage",
@@ -394,6 +400,25 @@ flusight2018natreg_percentage_target_spec_for_lookahead = function(lookahead) {
         ))
 }
 
+covid19ilinet_percentage_target_spec_for_lookahead = function(lookahead) {
+    list(
+        Target = paste0(lookahead, " wk ahead"),
+        unit = covid19ilinet.percentage.unit,
+        for_processed_trajectory = function(processed.trajectory, forecast.time, ...) {
+            return (processed.trajectory[[forecast.time+lookahead]])
+        },
+        bin_info_for = function(...) {
+            return (covid19ilinet.percentage.bin.info)
+        },
+        multibin_neighbor_matrix = function(bin.info, ...) {
+            stop ('Multibin neighbor matrix not configured yet.')
+        },
+        evaluation_time_mask_window = function(processed.evaluation.trajectory, ...) {
+            stop ('Evaluation time mask window not configured yet.')
+        }
+    )
+}
+
 ##' @export
 flusight2018ilinet.first.submission.epi.week = 42L
 ##' @export
@@ -403,6 +428,12 @@ flusight2018ilinet.last.submission.epi.week = 18L
 flusight2018flusurv.first.submission.epi.week = 49L
 ##' @export
 flusight2018flusurv.last.submission.epi.week = 16L
+
+## xxx These may require adjustment based on season labeling; don't use for now:
+## ##' @  export --- re-enable this export later
+## covid19ilinet.first.submission.epi.week = (Date_to_epiweek(as.Date("2020-03-16"))-2L)%%100L
+## ##' @  export --- re-enable this export later
+## covid19ilinet.last.submission.epi.week = (Date_to_epiweek(as.Date("2020-08-29"))-2L)%%100L
 
 ##' @export
 flusight2016.target.specs = list(
@@ -427,6 +458,13 @@ flusight2018natreg.target.specs = list(
     flusight2018natreg_percentage_target_spec_for_lookahead(4L)
 ) %pipeR>>%
     setNames(sapply(., magrittr::extract2, "Target"))
+
+##' @export
+covid19ilinet.202003.202008.target.specs = list(
+    covid19ilinet_percentage_target_spec_for_lookahead(1L),
+    covid19ilinet_percentage_target_spec_for_lookahead(2L)
+) %pipeR>>%
+setNames(sapply(., magrittr::extract2, "Target"))
 
 ##' @export
 with_no_effective_evaluation_time_mask_window =
@@ -463,6 +501,15 @@ flusight2016ilinet_target_trajectory_preprocessor = function(trajectory) {
 ##' @export
 flusight2018ilinet_target_trajectory_preprocessor =
     flusight2016ilinet_target_trajectory_preprocessor
+
+##' @export
+covid19ilinet_target_trajectory_preprocessor = function(trajectory) {
+    ## Clip to range [0,100] (faster than pmin pmax combo)
+    trajectory[trajectory < 0] <- 0
+    trajectory[trajectory > 100] <- 100
+    ## (Don't round.)
+    return (trajectory)
+}
 
 ehr.percentage.unit = list(
   Unit = "percent",

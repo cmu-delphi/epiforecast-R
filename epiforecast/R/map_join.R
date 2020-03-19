@@ -606,3 +606,4 @@ select_dims = function(arraylike, dimensions,
 ## todo check intersect behavior --- are the correct things actually selected and lined up?
 ## todo convenience variants of this for small vs. large operations?
 ## todo shorthand for . %>% apply(., seq_len(ndimp(.)), f, ...) plus special case for dim-less things? (and/or for vapply)
+## todo optional seed setting instead of shuffle=FALSE, for better progress indications and quicker time to flag bugs, but still reproducible first bug in combination in conjunction with lapply

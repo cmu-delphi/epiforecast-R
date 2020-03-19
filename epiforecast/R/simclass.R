@@ -464,23 +464,23 @@ c.sim = function(my.sim, ...) {
   return (c_for_named_lists(my.sim, ...))
 }
 
-##' Add information to a \code{target_forcast} object
+##' Add information to a \code{target_forecast} object
 ##'
 ##' Uses \code{recursive=FALSE} and \code{use.names=TRUE} when forwarding to the
 ##' list \code{c} method; any attempt to override these values will generate an
 ##' error.
 ##'
-##' @param target.forcast a \code{target_forcast} object
-##' @param ... list of components to add to the \code{target_forcast} object;
-##'   must lead to a resulting \code{target_forcast} object with components that
+##' @param target.forecast a \code{target_forecast} object
+##' @param ... list of components to add to the \code{target_forecast} object;
+##'   must lead to a resulting \code{target_forecast} object with components that
 ##'   are all uniquely, nontrivially (\code{!=""}) named
-##' @return \code{target_forcast} object with the given components appended
+##' @return \code{target_forecast} object with the given components appended
 ##'
-##' @method c target_forcast
+##' @method c target_forecast
 ##' @export
-##' @export c.target_forcast
-c.target_forcast = function(target.forcast, ...) {
-  return (c_for_named_lists(target.forcast, ...))
+##' @export c.target_forecast
+c.target_forecast = function(target.forecast, ...) {
+  return (c_for_named_lists(target.forecast, ...))
 }
 
 ##' \code{plot} method for \code{target_forecast} objects

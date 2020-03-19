@@ -30,40 +30,15 @@ chop_and_extend_by_season = function(first_epiweek_of_season, last_epiweek_of_se
         {.}
 }
 
-backfill_ignorant_backsim_old = function(voxel.data, g.voxel.data, source.name, signal.name) {
-    ## old.dat = voxel.data[["epidata.df"]] %>>%
-    old.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
-        dplyr::filter(season != voxel.data[["season"]]) %>>%
-        split(.[["season"]]) %>>%
-        magrittr::extract(
-                      sapply(., function(season.df) {
-                          !any(is.na(season.df[[signal.name]]))
-                      })
-                  ) %>>%
-        dplyr::bind_rows() %>>%
-        {split(.[[signal.name]], .[["Season"]])}
-    ## new.dat = voxel.data[["epidata.df"]] %>>%
-    new.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
-        dplyr::filter(season == voxel.data[["season"]]) %>>%
-        magrittr::extract2(signal.name)
-    new.dat.sim = match.new.dat.sim(new.dat)
-    voxel.Season = season_to_Season(
-        voxel.data[["season"]], voxel.data[["first.week.of.season"]])
-    ## concatenate new.dat.sim onto old.dat, setting the :
-    full.dat = c(old.dat,
-                 setNames(list(new.dat.sim), voxel.Season))
-    return (full.dat)
-}
-
 backfill_ignorant_backsim = function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
   source.epidata.df = voxel.data[["epidata.dfs"]][[source.name]]
-  source.nested.trajectory.df = epidata_df_to_chopped_trajectory_df(source.epidata.df)
-  old.dat = source.nested.trajectory.df %>>%
+  source.chopped.trajectory.df = epidata_df_to_chopped_trajectory_df(source.epidata.df)
+  old.dat = source.chopped.trajectory.df %>>%
     dplyr::filter(season != voxel.data[["season"]]) %>>%
     dplyr::filter(vapply(.[[signal.name]], function(trajectory) !any(is.na(trajectory)), logical(1L))) %>>%
     ## xxx regenerating Season labels, indicates suboptimal interface; see additional notes in season chopper above
     {stats::setNames(.[[signal.name]], season_to_Season(.[["season"]], voxel.data[["first.week.of.season"]]))}
-  new.dat = source.nested.trajectory.df %>>%
+  new.dat = source.chopped.trajectory.df %>>%
     dplyr::filter(season == voxel.data[["season"]]) %>>%
     {.[[signal.name]][[1L]]}
   new.dat.sim = match.new.dat.sim(new.dat)
@@ -75,8 +50,33 @@ backfill_ignorant_backsim = function(voxel.data, g.voxel.data, source.name, sign
   return (full.dat)
 }
 
-quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3, tol=1e-3, n.sims=200L) function(voxel.data, g.voxel.data, source.name, signal.name) {
-  model.week.shift.range = c(-4L, +4L)
+backfill_ignorant_student_t2_nowcast_backcaster = function(n.sims=1000L) function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
+    nowcast.epidata.df = voxel.data[["epidata.dfs"]][["nowcast"]]
+    nowcast.chopped.trajectory.df = epidata_df_to_chopped_trajectory_df(nowcast.epidata.df)
+    nowcast.new.trajectory.df = nowcast.chopped.trajectory.df %>>%
+        dplyr::filter(season == voxel.data[["season"]]) %>>%
+        tidyr::unchop(-season)
+    nowcastless.full.dat = backfill_ignorant_backsim(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=epidata_df_to_chopped_trajectory_df)
+    nowcastless.new.dat = nowcastless.full.dat %>>%
+        {.[[length(.)]]}
+    nowcast.time = which(
+            is.na(nowcastless.new.dat[["ys"]]) &
+            !is.na(nowcast.new.trajectory.df[["value"]])
+        )
+    if (length(nowcast.time) != 1L) {
+      stop ('Expected nowcast to be available where signal was not in only ')
+    }
+    nowcast.value = nowcast.new.trajectory.df[["value"]][[nowcast.time]]
+    nowcast.std = nowcast.new.trajectory.df[["std"]][[nowcast.time]]
+    new.dat = nowcastless.new.dat %>>%
+        upsample_sim(n.sims, inflate.weights=TRUE) %>>%
+        {.[["ys"]][nowcast.time,] <- nowcast.value+nowcast.std*rt(n.sims, 2L); .}
+    full.dat = nowcastless.full.dat %>>%
+        {.[[length(.)]] <- new.dat; .}
+    return (full.dat)
+}
+
+quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3, tol=1e-3, model.week.shift.range=c(-4L,+4L), n.sims=200L) function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
   target.epigroup = voxel.data[["epigroup"]]
   target.source.name = voxel.data[["source.name"]]
   target.signal.name = voxel.data[["signal.name"]]
@@ -231,11 +231,10 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
               "stable@s", 0L, FALSE, NA_integer_, target.signal.name, target.epigroup, target.source.name
             )
   pancast.epiweeks =
-    ## DatesOfSeason(voxel.data[["season"]], usa.flu.first.week.of.season, 0L,3L) %>>%
-    ## magrittr::extract2(1L) %>>%
-    ## Date_to_epiweek()
     g.voxel.data[[target.epigroup]][["epidata.dfs"]][[target.source.name]] %>>%
+    epidata_df_to_chopped_trajectory_df() %>>%
     dplyr::filter(season == target.season) %>>%
+    tidyr::unchop(-season) %>>%
     dplyr::filter(epiweek <= add_epiweek_integer(max(epiweek[!is.na(issue)]), max.weeks.ahead)) %>>%
     magrittr::extract2("epiweek") %>>%
     sort() %>>%
@@ -273,10 +272,18 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
         description_train_tbl(g.obs.sim.latest, g.obs.sim.history, simulation.descriptions, NULL)
       full.train.tbl = dplyr::full_join(covariate.train.tbl, response.train.tbl, by="reference.epiweek") %>>%
         dplyr::rename_(.dots=c("y"=as.name(response.description[["variable.name"]]))) %>>%
-        dplyr::filter(dplyr::between(
-        (reference.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]] -
-        (pancast.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]],
-        model.week.shift.range[[1L]], model.week.shift.range[[2L]])) %>>%
+        {
+            if (is.null(model.week.shift.range)) {
+                .
+            } else {
+                . %>>%
+                    dplyr::filter(dplyr::between(
+                    (reference.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]] -
+                    (pancast.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]],
+                    model.week.shift.range[[1L]], model.week.shift.range[[2L]])) %>>%
+                    {.}
+            }
+        } %>>%
         {.}
       train.data =
         full.train.tbl %>>%
@@ -369,7 +376,9 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
   }
   sim.obj.epiweeks =
     g.voxel.data[[target.epigroup]][["epidata.dfs"]][[target.source.name]] %>>%
+    epidata_df_to_chopped_trajectory_df() %>>%
     dplyr::filter(season == target.season) %>>%
+    tidyr::unchop(-season) %>>%
     magrittr::extract2("epiweek") %>>%
     {.}
   pancast.ys =

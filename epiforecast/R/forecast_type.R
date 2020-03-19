@@ -575,4 +575,15 @@ observed_value = function(target.spec, target.settings, forecast.type, observed.
       target.settings))
 }
 
+##' @export
+covid19ilinet.forecast.types = list(
+    point.mae.forecast.type,
+    distr.logscore.forecast.type
+) %pipeR>>%
+    lapply(function(forecast.type) {
+        forecast.type[["Type"]] <- tolower(forecast.type[["Type"]])
+        forecast.type
+    }) %pipeR>>%
+    setNames(sapply(., magrittr::extract2, "Type"))
+
 ## xxx Are break.bin.representatives used for labeling? If not, they can be shifted and the shift_for_smoothing functions can be removed.
