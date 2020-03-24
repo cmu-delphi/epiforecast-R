@@ -391,16 +391,13 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
   sim.obj.ys = matrix(NA_real_, length(sim.obj.epiweeks), n.sims)
   sim.obj.ys[match(pancast.epiweeks, sim.obj.epiweeks),] <- pancast.ys
   new.dat.sim = match.new.dat.sim(sim.obj.ys)
-  old.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
-    dplyr::filter(season != voxel.data[["season"]]) %>>%
-    split(.[["season"]]) %>>%
-    magrittr::extract(
-                sapply(., function(season.df) {
-                  !any(is.na(season.df[[signal.name]]))
-                })
-              ) %>>%
-    dplyr::bind_rows() %>>%
-    {split(.[[signal.name]], .[["Season"]])}
+  source.epidata.df = voxel.data[["epidata.dfs"]][[source.name]]
+  source.chopped.trajectory.df = epidata_df_to_chopped_trajectory_df(source.epidata.df)
+  old.dat = source.chopped.trajectory.df %>>%
+      dplyr::filter(season != voxel.data[["season"]]) %>>%
+      dplyr::filter(vapply(.[[signal.name]], function(trajectory) !any(is.na(trajectory)), logical(1L))) %>>%
+      ## xxx regenerating Season labels, indicates suboptimal interface; see additional notes in season chopper above
+      {stats::setNames(.[[signal.name]], season_to_Season(.[["season"]], voxel.data[["first.week.of.season"]]))}
   voxel.Season = season_to_Season(
     voxel.data[["season"]], voxel.data[["first.week.of.season"]])
   full.dat = c(old.dat,
