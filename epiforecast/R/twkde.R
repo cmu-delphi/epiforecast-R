@@ -214,11 +214,11 @@ twkde.sim = function(full.dat,
   orig.min.n.out = min(sapply(dat, length))
   orig.obs.mat = dat.to.matrix(dat, orig.min.n.out)
   for (time.of.obs in seq_len(nrow(new.dat.sim$ys))) {
-    if (!is.na(new.dat.sim$ys[time.of.obs,1L])) {
+    if (!is.na(new.dat.sim[["ys"]][[time.of.obs,1L]])) {
     } else {
       ## Include data from other times with discounted weights; do not consider
       ## any data from more than =max.shifts[time.of.obs]= weeks away.
-      max.shift = max.shifts[time.of.obs]
+      max.shift = max.shifts[[time.of.obs]]
       ## "Model times" are the times for the historical data we are using; they
       ## should be no more than =max.shift= away from =time.of.obs=, >=2 so we
       ## can calculate a delta, and <= the season length.
