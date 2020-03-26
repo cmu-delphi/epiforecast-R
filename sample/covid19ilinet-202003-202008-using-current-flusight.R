@@ -132,9 +132,10 @@ covid19ilinet.natreg.spreadsheet.template =
             return ()
         },
         cache.file.prefix=file.path(epidata.cache.dir,"covid19ilinet_natreg_spreadsheet_template"),
-        cache.invalidation.period=as.difftime(2L, units="days"),
-        force.cache.invalidation=TRUE
-    )
+        cache.invalidation.period=as.difftime(8L, units="hours"),
+        force.cache.invalidation=FALSE
+    ) %>>%
+    tibble::as_tibble()
 covid19ilinet.state.spreadsheet.template =
     fetchUpdatingResource(
         function() {
@@ -144,15 +145,15 @@ covid19ilinet.state.spreadsheet.template =
             return ()
         },
         cache.file.prefix=file.path(epidata.cache.dir,"covid19ilinet_state_spreadsheet_template"),
-        cache.invalidation.period=as.difftime(2L, units="days"),
-        force.cache.invalidation=TRUE
-    )
+        cache.invalidation.period=as.difftime(8L, units="hours"),
+        force.cache.invalidation=FALSE
+    ) %>>%
+    tibble::as_tibble()
 
 dir.create("~/Dropbox/private/covid19natreg/")
 dir.create("~/Dropbox/private/covid19state/")
 
 reformat = function(old.spreadsheet, new.template) {
-    print(old.spreadsheet)
     new.spreadsheet.minus.ordering = old.spreadsheet %>>%
         dplyr::group_by(Location, Target, Type, Unit) %>>%
         dplyr::do(
@@ -174,11 +175,24 @@ reformat = function(old.spreadsheet, new.template) {
         {.}
     bad.rows = dplyr::anti_join(new.spreadsheet.minus.ordering, new.template, by=c("location","target", "type", "bin"))
     if (nrow(bad.rows)!=0L) {
-        print(bad.rows)
-        stop ('Formed rows with index column entries that are not present in the template.')
+        stop (paste(collapse="\n", capture.output({
+            cat('Formed rows with index column entries that are not present in the template:', fill=getOption('width')-nchar('Error: '))
+            print(bad.rows)
+        })))
         ## fixme todo check for duplicates
     }
-    print(new.spreadsheet.minus.ordering)
+    overlarge.groups = new.spreadsheet.minus.ordering %>>%
+        dplyr::group_by(location, target, type, bin) %>>%
+        dplyr::summarize(count=dplyr::n()) %>>%
+        dplyr::ungroup() %>>%
+        dplyr::filter(count != 1L) %>>%
+        {.}
+    if (nrow(overlarge.groups) != 0L) {
+        stop (paste(collapse="\n", capture.output({
+            cat('Formed overlarge groups:', fill=getOption('width')-nchar('Error: '))
+            print(overlarge.groups)
+        })))
+    }
     ## It's okay to omit rows the other way around when submitting forecasts for only a subset of targets.
     new.spreadsheet = new.spreadsheet.minus.ordering %>>%
         dplyr::mutate(
