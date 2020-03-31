@@ -89,7 +89,7 @@ selected.crowdcast.tgz.filename =
     } else if (length(candidate.crowdcast.tgz.filenames) == 1L) {
         candidate.crowdcast.tgz.filenames[[1L]]
     } else {
-        version.numbers = as.integer(sub(crowdcast.tgz.pattern, "$1", candidate.crowdcast.tgz.filenames))
+        version.numbers = as.integer(sub(crowdcast.tgz.pattern, "\\1", candidate.crowdcast.tgz.filenames))
         selected.filename = candidate.crowdcast.tgz.filenames[[which.max(version.numbers)]]
         warning(sprintf('There appeared to be multiple tarballs for the given week.  Selected "%s"', selected.filename))
         selected.filename
