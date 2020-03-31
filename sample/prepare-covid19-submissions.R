@@ -97,9 +97,12 @@ selected.crowdcast.tgz.filename =
 selected.crowdcast.tgz.filepath = file.path(crowdcast.tgz.dirpath, selected.crowdcast.tgz.filename)
 ## Extract tarball to temporary directory:
 extraction.dirpath = tempdir()
-untar(selected.crowdcast.tgz.filepath, c("epicast-regional.csv","epicast-state.csv"),
-      exdir=extraction.dirpath,
-      compressed="gzip")
+untar.code = untar(selected.crowdcast.tgz.filepath, c("epicast-regional.csv","epicast-state.csv"),
+                   exdir=extraction.dirpath,
+                   compressed="gzip")
+if (untar.code != 0L) {
+    stop (sprintf('Error extracting tarball; error code: %d',untar.code))
+}
 cat('Extracted Crowdcast tarball.', fill=TRUE)
 ## Filter targets within the csv's, write to csv's in destinations:
 crowdcast.natreg.spreadsheet.filepath = file.path(natreg.submissions.dirpath, "CMU_Delphi-Crowdcast", sprintf("%d-ew%02d-CMU_Delphi-Crowdcast.csv", year, epi.week))
