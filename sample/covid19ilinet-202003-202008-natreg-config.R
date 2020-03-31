@@ -212,10 +212,13 @@ current.issue.sw =
   dplyr::filter(model.week == max(model.week)) %>>%
   dplyr::select(season, model.week)
 
-s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
+## s.retro.seasons = seq.int(2003L,current.issue.sw[["season"]]-1L) %>>%
+s.retro.seasons = seq.int(2009L,2010L) %>>%
   stats::setNames(paste0(.,"/",.+1L)) %>>%
   with_dimnamesnames("Season")
-w.retro.model.weeks = (35:78) %>>%
+## w.retro.model.weeks = (60:72) %>>%
+## w.retro.model.weeks = (60:64) %>>%
+w.retro.model.weeks = c(55L,60L,65L,70L,75L) %>>%
   stats::setNames(paste0("MW",.)) %>>%
   with_dimnamesnames("Model Week")
 g.epigroups = fluview.location.spreadsheet.names %>>%
@@ -224,7 +227,14 @@ g.epigroups = fluview.location.spreadsheet.names %>>%
 last.losocv.issue = 201839L
 b.backcasters = list(
   "RevisionIgnorant"=backfill_ignorant_backsim,
-  "RevisionIgnorantWithT2Nowcast"=backfill_ignorant_student_t2_nowcast_backcaster(n.sims=1000L),
+  ## "RevisionIgnorantWithT2Nowcast"=backfill_ignorant_student_t2_nowcast_backcaster(n.sims=1000L),
+  "QARXBackcastAllShiftsNoILINearbyNoIntercept"=quantile_arx_pancaster(
+      include.nowcast=FALSE, include.intercept=FALSE,
+      max.weeks.ahead=0L,
+      lambda=1e-3, tol=1e-3,
+      model.week.shift.range=NULL,
+      n.sims=200L
+  ),
   "QARXBackcastAllShiftsNoILINearby"=quantile_arx_pancaster(
       include.nowcast=FALSE,
       max.weeks.ahead=0L,
@@ -239,20 +249,48 @@ b.backcasters = list(
       model.week.shift.range=NULL,
       n.sims=200L
   ),
-  "QARXBacknowcastAllShifts"=quantile_arx_pancaster(
-      include.nowcast=TRUE,
-      max.weeks.ahead=1L,
-      lambda=1e-3, tol=1e-3,
-      model.week.shift.range=NULL,
-      n.sims=200L
-  ),
-  "QARXPancastAllShifts"=quantile_arx_pancaster(
-      include.nowcast=TRUE,
+  ## "QARXBacknowcastAllShifts"=quantile_arx_pancaster(
+  ##     include.nowcast=TRUE,
+  ##     max.weeks.ahead=1L,
+  ##     lambda=1e-3, tol=1e-3,
+  ##     model.week.shift.range=NULL,
+  ##     n.sims=200L
+  ## ),
+  "QARXPancastAllShiftsNoILINearby"=quantile_arx_pancaster(
+      include.nowcast=FALSE,
       max.weeks.ahead=53L+last.extended.epi.week-usa.flu.first.week.of.season+1L,
       lambda=1e-3, tol=1e-3,
       model.week.shift.range=NULL,
       n.sims=200L
-  )
+  ),
+  ## "QARXPancastAllShifts"=quantile_arx_pancaster(
+  ##     include.nowcast=TRUE,
+  ##     max.weeks.ahead=53L+last.extended.epi.week-usa.flu.first.week.of.season+1L,
+  ##     lambda=1e-3, tol=1e-3,
+  ##     model.week.shift.range=NULL,
+  ##     n.sims=200L
+  ## ),
+  ## "QARXPancastAllShiftsNoIntercept"=quantile_arx_pancaster(
+  ##     include.nowcast=TRUE, include.intercept=FALSE,
+  ##     max.weeks.ahead=53L+last.extended.epi.week-usa.flu.first.week.of.season+1L,
+  ##     lambda=1e-3, tol=1e-3,
+  ##     model.week.shift.range=NULL,
+  ##     n.sims=200L
+  ## ),
+  "QARXPancastAllShiftsNoILINearbyNoIntercept"=quantile_arx_pancaster(
+      include.nowcast=FALSE, include.intercept=FALSE,
+      max.weeks.ahead=53L+last.extended.epi.week-usa.flu.first.week.of.season+1L,
+      lambda=1e-3, tol=1e-3,
+      model.week.shift.range=NULL,
+      n.sims=200L
+  )#,
+  ## "QARXPancastAllShiftsThinMech"=quantile_arx_thinning_whitening_pancaster(
+  ##     include.nowcast=TRUE, include.sirs.inspired=TRUE,
+  ##     method="br",
+  ##     max.weeks.ahead=53L+last.extended.epi.week-usa.flu.first.week.of.season+1L,
+  ##     model.week.shift.range=NULL,
+  ##     n.sims=200L
+  ## )
 ) %>>%
   with_dimnamesnames("Backcaster")
 f.forecasters = list(
@@ -262,26 +300,28 @@ f.forecasters = list(
   ##   eb.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims,
   ##          control.list=get_eb_control_list(max.match.length=4L))
   ## },
-  "Delphi_BasisRegression"=br.sim,
-  "Delphi_ExtendedDeltaDensity_ExpandWindows"=function(full.dat, baseline=0, max.n.sims=1000L) {
+  ## "Delphi_BasisRegression"=br.sim,
+  "Delphi_EDDP"=function(full.dat, baseline=0, max.n.sims=1000L) {
       twkde.sim(full.dat, baseline=baseline, max.n.sims=max.n.sims
               ## , max.shifts=c(0L,0:25,24:0)[(usa.flu.first.week.of.season+seq_len(53L+last.extended.epi.week)-1L)%%52L+1L]
               ## Holiday-aware shifts above will only use things after the holidays for modeling deltas around the end of the season; the quickest adjustment is just to include the holiday-impacted data after all; wrapping roughly around a year but without doubling the influence of the example furthest in terms of time of season:
               , max.shifts=rep(26L,53L+last.extended.epi.week-usa.flu.first.week.of.season+1L)
               ## Choose shift decay factor to weight data from the opposite time of year by 0.5:
               , shift.decay.factor=0.5^(1/27)
-              ## Do not use the non-exponential sum-of-observations-so-far covariate; this is meant to relate to immunity but non-COVID-19 ILI may impart no, very weak, and/or short-term resistance to COVID-19 (although we might say the same for categories of ILI in a regular season, but to a lesser extent overall); additionally, this sum-so-far doesn't seem the most relevant when calculated over more than a season's worth of data.  Additionally, reduce the weight assigned to the exponential moving average of values covariate and tighten the weighting pattern it uses, for similar reasons.
-              , tradeoff.weights=c(0.5, 0.0, 0.25, 0.25)
+              ## Do not use the non-exponential sum-of-observations-so-far covariate; this is meant to relate to immunity but non-COVID-19 ILI may impart no, very weak, and/or short-term resistance to COVID-19 (although we might say the same for categories of ILI in a regular season, but to a lesser extent overall); additionally, this sum-so-far doesn't seem the most relevant when calculated over more than a season's worth of data.  Additionally, reduce the relative weight assigned to the exponential moving average of values covariate and tighten the weighting pattern it uses, for similar reasons.  Downweight all the previous components and add a relative difference component with considerable weight.  Downweight more based on using an unweighted bandwidth selection rule for weighted data and lower uniform weight factor.
+              ## , tradeoff.weights=c(0.20, 0.00, 0.10, 0.20, 0.50)*0.1
+              , tradeoff.weights=c(0.20, 0.00, 0.10, 0.30, 0.40)
               , decay.factor=0.5
               , diff.decay.factor=0.5 # (same as default 0.5)
               ## Reduce re-weighting and blending heuristic weights from the default 0.1 to 0.01.  The default for the first combined with the expanded max.shifts pushes values too far toward typical values over all data.  The default for the second pushes too strongly toward typical values for the time of season.
-              , uniform.weight.factor=0.01
+              ## , uniform.weight.factor=0.01
+              , uniform.weight.factor=0.1
               , y.shrink=0.01
                 )
-  },
-  "Delphi_MarkovianDeltaDensity"=twkde.markovian.sim,
-  "Delphi_EmpiricalFutures"=empirical.futures.sim,
-  "Delphi_EmpiricalTrajectories"=empirical.trajectories.sim
+  }#,
+  ## "Delphi_MarkovianDeltaDensity"=twkde.markovian.sim,
+  ## "Delphi_EmpiricalFutures"=empirical.futures.sim,
+  ## "Delphi_EmpiricalTrajectories"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
 ## todo adjust:

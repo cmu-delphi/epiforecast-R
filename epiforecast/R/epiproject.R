@@ -371,6 +371,10 @@ save_spreadsheets =
              spreadsheet.name = paste(s,w,...,sep=".") %>>%
                stringr::str_replace_all("/","-")
              paste0(spreadsheet.name,".csv")
+           },
+           format_spreadsheet = identity,
+           post_action = function(spreadsheet, filepath, spreadsheet.dir,subpath,swg.voxel.data,s,w,...) {
+               ## do nothing by default.
            }) {
     invisible(map_join_(
       ## iterate over non-epigroup dimensions, flipping s and w for ordering purposes:
@@ -378,9 +382,10 @@ save_spreadsheets =
       ## f=function(s,w,...) {
       arraylike.args=named_array_to_name_arrayvecs(swg_.target.multicasts)[c(2L,1L,Seq(4L,ndimp(swg_.target.multicasts)))],
       f=function(w,s,...) {
-        print(paste(s,w,...,sep="."))
+        cat(paste(s,w,...,sep="."))
+        cat(" -> ")
         subpath = subpath_or_NULL_for_save(swg.voxel.data[s,w,,drop=FALSE], s,w,...)
-        print(subpath)
+        cat(subpath, "\n")
         if (!is.null(subpath)) {
           filepath = file.path(spreadsheet.dir, subpath)
           if (!file.exists(filepath)) {
@@ -401,7 +406,8 @@ save_spreadsheets =
               dir.create(dir)
             }
             ## print(filepath)
-            readr::write_csv(spreadsheet, filepath)
+            readr::write_csv(format_spreadsheet(spreadsheet), filepath)
+            post_action(spreadsheet, filepath, spreadsheet.dir, subpath, swg.voxel.data[s,w,,drop=FALSE], s,w,...)
           }
         }
         NULL

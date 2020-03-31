@@ -132,36 +132,6 @@ covid19ilinet_nearcast_spreadsheet_from_flusight = function(flusight.ilinet.spre
         {.}
 }
 
-## readr::read_csv("~/Dropbox/DELPHI/forecasting/flu/cdc_challenge_2019/flusight-natreg-run/stat-spreadsheets/EW10-Delphi-Stat-2020-03-16.csv", col_types="ccccccd") %>>%
-##     covid19ilinet_nearcast_spreadsheet_from_flusight(covid19ilinet.natreg.spreadsheet.template) %>>%
-##     readr::write_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/covid19ilinet_202003_202008/draft-submissions/nation-region-forecast-data/CMU_Delphi-Stat_Nowcast/2020-ew10-CMU_Delphi-Stat_Nowcast.csv"))
-
-## readr::read_csv("~/Dropbox/DELPHI/forecasting/flu/cdc_challenge_2019/flusight-state-run/stat-spreadsheets/EW10-Delphi-Stat-StateILI-2020-03-16.csv", col_types="ccccccd") %>>%
-##     covid19ilinet_nearcast_spreadsheet_from_flusight(covid19ilinet.state.spreadsheet.template) %>>%
-##     readr::write_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/covid19ilinet_202003_202008/draft-submissions/state-forecast-data/CMU_Delphi-Stat_Nowcast/2020-ew10-CMU_Delphi-Stat_Nowcast.csv"))
-
-
-
-## readr::read_csv("~/Dropbox/private/EW10-delphi-epicast-regional-2020-03-19.csv", col_types="ccccccd") %>>%
-##     covid19ilinet_nearcast_spreadsheet_from_flusight(covid19ilinet.natreg.spreadsheet.template) %>>%
-##     readr::write_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/covid19ilinet_202003_202008/draft-submissions/nation-region-forecast-data/CMU_Delphi-Crowdcast/2020-ew10-CMU_Delphi-Crowdcast.csv"))
-
-## readr::read_csv("~/Dropbox/private/EW10-delphi-epicast-state-2020-03-19.csv", col_types="ccccccd") %>>%
-##     covid19ilinet_nearcast_spreadsheet_from_flusight(covid19ilinet.state.spreadsheet.template) %>>%
-##     readr::write_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/covid19ilinet_202003_202008/draft-submissions/state-forecast-data/CMU_Delphi-Crowdcast/2020-ew10-CMU_Delphi-Crowdcast.csv"))
-
-
-
-## readr::read_csv("~/Dropbox/private/EW10-delphi-epicast-mturk-regional-2020-03-19.csv", col_types="ccccccd") %>>%
-##     covid19ilinet_nearcast_spreadsheet_from_flusight(covid19ilinet.natreg.spreadsheet.template) %>>%
-##     readr::write_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/covid19ilinet_202003_202008/draft-submissions/nation-region-forecast-data/CMU_Delphi-Crowdcast_MTurk/2020-ew10-CMU_Delphi-Crowdcast_MTurk.csv"))
-
-## readr::read_csv("~/Dropbox/private/EW10-delphi-epicast-mturk-states-2020-03-19.csv", col_types="ccccccd") %>>%
-##     covid19ilinet_nearcast_spreadsheet_from_flusight(covid19ilinet.state.spreadsheet.template) %>>%
-##     readr::write_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/covid19ilinet_202003_202008/draft-submissions/state-forecast-data/CMU_Delphi-Crowdcast_MTurk/2020-ew10-CMU_Delphi-Crowdcast_MTurk.csv"))
-
-
-
 ew = 11L
 
 readr::read_csv(sprintf("~/Dropbox/DELPHI/forecasting/flu/cdc_challenge_2019/flusight-natreg-run/stat-spreadsheets/EW%02d-Delphi-Stat-2020-03-23.csv",ew), col_types="ccccccd") %>>%

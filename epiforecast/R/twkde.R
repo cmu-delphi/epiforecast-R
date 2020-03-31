@@ -191,7 +191,7 @@ twkde.sim = function(full.dat,
                      diff.decay.factor=0.5,
                      max.shifts=c(rep(10L,10L),10:1,rep(0L,3L),1:10,rep(10L,20L)),
                      shift.decay.factor=0.7,
-                     tradeoff.weights=c(0.5, 0.25, 0.25, 0.5),
+                     tradeoff.weights=c(0.5, 0.25, 0.25, 0.5, 0.0),
                      uniform.weight.factor=0.1,
                      y.shrink=0.1
                      ) {
@@ -255,6 +255,11 @@ twkde.sim = function(full.dat,
       sum.obs.hist = colSums(obs.mat[seq_len(model.time.of.obs-1),,drop=FALSE])
       sum.obs.bw = sum(obs.bws[seq_len(model.time.of.obs-1)])
       ## sum.obs.bw = bw.SJnrd0(sum.obs.hist)
+      reldiff.obs.mat = diff(obs.mat)/pmax(head(obs.mat,-1L), 1e-3*mean(obs.mat))
+      reldiff.obs.bws = sapply(seq_len(min.n.out-1), function(time.of.obs1m)
+        bw.SJnrd0(reldiff.obs.mat[time.of.obs1m,]))
+      last.reldiff.obs.hist = reldiff.obs.mat[model.time.of.obs-1L,]
+      last.reldiff.obs.bw = reldiff.obs.bws[model.time.of.obs-1L]
       decay.pattern = rev(decay.factor^seq_len(model.time.of.obs-1))
       decay.obs.hist = colSums(decay.pattern*obs.mat[seq_len(model.time.of.obs-1),,drop=FALSE])
       decay.obs.bw = bw.SJnrd0(decay.obs.hist)
@@ -270,15 +275,18 @@ twkde.sim = function(full.dat,
         decay.obs = sum(decay.pattern*ys[seq_len(model.time.of.obs-1)+time.of.obs-model.time.of.obs,sim.i])
         diff.y = diff(ys[seq_len(model.time.of.obs-1)+time.of.obs-model.time.of.obs,sim.i])
         decay.diff.obs = sum(diff.decay.pattern*diff.y)
+        last.reldiff.obs = (ys[[time.of.obs-1L,sim.i]]-ys[[time.of.obs-2L,sim.i]])/pmax(ys[[time.of.obs-2L,sim.i]], 1e-3*mean(obs.mat))
         last.obs.log.weights = dnorm(last.obs, last.obs.hist, last.obs.bw, log=TRUE)
         sum.obs.log.weights = dnorm(sum.obs, sum.obs.hist, sum.obs.bw, log=TRUE)
         decay.obs.log.weights = dnorm(decay.obs, decay.obs.hist, decay.obs.bw, log=TRUE)
         decay.diff.obs.log.weights = dnorm(decay.diff.obs, decay.diff.obs.hist, decay.diff.obs.bw, log=TRUE)
+        last.reldiff.obs.log.weights = dnorm(last.reldiff.obs, last.reldiff.obs.hist, last.reldiff.obs.bw, log=TRUE)
         log.weights =
           tradeoff.weights[1] * last.obs.log.weights +
           tradeoff.weights[2] * sum.obs.log.weights +
           tradeoff.weights[3] * decay.obs.log.weights +
-          tradeoff.weights[4] * decay.diff.obs.log.weights
+          tradeoff.weights[4] * decay.diff.obs.log.weights +
+          tradeoff.weights[[5L]] * last.reldiff.obs.log.weights
         log.weights <- shift.decay * log.weights
         weights = exp(log.weights-max(log.weights))
         ## print(max(weights)/sum(weights))

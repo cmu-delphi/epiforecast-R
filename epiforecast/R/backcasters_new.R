@@ -1,4 +1,7 @@
 
+##' @include backcasters.R
+NULL
+
 na_fill0_and_indicate_with_no_interactions = function(df, which.cols=names(df)) {
     df %>>%
         dplyr::mutate_at(which.cols, list(missing=function(col) as.numeric(is.na(col)))) %>>%
@@ -104,12 +107,11 @@ augment_with_sirs_covariates = function(df, covariate.availabilities) {
     }
 }
 
-quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.nowcast, include.sirs.inspired, n.sims=200L, ...) function(voxel.data, g.voxel.data, source.name, signal.name) {
+quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.nowcast, include.sirs.inspired, model.week.shift.range=c(-4L,4L), n.sims=200L, ...) function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
   max.weeks.ahead <- match.single.nonna.integer(max.weeks.ahead)
   if (!is.logical(include.nowcast) || !is.logical(include.sirs.inspired)) {
     stop ('include.* args should be logical')
   }
-  model.week.shift.range = c(-4L, +4L)
   target.epigroup = voxel.data[["epigroup"]]
   target.source.name = voxel.data[["source.name"]]
   target.signal.name = voxel.data[["signal.name"]]
@@ -264,15 +266,14 @@ quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.no
               "stable@s", 0L, FALSE, NA_integer_, target.signal.name, target.epigroup, target.source.name
             )
   pancast.epiweeks =
-    ## DatesOfSeason(voxel.data[["season"]], usa.flu.first.week.of.season, 0L,3L) %>>%
-    ## magrittr::extract2(1L) %>>%
-    ## Date_to_epiweek()
-    g.voxel.data[[target.epigroup]][["epidata.dfs"]][[target.source.name]] %>>%
-    dplyr::filter(season == target.season) %>>%
-    dplyr::filter(epiweek <= add_epiweek_integer(max(epiweek[!is.na(issue)]), max.weeks.ahead)) %>>%
-    magrittr::extract2("epiweek") %>>%
-    sort() %>>%
-    {.}
+      g.voxel.data[[target.epigroup]][["epidata.dfs"]][[target.source.name]] %>>%
+      epidata_df_to_chopped_trajectory_df() %>>%
+      dplyr::filter(season == target.season) %>>%
+      tidyr::unchop(-season) %>>%
+      dplyr::filter(epiweek <= add_epiweek_integer(max(epiweek[!is.na(issue)]), max.weeks.ahead)) %>>%
+      magrittr::extract2("epiweek") %>>%
+      sort() %>>%
+      {.}
   g.obs.sim.history = g.observed.history
   g.obs.sim.latest = g.observed.latest %>>%
     lapply(c, list(simulations=tibble::tibble(epiweek=integer(0L), lag.group=integer(0L))))
@@ -306,10 +307,18 @@ quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.no
         description_train_tbl(g.obs.sim.latest, g.obs.sim.history, simulation.descriptions, NULL)
       full.train.tbl = dplyr::full_join(covariate.train.tbl, response.train.tbl, by="reference.epiweek") %>>%
         dplyr::rename_(.dots=c("y"=as.name(response.description[["variable.name"]]))) %>>%
-        dplyr::filter(dplyr::between(
-        (reference.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]] -
-        (pancast.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]],
-        model.week.shift.range[[1L]], model.week.shift.range[[2L]])) %>>%
+        {
+          if (is.null(model.week.shift.range)) {
+            .
+          } else {
+            . %>>%
+              dplyr::filter(dplyr::between(
+              (reference.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]] -
+              (pancast.epiweek %>>% epiweek_to_sunday() %>>% DateToYearWeekWdayDF(0L,3L) %>>% yearWeekDFToSeasonModelWeekDF(voxel.data[["first.week.of.season"]], 3L))[["model.week"]],
+              model.week.shift.range[[1L]], model.week.shift.range[[2L]])) %>>%
+              {.}
+          }
+        } %>>%
         {.}
       train.data =
         full.train.tbl %>>%
@@ -364,10 +373,12 @@ quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.no
     }
   }
   sim.obj.epiweeks =
-    g.voxel.data[[target.epigroup]][["epidata.dfs"]][[target.source.name]] %>>%
-    dplyr::filter(season == target.season) %>>%
-    magrittr::extract2("epiweek") %>>%
-    {.}
+      g.voxel.data[[target.epigroup]][["epidata.dfs"]][[target.source.name]] %>>%
+      epidata_df_to_chopped_trajectory_df() %>>%
+      dplyr::filter(season == target.season) %>>%
+      tidyr::unchop(-season) %>>%
+      magrittr::extract2("epiweek") %>>%
+      {.}
   pancast.ys =
     tibble::tibble(epiweek=pancast.epiweeks) %>>%
     dplyr::left_join(g.obs.sim.latest[[target.epigroup]][["simulations"]], by="epiweek") %>>%
@@ -378,16 +389,13 @@ quantile_arx_thinning_whitening_pancaster = function(max.weeks.ahead, include.no
   sim.obj.ys = matrix(NA_real_, length(sim.obj.epiweeks), n.sims)
   sim.obj.ys[match(pancast.epiweeks, sim.obj.epiweeks),] <- pancast.ys
   new.dat.sim = match.new.dat.sim(sim.obj.ys)
-  old.dat = voxel.data[["epidata.dfs"]][[source.name]] %>>%
-    dplyr::filter(season != voxel.data[["season"]]) %>>%
-    split(.[["season"]]) %>>%
-    magrittr::extract(
-                sapply(., function(season.df) {
-                  !any(is.na(season.df[[signal.name]]))
-                })
-              ) %>>%
-    dplyr::bind_rows() %>>%
-    {split(.[[signal.name]], .[["Season"]])}
+  source.epidata.df = voxel.data[["epidata.dfs"]][[source.name]]
+  source.chopped.trajectory.df = epidata_df_to_chopped_trajectory_df(source.epidata.df)
+  old.dat = source.chopped.trajectory.df %>>%
+      dplyr::filter(season != voxel.data[["season"]]) %>>%
+      dplyr::filter(vapply(.[[signal.name]], function(trajectory) !any(is.na(trajectory)), logical(1L))) %>>%
+      ## xxx regenerating Season labels, indicates suboptimal interface; see additional notes in season chopper above
+      {stats::setNames(.[[signal.name]], season_to_Season(.[["season"]], voxel.data[["first.week.of.season"]]))}
   voxel.Season = season_to_Season(
     voxel.data[["season"]], voxel.data[["first.week.of.season"]])
   full.dat = c(old.dat,

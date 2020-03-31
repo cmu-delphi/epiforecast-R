@@ -19,11 +19,62 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+source("covidplot.R")
+
 source("covid19ilinet-202003-202008-natreg-config.R")
+source("covid19ilinet-templates.R")
 
 ## source("generate-retro-and-prospective-forecasts.R")
-source("gen-prospective-component-forecasts.R")
 
+
+
+## source("gen-retro-component-forecasts.R")
+## save_spreadsheets(
+##     swgbf.retro.component.target.multicasts,
+##     swg.retro.voxel.data,
+##     t.target.specs, m.forecast.types,
+##     epigroup.colname,
+##     file.path(epiproject.cache.dir,"test001-component-spreadsheets"),
+##     format_spreadsheet = function(spreadsheet) {
+##         reformat_to_predx_v2_spreadsheet(spreadsheet, covid19ilinet.natreg.spreadsheet.template)
+##     },
+##     post_action = function(spreadsheet,filepath,spreadsheet.dir,subpath,swg.voxel.data,s,w,...) {
+##         plot.parent.dir = file.path(epiproject.cache.dir, "test001-component-plots")
+##         if (!dir.exists(plot.parent.dir)) {
+##             dir.create(plot.parent.dir)
+##         }
+##         output.dir = file.path(plot.parent.dir, gsub("\\.csv$","",subpath))
+##         if (!dir.exists(output.dir)) {
+##             dir.create(output.dir)
+##         }
+##         plot.covid.forecast(filepath, output.dir)
+##     }
+## )
+
+
+
+source("gen-prospective-component-forecasts.R")
+save_spreadsheets(
+    swgbf.prospective.component.target.multicasts,
+    swg.prospective.voxel.data,
+    t.target.specs, m.forecast.types,
+    epigroup.colname,
+    file.path(epiproject.cache.dir,"test001-component-spreadsheets"),
+    format_spreadsheet = function(spreadsheet) {
+        reformat_to_predx_v2_spreadsheet(spreadsheet, covid19ilinet.natreg.spreadsheet.template)
+    },
+    post_action = function(spreadsheet,filepath,spreadsheet.dir,subpath,swg.voxel.data,s,w,...) {
+        plot.parent.dir = file.path(epiproject.cache.dir, "test001-component-plots")
+        if (!dir.exists(plot.parent.dir)) {
+            dir.create(plot.parent.dir)
+        }
+        output.dir = file.path(plot.parent.dir, gsub("\\.csv$","",subpath))
+        if (!dir.exists(output.dir)) {
+            dir.create(output.dir)
+        }
+        plot.covid.forecast(filepath, output.dir)
+    }
+)
 
 
 
@@ -32,3 +83,4 @@ source("gen-prospective-component-forecasts.R")
 ## todo other locations
 ## todo spreadsheet format
 ## todo plotting and sanity checks
+## todo exclude methods that don't make sense

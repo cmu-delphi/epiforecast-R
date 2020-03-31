@@ -64,7 +64,7 @@ backfill_ignorant_student_t2_nowcast_backcaster = function(n.sims=1000L) functio
             !is.na(nowcast.new.trajectory.df[["value"]])
         )
     if (length(nowcast.time) != 1L) {
-      stop ('Expected nowcast to be available where signal was not in only ')
+      stop ('Expected nowcast to be available where signal was not in exactly one week.')
     }
     nowcast.value = nowcast.new.trajectory.df[["value"]][[nowcast.time]]
     nowcast.std = nowcast.new.trajectory.df[["std"]][[nowcast.time]]
@@ -76,7 +76,7 @@ backfill_ignorant_student_t2_nowcast_backcaster = function(n.sims=1000L) functio
     return (full.dat)
 }
 
-quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3, tol=1e-3, model.week.shift.range=c(-4L,+4L), n.sims=200L) function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
+quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3, tol=1e-3, model.week.shift.range=c(-4L,+4L), include.intercept=TRUE, n.sims=200L) function(voxel.data, g.voxel.data, source.name, signal.name, epidata_df_to_chopped_trajectory_df=chop_by_season) {
   target.epigroup = voxel.data[["epigroup"]]
   target.source.name = voxel.data[["source.name"]]
   target.signal.name = voxel.data[["signal.name"]]
@@ -253,6 +253,11 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
                                          simulation.description[["variable.name"]]))
     }
   }
+  fitting.formula = if (include.intercept) {
+                        y ~ .
+                    } else {
+                        y ~ . + 0
+                    }
   for (response.i in seq_len(nrow(simulation.descriptions))) {
     for (pancast.epiweek in pancast.epiweeks) {
       ## print(pancast.epiweek)
@@ -314,12 +319,18 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
         ## matrix errors later):
         {
           ## todo lm is slower than, e.g., .lm.fit; cut formula processing out
-          lm.fit = lm(y~., ., tol=tol)
+          lm.fit = lm(fitting.formula, ., tol=tol)
           beta = coefficients(lm.fit)
-          stopifnot(names(beta)[[1L]] == "(Intercept)" &&
-                    length(beta) - 1L == ncol(.) - 1L &&
-                    names(.)[[ncol(.)]] == "y")
-          .[c(!is.na(beta)[-1L],TRUE)]
+          if (include.intercept) {
+            stopifnot(names(beta)[[1L]] == "(Intercept)" &&
+                      length(beta) - 1L == ncol(.) - 1L &&
+                      names(.)[[ncol(.)]] == "y")
+            .[c(!is.na(beta)[-1L],TRUE)]
+          } else {
+            stopifnot(length(beta) == ncol(.) - 1L &&
+                      names(.)[[ncol(.)]] == "y")
+            .[c(!is.na(beta),TRUE)]
+          }
         } %>>%
         ## Try to avoid more insidious sources of singular matrices in quantile
         ## regression with jitter:
@@ -335,19 +346,19 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
         }) %>>%
         tibble::as_tibble() %>>%
         {.}
-      ## fit = lm(y~., train.data)
+      ## fit = lm(fitting.formula, train.data)
       ## print(train.data)
       ## sigma = sqrt(mean(residuals(fit)^2))
       ## print(fit)
       ## print(anova(fit))
       ## print(sigma)
-      ## lm.fit = lm(y~., train.data)
+      ## lm.fit = lm(fitting.formula, train.data)
       ## print(anova(lm.fit))
       ## taus = runif(n.sims)
       ## simulated.values =
       ##   sapply(seq_len(n.sims), function(sim.i) {
-      ##     ## fit = quantreg::rq(y~., taus[[sim.i]], train.data)
-      ##     fit = quantreg::rq(y~., taus[[sim.i]], train.data, method="lasso", lambda=1e-6)
+      ##     ## fit = quantreg::rq(fitting.formula, taus[[sim.i]], train.data)
+      ##     fit = quantreg::rq(fitting.formula, taus[[sim.i]], train.data, method="lasso", lambda=1e-6)
       ##     predict(fit, newdata=covariate.test.tbl[sim.i,,drop=FALSE])
       ##     ## predict(fit, newdata=covariate.test.tbl[sim.i,,drop=FALSE]) + rnorm(1L, sigma)
       ##   }) %>>% unname()
@@ -359,10 +370,10 @@ quantile_arx_pancaster = function(include.nowcast, max.weeks.ahead, lambda=1e-3,
           ## todo quantreg::rq is slower than underlying fitting functions; cut formula processing out
           ## todo try hqreg
           ## fixme does rq w/ method lasso only use one tau?!?
-          quantreg::rq(y~., taus, train.data, method="lasso", lambda=lambda),
+          quantreg::rq(fitting.formula, taus, train.data, method="lasso", lambda=lambda),
           error=function(e) {
               ## todo iterate through taus, weight on recent data
-              quantreg::rq(y~., taus, train.data, method="fn")
+              quantreg::rq(fitting.formula, taus, train.data, method="fn")
           }
       )
       simulated.values = predict(fit, newdata=covariate.test.tbl)[cbind(seq_len(n.sims),seq_len(n.sims))]
