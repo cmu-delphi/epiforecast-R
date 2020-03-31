@@ -64,6 +64,7 @@ Collate:
     'holidays.R'
     'weeks.R'
     'loaders.R'
+    'predx_v2_spreadsheets.R'
     'read.R'
     'simplify2arrayp.R'
     'target_spec.R'
