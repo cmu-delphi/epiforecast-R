@@ -24,7 +24,6 @@ library("pipeR")
 options(mc.cores=parallel::detectCores()-1L)
 
 ## Simulate installing and loading the package:
-## pkgbuild::clean_dll("../epiforecast") # only need to run if ../epiforecast is shared and was last loaded on another computer or with a different version of Rcpp
 devtools::document("../epiforecast") # make sure documentation is ready (side effect: loads exported and non-exported parts of the package)
 ## devtools::unload("../epiforecast") # unload everything to get rid of the non-exported parts of package
 ## devtools::load_all("../epiforecast", export_all=FALSE) # reload only exported parts of package

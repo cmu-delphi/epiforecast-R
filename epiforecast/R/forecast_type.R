@@ -219,11 +219,7 @@ distr_from_weighted_univals =
       ## bandwidth estimate for weighted data (density by default ignores the
       ## weights in the bandwidth estimate):
       bw = weighted.bw.nrd0ish(non.na.target.values.to.smooth, non.na.target.weights)
-      ## kernel density estimate at function-determined points (=ks= package has
-      ## a nice interface, but uses =KernSmooth::dpik= by default for bandwidth
-      ## selection, which, like the default for =density=, ignores weights, and
-      ## needs settings specified to avoid issues when a lot of target weight is
-      ## highly concentrated on a single target value; and produces segfaults):
+      ## kernel density estimate at function-determined points:
       pdf.fit = stats::density(non.na.target.values.to.smooth,
                                bw=bw,
                                weights=non.na.target.weights %>>%
