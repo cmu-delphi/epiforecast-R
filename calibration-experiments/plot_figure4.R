@@ -29,6 +29,6 @@ evals[["Calibration"]] = factor(evals[["Calibration"]],levels=c("Nonparametric",
 ggplot(evals) +
   geom_bar(aes(x=Calibration,y=Delta,fill=Target),position="dodge",stat="identity") +
   labs(fill="Target",x="Recalibration Method",y="Improvement in Mean Log Score") +
-  theme(aspect.ratio=0.75)
+  theme(aspect.ratio=0.75, legend.position="bottom")
 
 ggsave("fig4.png",width=8,height=6)

@@ -49,8 +49,8 @@ evals[["Type"]] = factor(evals[["Type"]],levels=c("Mean Log Score","Entropy"))
 
 ggplot(evals) +
   geom_bar(aes(x=Calibration,y=V1,fill=Target),position="dodge",stat="identity") +
-  facet_wrap(~Type) +
+  facet_wrap(~Type,nrow=1) +
   labs(fill="Target",x="Recalibration Method",y="Proportion of Models Improved") +
-  theme(aspect.ratio=0.75)
+  theme(aspect.ratio=0.75, legend.position="bottom")
 
-ggsave("fig5.png",width=8,height=5)
+ggsave("fig5.png",width=8,height=6)

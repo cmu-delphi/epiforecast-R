@@ -14,7 +14,9 @@ protea_window_evals[["Calibration"]][protea_window_evals[["Calibration"]] == "be
 
 ggplot(protea_window_evals) +
   geom_line(aes(x=Window,y=V1,color=Target,linetype=Calibration)) +
+  geom_point(aes(x=Window,y=V1,color=Target,shape=Calibration)) +
   labs(color="Target",linetype="Calibration",y="Mean Log Score",x="Window Size") +
+  scale_x_continuous(breaks=c(0,2,4,6,8,10)) +
   theme(aspect.ratio=0.75)
 
-ggsave("img.png",width=8,height=6)
+ggsave("fig3.png",width=8,height=6)
