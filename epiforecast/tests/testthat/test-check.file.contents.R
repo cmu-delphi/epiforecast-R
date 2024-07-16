@@ -61,7 +61,6 @@ test_that("Last column being full returns error.", {
                 col.names = T,
                 row.names=F,
                 sep=",")
-    print(read.csv("a.csv"))
     expect_error(check.file.contents("a.csv"))
     file.remove("a.csv")
 })

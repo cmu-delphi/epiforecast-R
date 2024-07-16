@@ -163,7 +163,7 @@ trendfilter.cv = function(x, y, k=2, cv.rule=c("min","1se"), nfolds=5,
   if (n < nfolds*2+2) stop(sprintf("Need >= %i data points for %i-fold-cross-validation",
                                   nfolds*2+2,nfolds))
 
-  foldid = c(0,rep(1:nfolds,length=n-2),0)
+  foldid = c(0,rep(1:nfolds,length.out=n-2),0)
   cvall = matrix(0,nfolds,nlambda)
 
   for (i in 1:nfolds) {
