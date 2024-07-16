@@ -37,15 +37,15 @@
 
 #define OUTELT(elt) \
   do { \
-    std::cout << #elt << ": " << elt << std::endl;	\
+    Rcpp::Rcout << #elt << ": " << elt << std::endl;	\
   }while(0)
 #define OUTITBL(itbl) \
   do { \
-    std::cout << #itbl << ": "; \
+    Rcpp::Rcout << #itbl << ": "; \
     for (auto &&elt : itbl) { \
-      std::cout << elt << ", "; \
+      Rcpp::Rcout << elt << ", "; \
     } \
-    std::cout << std::endl; \
+    Rcpp::Rcout << std::endl; \
   }while(0)
 
 // xxx remove
@@ -1631,7 +1631,20 @@ auto LogWeightGenerator(const ShrinkageMap &observed_past_shrinkage_map,
                         const SD bias_peakheight_sd,
                         const Rp bias_peakheight_shrinkage
                         ) {
-  return MakeFMapIterable([&, n_future_neighbors](const ObservableCurve &obsbl_curve){
+  return MakeFMapIterable([
+    &observed_past_shrinkage_map,
+    &reasonable_future_shrinkage_map,
+    n_future_neighbors,
+    &current_trajectory,
+    &historical_trajectories,
+    &obsbl_curve_it,
+    bias_peaktime_mean,
+    bias_peaktime_sd,
+    bias_peaktime_shrinkage,
+    bias_peakheight_mean,
+    bias_peakheight_sd,
+    bias_peakheight_shrinkage
+  ](const ObservableCurve &obsbl_curve){
     return TrajectoryLogWeight(observed_past_shrinkage_map,
                                reasonable_future_shrinkage_map,
                                n_future_neighbors,
