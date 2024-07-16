@@ -1,3 +1,7 @@
+# Warning
+
+This package is no longer being maintained.
+
 # Summary
 R package that implements several methods for epidemiological forecasting empirical bayes (EB), basis regression (BR), and time-weighted kernel density estimation (twkde).
 
