@@ -45,7 +45,7 @@ area.name = "hhs1"
 hhs1.dat = fetchEpidataFullDat("fluview", area.name, "wili",
                                min.points.in.season=52L,
                                first.week.of.season = 21L,
-                               cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
+                               cache.file.prefix=sprintf("fluview_%s_fetch.Rdata", area.name))
 alt.names1=paste("season",1:length(names(hhs1.dat)))
 alt.names2 = alt.names1;    alt.names2[5] = "" 
 alt.names3 = rep("", length(names(hhs1.dat)))

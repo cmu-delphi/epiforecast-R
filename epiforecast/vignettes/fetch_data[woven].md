@@ -38,7 +38,7 @@ filename = file.path(outputdir, "fluview_nat_df.csv")
 fluview.nat.all.df =   # If I need just 2003 and on, I do #fluview.nat.recent.df()
     trimPartialPastSeasons(fetchEpidataDF("fluview", "nat",
                                           first.week.of.season=21L,
-                                          cache.file="fluview_nat_allfetch.Rdata"),
+                                          cache.file.prefix="fluview_nat_allfetch.Rdata"),
                            "wili",
                            min.points.in.season=33L)
 
@@ -62,7 +62,7 @@ for(jj in 1:10){
     filename =  file.path(outputdir, paste0("fluview_",myhhs,"_df.csv"))
     regdat = trimPartialPastSeasons(fetchEpidataDF("fluview", myhhs,
                                                    first.week.of.season=21L),
-                                                   ## cache.file=cachename),
+                                                   ## cache.file.prefix=cachename),
                                     "wili", min.points.in.season=33L)
     regdat2 = regdat[,c("region","wili","year","week","date","season","model.week")]
     gft.reg.dat = fetchEpidataDF("gft","hhs1")
