@@ -65,7 +65,8 @@ is.or.why.not.smooth.dat = function(dat, smooth.dat) {
 is.or.why.not.curve.models = function(dat, curve.models) {
     if (length(dat) != length(curve.models))
         return ("length(dat) != length(curve.models)")
-    if (class(curve.models) != 'list' || !identical(rep('list',length(curve.models)), as.character(sapply(curve.models, class))))
+    if (!inherits(curve.models, "list") ||
+          !all(vapply(curve.models, FUN.VALUE = logical(1L), inherits, "list")))
         return ("curve.models must be a list of lists")
     if (length(curve.models)>0 && !identical(sapply(curve.models, names), matrix(rep(c("f","tau","type"), length(curve.models)),3)))
         return ("list elt's should be f, tau, type")

@@ -83,8 +83,7 @@ check.file.contents = function(filename) {
 ##' Performs various checks on full.dat as a table (matrix/data.frame).
 check.table.format = function(full.dat){
 
-    ## Check if data frame
-    stopifnot(class(full.dat)%in%c("matrix","data.frame"))
+    stopifnot(inherits(full.dat, "matrix") || inherits(full.dat, "data.frame"))
 
     ## Check if any column names are missing or NA
     default.colnames = Map(paste0, rep("V",ncol(full.dat)), 1:ncol(full.dat))
@@ -123,7 +122,7 @@ check.table.format = function(full.dat){
 ##' Performs various checks on full.dat as a list of numeric vectors.
 check.list.format = function(full.dat){
     ## Check if list is formatted correctly.
-    if(!class(full.dat)%in%c("list")) stop("Type of input is not list!")
+    if(!inherits(full.dat, "list")) stop("Type of input is not list!")
 
     ## Check if all numeric values
     all.is.numeric = all(sapply(full.dat, function(mycol){all(is.numeric(mycol))}))

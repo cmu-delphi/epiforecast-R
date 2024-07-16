@@ -209,7 +209,7 @@ show.sample.trajectories =
   function(ys, n.shown.rows = 100L, n.shown.cols = 100L){
 
     ## basic error checking
-    if(!(class(ys) %in% c("matrix"))) stop("ys is not a matrix!")
+    if(!(inherits(ys, "matrix"))) stop("ys is not a matrix!")
     if(any(apply(ys,2,function(mycol){any(is.na(mycol))}))) stop("ys has missing entries!")
 
     ## format simulated trajectories
