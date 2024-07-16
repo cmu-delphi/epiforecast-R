@@ -50,6 +50,23 @@ alt.names1=paste("season",1:length(names(hhs1.dat)))
 alt.names2 = alt.names1;    alt.names2[5] = "" 
 alt.names3 = rep("", length(names(hhs1.dat)))
 
+list_dat_to_matrix <- function(vec_list) {
+  stopifnot(length(vec_list) > 0L)
+  length_range <- range(vapply(vec_list, length, integer(1L)))
+  if (diff(length_range) > 1L) {
+    stop ('Vectors in the list cannot vary in length by more than 1; please make sure they are repeated or filled with NAs appropriately.')
+  }
+  if (length_range[[1L]] == 0L) {
+    stop ('Vectors in the list must all be of positive length.')
+  }
+  max_length <- length_range[[2L]]
+  vec_list <- lapply(vec_list, function(vec) {
+    # copy the last elt to fill the gap
+    c(vec, rep(vec[[length(vec)]], max_length - length(vec)))
+  })
+  do.call(cbind, vec_list)
+}
+
 ## When one label is missing
     
 
@@ -58,7 +75,7 @@ test_that("When alls labels are missing, error is thrown", {
     filename="./all.names.missing.file.csv"
     all.names.missing.hhs1.dat = hhs1.dat
     names(all.names.missing.hhs1.dat) = alt.names3
-    all.names.missing.hhs1.dat = do.call(cbind, all.names.missing.hhs1.dat)
+    all.names.missing.hhs1.dat = list_dat_to_matrix(all.names.missing.hhs1.dat)
     all.names.missing.hhs1.dat = all.names.missing.hhs1.dat[-53,]
     write.csv(all.names.missing.hhs1.dat, file = filename, row.names=FALSE)
     expect_error(full.dat = read.from.file(filename))
@@ -69,7 +86,7 @@ test_that("When one label is missing, error is thrown", {
     filename="./one.name.missing.file.csv"
     one.name.missing.hhs1.dat = hhs1.dat
     names(one.name.missing.hhs1.dat) = alt.names2
-    one.name.missing.hhs1.dat = do.call(cbind, one.name.missing.hhs1.dat)
+    one.name.missing.hhs1.dat = list_dat_to_matrix(one.name.missing.hhs1.dat)
     one.name.missing.hhs1.dat = one.name.missing.hhs1.dat[-53,]
     write.csv(one.name.missing.hhs1.dat, file = filename, row.names=FALSE)
     expect_error(full.dat = read.from.file(filename))
@@ -78,7 +95,7 @@ test_that("When one label is missing, error is thrown", {
 ## Last season is not partially observed
 test_that("When last season is not partially observed, error is thrown", {
     filename="./last.column.weird.file.csv"
-    last.column.weird.hhs1.dat = do.call(cbind, hhs1.dat)
+    last.column.weird.hhs1.dat = list_dat_to_matrix(hhs1.dat)
     write.csv(last.column.weird.hhs1.dat, file = filename,row.names=FALSE)
     expect_error(full.dat = read.from.file(filename))
 })
@@ -86,7 +103,7 @@ test_that("When last season is not partially observed, error is thrown", {
 ## CSV is correct, so everything should be fine here.
 test_that("When last season is not partially observed, error is thrown", {
     filename="./correct.csv"
-    correct.hhs1.dat = do.call(cbind, hhs1.dat)
+    correct.hhs1.dat = list_dat_to_matrix(hhs1.dat)
     correct.hhs1.dat = correct.hhs1.dat[-53,]
     write.csv(correct.hhs1.dat, file = filename,row.names=FALSE)
     full.dat = read.from.file(filename)
