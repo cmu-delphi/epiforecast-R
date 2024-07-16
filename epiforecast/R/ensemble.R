@@ -106,7 +106,7 @@ lasso_lad_coef = function(y, X, include.intercept=TRUE) {
                     lambda=mean(abs(y-X))))
 }
 
-##' @importFrom Matrix rBind cBind Diagonal Matrix
+##' @importFrom Matrix Diagonal Matrix
 ##' @export
 simplex_lad_weights = function(y, X) {
   if (length(y) != nrow(X)) stop("length(y) != nrow(X)")
@@ -115,10 +115,10 @@ simplex_lad_weights = function(y, X) {
 
   ## p beta, n s+, n s-
   objective.in = c(rep(0,p),rep(1,n),rep(1,n))
-  const.mat = rBind(cBind(                     X,   Matrix::Diagonal(n),  -Matrix::Diagonal(n) ),
-                    cBind( Matrix::Matrix(0,n,p),   Matrix::Diagonal(n), Matrix::Matrix(0,n,n) ),
-                    cBind( Matrix::Matrix(0,n,p), Matrix::Matrix(0,n,n),   Matrix::Diagonal(n) ),
-                    cBind(   Matrix::Diagonal(p), Matrix::Matrix(0,p,n), Matrix::Matrix(0,p,n) ),
+  const.mat = rbind(cbind(                     X,   Matrix::Diagonal(n),  -Matrix::Diagonal(n) ),
+                    cbind( Matrix::Matrix(0,n,p),   Matrix::Diagonal(n), Matrix::Matrix(0,n,n) ),
+                    cbind( Matrix::Matrix(0,n,p), Matrix::Matrix(0,n,n),   Matrix::Diagonal(n) ),
+                    cbind(   Matrix::Diagonal(p), Matrix::Matrix(0,p,n), Matrix::Matrix(0,p,n) ),
                         c(              rep(1,p),              rep(0,n),              rep(0,n) ))
   const.dir = c(rep("=" , n),
                 rep(">=", n),
