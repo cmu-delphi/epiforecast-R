@@ -28,7 +28,7 @@ area.name = "hhs1"
 full.dat = epiforecast::fetchEpidataFullDat("fluview", area.name, "wili",
                                             min.points.in.season=52L,
                                             first.week.of.season = 21L,
-                                            cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
+                                            cache.file.prefix=sprintf("fluview_%s_fetch.Rdata", area.name))
 mysim = eb.sim(full.dat, max.n.sims=100)
 
 ## Tests:

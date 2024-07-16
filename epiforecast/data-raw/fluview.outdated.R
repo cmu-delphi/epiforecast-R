@@ -35,7 +35,7 @@ fluview.area.names = c(sprintf("hhs%d",1:10),"nat")
 ## fluview.2003on.dfs = structure(lapply(fluview.area.names, function(area.name) {
 ##   trimPartialPastSeasons(fetchEpidataDF("fluview", area.name,
 ##                                         first.week.of.season=fluview.first.model.week,
-##                                         cache.file=sprintf("fluview_%s_fetch.Rdata", area.name)),
+##                                         cache.file.prefix=sprintf("fluview_%s_fetch.Rdata", area.name)),
 ##                          "wili", 52)
 ## }), names=fluview.area.names)
 ## fluview.2003on.full.dats = lapply(fluview.2003on.dfs, function(df) {
@@ -47,7 +47,7 @@ fluview.area.names = c(sprintf("hhs%d",1:10),"nat")
 fluview.2003on.full.dats = setNames(lapply(fluview.area.names, function(area.name) {
   fetchEpidataFullDat("fluview", area.name, "wili",
                       min.points.in.season=52L, first.week.of.season=fluview.first.model.week,
-                      cache.file=sprintf("fluview_%s_fetch.Rdata", area.name))
+                      cache.file.prefix=sprintf("fluview_%s_fetch.Rdata", area.name))
 }), fluview.area.names)
 fluview.2003on.dats = lapply(fluview.2003on.full.dats, head, n=-1L)
 fluview.2003on.new.dats = lapply(fluview.2003on.full.dats, function(full.dat) tail(full.dat, 1L)[[1]])
