@@ -1,32 +1,6 @@
 
 ## Observations we use for CV evaluation:
 print("CV: find observed trajectories, target multivals, target values")
-gc()
-sg.retro.observed.trajectories = map_join(
-  get_observed_trajectory,
-  s.retro.seasons, g.epigroups,
-  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories")
-)
-
-gc()
-swgt.retro.observed.multivals = map_join(
-  observed_multival2,
-  swg.retro.voxel.data,
-  target_trajectory_preprocessor,
-  t.target.specs,
-  sg.retro.observed.trajectories,
-  shuffle=FALSE,
-  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals")
-)
-
-gc()
-swgtm.retro.observed.values = map_join(
-  observed_value2,
-  swg.retro.voxel.data, t.target.specs, m.forecast.types,
-  swgt.retro.observed.multivals,
-  shuffle=FALSE, lapply_variant=lapply,
-  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
-)
 
 ## Tack on additional indexer_list's for CV:
 e.retro.ensemble.weighting.scheme.swgtmbf.indexer.lists =

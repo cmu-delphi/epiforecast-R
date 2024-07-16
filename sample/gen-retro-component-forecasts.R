@@ -83,6 +83,34 @@ swgtmbf.retro.component.forecast.values =
   aperm(c(3:5,1:2,6:7))
 
 print('Analysis: calculate CV component evaluations')
+
+gc()
+sg.retro.observed.trajectories = map_join(
+  get_observed_trajectory,
+  s.retro.seasons, g.epigroups,
+  cache.prefix=file.path(epiproject.cache.dir,"sg.retro.observed.trajectories")
+)
+
+gc()
+swgtm.retro.observed.values = map_join(
+  observed_value2,
+  swg.retro.voxel.data, t.target.specs, m.forecast.types,
+  swgt.retro.observed.multivals,
+  shuffle=FALSE, lapply_variant=lapply,
+  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
+)
+
+gc()
+swgt.retro.observed.multivals = map_join(
+  observed_multival2,
+  swg.retro.voxel.data,
+  target_trajectory_preprocessor,
+  t.target.specs,
+  sg.retro.observed.trajectories,
+  shuffle=FALSE,
+  cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals")
+)
+
 old.mc.cores = getOption("mc.cores")
 options("mc.cores"=min(2L,old.mc.cores))
 gc()
@@ -97,11 +125,11 @@ options("mc.cores"=old.mc.cores)
 ## evaluations, but re-running the evaluations seems to work... memory issues? gc beforehand?
 
 
-swgt.retro.observed.multibin.values = map_join(
-    observed_value2,
-    swg.retro.voxel.data, t.target.specs, no_join(multibin.logscore.forecast.type),
-    swgt.retro.observed.multivals
-)
+## swgt.retro.observed.multibin.values = map_join(
+##     observed_value2,
+##     swg.retro.voxel.data, t.target.specs, no_join(multibin.logscore.forecast.type),
+##     swgt.retro.observed.multivals
+## )
 
 ## swgtmbf.retro.component.multibin.scores = map_join(
 ##     get_evaluation,
@@ -117,7 +145,7 @@ swgt.retro.observed.multibin.values = map_join(
 
 
 
-## apply(swgtmbf.retro.component.multibin.scores, c(7L,6L), mean, na.rm=TRUE)
+apply(swgtmbf.retro.component.multibin.scores, c(7L,6L), mean, na.rm=TRUE)
 apply(swgtmbf.retro.component.evaluations[,,,,"Bin",,,drop=FALSE], c(7L,6L), mean, na.rm=TRUE)
 apply(swgtmbf.retro.component.evaluations[,,,,"Bin",,,drop=FALSE]%>>%pmax(-10), c(7L,6L), mean, na.rm=TRUE)
 apply(swgtmbf.retro.component.evaluations[,,,,"Bin",,,drop=FALSE]%>>%pmax(-10), c(6L,7L), mean, na.rm=TRUE)

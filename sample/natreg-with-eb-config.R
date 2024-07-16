@@ -262,6 +262,7 @@ f.forecasters = list(
   "Delphi_EmpiricalTrajectories"=empirical.trajectories.sim
 ) %>>%
   with_dimnamesnames("Forecaster")
+epidata_df_to_chopped_trajectory_df = chop_by_season
 target_trajectory_preprocessor = flusight2016ilinet_target_trajectory_preprocessor
 full_dat_fixup = function(full.dat) {
    full.dat[[length(full.dat)]][["ys"]] <-
