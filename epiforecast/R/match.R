@@ -240,7 +240,7 @@ match.dat = function(dat) {
 ##'
 ##' @export
 match.new.dat.sim = function(new.dat.sim) {
-  if (class(new.dat.sim) == "sim") {
+  if (inherits(new.dat.sim, "sim")) {
     return (new.dat.sim)
   } else if (is.numeric(new.dat.sim) && is.vector(new.dat.sim)) {
     ys = as.matrix(new.dat.sim)

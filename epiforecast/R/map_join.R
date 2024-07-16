@@ -230,7 +230,7 @@ map_join_ = function(f, arraylike.args,
     arraylike.arg = arraylike.args[[arraylike.arg.i]]
     arraylike.arg.name = namesp(arraylike.args)[[arraylike.arg.i]]
     arg.dnp = dimnamesp(arraylike.arg)
-    if (length(arg.dnp) == 0L && class(arraylike.arg) != "no_join") {
+    if (length(arg.dnp) == 0L && !inherits(arraylike.arg, "no_join")) {
       ## warning (sprintf("arg %d had ndimp of 0L but was not marked no_join; marking as no_join now", arraylike.arg.i))
       arraylike.args[[arraylike.arg.i]] <- arraylike.arg <- no_join(arraylike.arg)
     }
@@ -292,10 +292,10 @@ map_join_ = function(f, arraylike.args,
       arraylike.arg.dim.indices = dimnames_or_inds(arraylike.args[[arraylike.arg.i]])
       corresponding.result.dim.indices = dimnamesp_to_dimindices(index.dnp[result.from.arg.dimension.maps[[arraylike.arg.i]]])
       Map(function(inds.a, inds.b) {
-        if (class(inds.a)==class(inds.b)) {
+        if (identical(class(inds.a), class(inds.b))) {
           match(inds.a, inds.b)
-        } else if (class(inds.a)=="character" && class(inds.b)=="integer" ||
-                   class(inds.a)=="integer" && class(inds.b)=="integer") {
+        } else if (inherits(inds.a, "character") && inherits(inds.b, "integer") ||
+                   inherits(inds.a, "integer") && inherits(inds.b, "integer")) {
           stopifnot(length(inds.a)==length(inds.b))
           seq_along(inds.a)
         } else {
@@ -354,7 +354,7 @@ map_join_ = function(f, arraylike.args,
               )
             arg =
               if (ndimp(arraylike.arg) == 0L) {
-                stopifnot(class(arraylike.arg)=="no_join")
+                stopifnot(inherits(arraylike.arg, "no_join"))
                 arraylike.arg[[1L]]
               } else {
                 arraylike.arg[t(as.matrix(arraylike.arg.indices))][[1L]]
@@ -482,7 +482,7 @@ extract_partial_= function(arraylike, index.sets,
            stop=function(dimension.index.sets) {
              unique.dimension.index.sets = unique(dimension.index.sets)
              if (length(unique.dimension.index.sets) != 1L) {
-               if (length(unique(sapply(unique.dimension.index.sets, class))) != 1L) {
+               if (length(unique(lapply(unique.dimension.index.sets, class))) != 1L) {
                  stop ("Multiple classes of index sets provided for the same dimension; not supported.")
                } else {
                  stop ("Multiple index sets provided for the same dimension, but they are not all the same.")
@@ -491,7 +491,7 @@ extract_partial_= function(arraylike, index.sets,
              unique.dimension.index.sets[[1L]]
            },
            intersect=function(dimension.index.sets) {
-             if (length(unique(sapply(dimension.index.sets, class))) != 1L) {
+             if (length(unique(lapply(dimension.index.sets, class))) != 1L) {
                  stop ("Multiple classes of index sets provided for the same dimension; not supported.")
              }
              Reduce(intersect, dimension.index.sets)
