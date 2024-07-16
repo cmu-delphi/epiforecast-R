@@ -92,15 +92,6 @@ sg.retro.observed.trajectories = map_join(
 )
 
 gc()
-swgtm.retro.observed.values = map_join(
-  observed_value2,
-  swg.retro.voxel.data, t.target.specs, m.forecast.types,
-  swgt.retro.observed.multivals,
-  shuffle=FALSE, lapply_variant=lapply,
-  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
-)
-
-gc()
 swgt.retro.observed.multivals = map_join(
   observed_multival2,
   swg.retro.voxel.data,
@@ -109,6 +100,15 @@ swgt.retro.observed.multivals = map_join(
   sg.retro.observed.trajectories,
   shuffle=FALSE,
   cache.prefix=file.path(epiproject.cache.dir,"swgt.retro.observed.multivals")
+)
+
+gc()
+swgtm.retro.observed.values = map_join(
+  observed_value2,
+  swg.retro.voxel.data, t.target.specs, m.forecast.types,
+  swgt.retro.observed.multivals,
+  shuffle=FALSE, lapply_variant=lapply,
+  cache.prefix=file.path(epiproject.cache.dir,"swgtm.retro.observed.values")
 )
 
 old.mc.cores = getOption("mc.cores")
