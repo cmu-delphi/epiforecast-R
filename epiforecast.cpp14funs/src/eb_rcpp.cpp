@@ -1624,12 +1624,12 @@ auto LogWeightGenerator(const ShrinkageMap &observed_past_shrinkage_map,
                         const Trajectory &current_trajectory,
                         const std::vector<Trajectory> &historical_trajectories,
                         const ObservableCurveIterator &obsbl_curve_it,
-                        const Time bias_peaktime_mean,
-                        const Time bias_peaktime_sd,
-                        const Rp bias_peaktime_shrinkage,
-                        const Mean bias_peakheight_mean,
-                        const SD bias_peakheight_sd,
-                        const Rp bias_peakheight_shrinkage
+                        Time bias_peaktime_mean,
+                        Time bias_peaktime_sd,
+                        Rp bias_peaktime_shrinkage,
+                        Mean bias_peakheight_mean,
+                        SD bias_peakheight_sd,
+                        Rp bias_peakheight_shrinkage
                         ) {
   return MakeFMapIterable([
     &observed_past_shrinkage_map,
