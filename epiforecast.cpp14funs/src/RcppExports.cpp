@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // CartesianProductCurves
 std::vector<Rcpp::DataFrame> CartesianProductCurves(Rcpp::List fit_obj_rcpp, Mean y_scale_baseline, std::vector<std::ptrdiff_t> curve_index_choices, std::vector<Time> peak_time_choices, std::vector<Time> x_shift_choices, std::vector<Time> x_scale_choices, std::vector<SD> sd_choices, std::vector<Rp> sd_scale_choices, std::vector<Mean> peak_height_choices, std::vector<Rp> y_scale_choices);
 RcppExport SEXP _epiforecast_cpp14funs_CartesianProductCurves(SEXP fit_obj_rcppSEXP, SEXP y_scale_baselineSEXP, SEXP curve_index_choicesSEXP, SEXP peak_time_choicesSEXP, SEXP x_shift_choicesSEXP, SEXP x_scale_choicesSEXP, SEXP sd_choicesSEXP, SEXP sd_scale_choicesSEXP, SEXP peak_height_choicesSEXP, SEXP y_scale_choicesSEXP) {

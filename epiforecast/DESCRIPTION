@@ -41,7 +41,7 @@ Description: Tools for forecasting semi-regular seasonal epidemic curves and
     kernel density estimation on backward differences parameterized by both the
     time series measurements and the current time.
 License: GPL-2
-RoxygenNote: 6.1.1
+RoxygenNote: 7.3.2
 Collate: 
     'RcppExports.R'
     'backcasters.R'
@@ -74,3 +74,5 @@ LinkingTo: Rcpp
 SystemRequirements:
 Suggests:
     testthat
+Encoding: UTF-8
+

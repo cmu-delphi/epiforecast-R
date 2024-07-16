@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // WeightedTabulateRcpp
 Rcpp::NumericVector WeightedTabulateRcpp(Rcpp::IntegerVector bin, Rcpp::IntegerVector nbins, Rcpp::NumericVector w);
 RcppExport SEXP _epiforecast_WeightedTabulateRcpp(SEXP binSEXP, SEXP nbinsSEXP, SEXP wSEXP) {
