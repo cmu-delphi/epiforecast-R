@@ -24,6 +24,7 @@ options(epidata.auth = Sys.getenv("DELPHI_EPIDATA_KEY"))
 library("pipeR")
 
 devtools::load_all("../epiforecast")
+devtools::load_all("../epiforecast.cpp14funs/")
 
 ## Set up parallel:
 options(mc.cores=parallel::detectCores()-1L)
