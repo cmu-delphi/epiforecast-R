@@ -19,6 +19,8 @@
 ## along with epiforecast.  If not, see <http://www.gnu.org/licenses/>.
 ## license_header end
 
+options(epidata.auth = Sys.getenv("DELPHI_EPIDATA_KEY"))
+
 library("pipeR")
 
 devtools::load_all("../epiforecast")
